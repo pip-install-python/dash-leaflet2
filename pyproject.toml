@@ -1,0 +1,58 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "dash-leaflet2"
+version = "0.1.0"
+description = "Leaflet 2-native Dash components — a from-scratch wrapper around Leaflet 2 core (no react-leaflet), built for Dash 4."
+readme = "README.md"
+requires-python = ">=3.8"
+license = { text = "MIT" }
+authors = [{ name = "Pip Install Python LLC", email = "pipinstallpython@gmail.com" }]
+keywords = [
+    "dash", "leaflet", "leaflet2", "maps", "plotly", "geospatial",
+    "mapping", "gis", "plotly-dash", "react-leaflet",
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Framework :: Dash",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: JavaScript",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Topic :: Scientific/Engineering :: GIS",
+    "Topic :: Scientific/Engineering :: Visualization",
+    "Topic :: Software Development :: Widget Sets",
+]
+# The package ships its own bundled Leaflet 2 + theme CSS, so `dash` is the
+# only runtime requirement. Everything in requirements.txt is for the docs
+# site, not for consumers of the package.
+dependencies = ["dash>=4.1"]
+
+[project.urls]
+Homepage = "https://leaflet.2plot.dev"
+Documentation = "https://leaflet.2plot.dev"
+Repository = "https://github.com/pip-install-python/dash-leaflet2"
+Issues = "https://github.com/pip-install-python/dash-leaflet2/issues"
+Changelog = "https://github.com/pip-install-python/dash-leaflet2/blob/main/CHANGELOG.md"
+Discord = "https://discord.gg/WEnZR35mrK"
+
+# Ship only the built Python package (the JS bundle + generated classes).
+# The TS source (src/), node_modules, and the hooks showcase app are not packaged.
+[tool.setuptools]
+packages = ["dash_leaflet2"]
+include-package-data = true
+
+# `metadata.json` is a build-time react-docgen artifact (~27 MB — CSSProperties expanded
+# per component) that nothing loads at runtime (__init__.py registers the bundle via
+# `_js_dist`), so it is intentionally NOT packaged — keeps the wheel/sdist lean.
+[tool.setuptools.package-data]
+dash_leaflet2 = ["*.js", "*.js.LICENSE.txt", "package-info.json"]

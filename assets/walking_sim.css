@@ -1,0 +1,74 @@
+/* ============================================================
+ * /walking-sim — full-shell dfl wrapper.
+ *
+ * Same pattern as `.ts-flush-shell` (see assets/tile_selector.css):
+ * a position:fixed host that escapes the page Container in app.py
+ * and pins flush against the AppShell header + navbar offsets, so
+ * the DashFlexLayout uses every remaining pixel of AppShellMain.
+ * The walker map gets the left pane (67%); HUD + Controls tabs
+ * share the right (33%).
+ * ============================================================ */
+
+.ws-flush-shell {
+    position:           fixed;
+    top:                var(--app-shell-header-offset, 56px);
+    left:               var(--app-shell-navbar-offset, 0px);
+    right:              0;
+    bottom:             0;
+    z-index:            10;
+    background:         var(--mantine-color-body);
+    border-top:         1px solid var(--mantine-color-default-border);
+    border-left:        1px solid var(--mantine-color-default-border);
+    overflow:           hidden;
+}
+
+/* DashFlexLayout fills its host. */
+.ws-flush-shell > .flexlayout__layout,
+.ws-flush-shell > div {
+    height: 100%;
+    width:  100%;
+}
+
+/* The map pane wrapper — relative-positioned so the touch joystick
+   (.dl2-joystick is absolutely positioned) anchors to the map, not
+   the dfl tab. height:100% so the dl2.Map fills the pane. */
+.ws-map-pane {
+    position:        relative;
+    height:          100%;
+    width:           100%;
+    overflow:        hidden;
+}
+.ws-map-pane > .leaflet-container,
+.ws-map-pane > div[id="ws-map"] {
+    height: 100% !important;
+    width:  100% !important;
+}
+
+/* Right-pane panes — let the HUD / Controls stacks scroll if the
+   viewport gets short, while the dfl tab itself remains fixed. */
+.ws-side-pane {
+    height:    100%;
+    width:     100%;
+    overflow:  auto;
+}
+
+/* ============================================================
+ * Mode-gated chrome.
+ *
+ * WALK mode: the user is driving the character; pan/zoom are NOT theirs
+ *   to touch (the rAF loop drives camera-follow), so the +/- zoom
+ *   control would be misleading. Hide it.
+ * EXPLORE mode: the map is a normal dl2 map (pan/zoom freely). The zoom
+ *   control reappears.
+ *
+ * Class is set by the ws-mode -> className clientside callback in
+ * docs/walking-sim/example.py. Animated so the swap doesn't jar.
+ * ============================================================ */
+.ws-flush-shell .leaflet-control-zoom {
+    transition: opacity 180ms ease, transform 180ms ease;
+}
+.ws-mode-walk .leaflet-control-zoom {
+    opacity:        0;
+    transform:      translateY(-4px) scale(0.94);
+    pointer-events: none;
+}

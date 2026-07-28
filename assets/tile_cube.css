@@ -1,0 +1,152 @@
+/* ============================================================
+ * /tile-layers-pro — rotating cube chip inside the MultiSelect.
+ * Ported from SailsBoard's assets/map_layers.css; trimmed of the
+ * harbor / tidal palette references (this project doesn't carry
+ * a custom palette) and rebranded under the `tlp-` prefix so it
+ * coexists with other pages cleanly.
+ * ============================================================ */
+
+.tlp-cube-stage {
+    width:       52px;
+    height:      52px;
+    perspective: 280px;
+    position:    relative;
+    flex-shrink: 0;
+}
+
+.tlp-cube {
+    position:        relative;
+    width:           100%;
+    height:          100%;
+    transform-style: preserve-3d;
+    animation:       tlp-cube-rotate 14s linear infinite;
+}
+
+.tlp-cube-face {
+    position:           absolute;
+    width:              52px;
+    height:             52px;
+    /* Fallback fill ONLY for faces with no tile URL — the JS adds a
+       `has-tile` class on faces that do, and the rule below strips this
+       fill so the tile image renders clean (no tint bleeding through
+       transparent or partially-loaded tiles). */
+    background-color:   light-dark(
+                            var(--mantine-color-gray-2),
+                            var(--mantine-color-dark-5)
+                        );
+    background-size:    cover;
+    background-position:center;
+    background-repeat:  no-repeat;
+    border-radius:      4px;
+    /* Lighter inset shadow so it reads as a rounded edge, not a vignette
+       darkening the tile image. */
+    box-shadow:         inset 0 0 2px rgba(0, 0, 0, 0.18);
+    border:             1px solid color-mix(in srgb, var(--mantine-color-text, #1a1b1e) 14%, transparent);
+    backface-visibility:hidden;
+}
+
+/* When a tile URL IS painted, drop the placeholder fill so the image
+   shows through cleanly — no blue/green bleed for transparent tiles. */
+.tlp-cube-face.has-tile {
+    background-color: transparent;
+}
+
+/* Gradient fallback ONLY for faces that have no tile (the `has-tile`
+   class is absent). Lets the user still see a textured chip when a
+   provider's tile 404s or hasn't loaded yet. */
+.tlp-cube-face:not(.has-tile)::before {
+    content:        '';
+    position:       absolute;
+    inset:          0;
+    border-radius:  inherit;
+    background:
+        radial-gradient(circle at 30% 25%,
+            light-dark(var(--mantine-color-blue-3),  var(--mantine-color-blue-7)) 0%,
+            light-dark(var(--mantine-color-gray-5),  var(--mantine-color-dark-7)) 80%);
+    z-index:        -1;
+    opacity:        0.75;
+}
+
+.tlp-cube-front  { transform: rotateY(   0deg) translateZ(26px); }
+.tlp-cube-back   { transform: rotateY( 180deg) translateZ(26px); }
+.tlp-cube-right  { transform: rotateY(  90deg) translateZ(26px); }
+.tlp-cube-left   { transform: rotateY( -90deg) translateZ(26px); }
+.tlp-cube-top    { transform: rotateX(  90deg) translateZ(26px); }
+.tlp-cube-bottom { transform: rotateX( -90deg) translateZ(26px); }
+
+@keyframes tlp-cube-rotate {
+    0%   { transform: rotateX(-14deg) rotateY(   0deg); }
+    100% { transform: rotateX(-14deg) rotateY( 360deg); }
+}
+
+/* Pause when the dropdown row is hovered so the user can read the front. */
+.tlp-option:hover .tlp-cube,
+.tlp-option[data-combobox-active] .tlp-cube {
+    animation-play-state: paused;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .tlp-cube { animation: none; }
+}
+
+/* ---------- Dropdown row polish ---------- */
+.tlp-dropdown {
+    padding-block: 6px;
+}
+
+.tlp-option {
+    border-radius: 8px;
+    padding: 6px 8px;
+    margin-block: 2px;
+    background: light-dark(
+        var(--mantine-color-gray-0),
+        var(--mantine-color-dark-6)
+    );
+    border: 1px solid transparent;
+    transition: background-color 120ms ease, border-color 120ms ease,
+                box-shadow      120ms ease;
+}
+
+.tlp-option:hover,
+.tlp-option[data-combobox-active] {
+    background: light-dark(
+        var(--mantine-color-white),
+        var(--mantine-color-dark-5)
+    );
+    border-color: light-dark(
+        var(--mantine-color-blue-3),
+        var(--mantine-color-blue-7)
+    );
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+}
+
+.tlp-option[data-combobox-active] {
+    --mantine-color-default-hover: transparent;
+}
+
+.tlp-option .tlp-cube-stage {
+    filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.18));
+}
+
+/* ---------- TreeViewPro polish inside the popover ----------
+ * Mantine surface + MUI tree — keep rows compact and theme-aware.
+ */
+.tlp-tree .MuiTreeView-root {
+    --mui-palette-text-primary: var(--mantine-color-text);
+    background: transparent;
+    color:      var(--mantine-color-text);
+}
+.tlp-tree .MuiTreeItem-label {
+    font-size: 13px;
+    color:     var(--mantine-color-text);
+}
+.tlp-tree .MuiTreeItem-content {
+    border-radius: 6px;
+    padding-block: 3px;
+}
+.tlp-tree .MuiTreeItem-content:hover {
+    background: light-dark(
+        var(--mantine-color-blue-1),
+        var(--mantine-color-dark-6)
+    );
+}

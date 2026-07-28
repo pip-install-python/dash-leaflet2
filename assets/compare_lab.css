@@ -1,0 +1,13 @@
+/* ============================================================
+ * /compare-lab — synthetic-overlay test harness for the Tileset
+ * Comparison popover.
+ * ============================================================ */
+
+/* Soften opacity transitions so the brief checkbox-bounce blip
+ * (MUI's row-click + checkbox-click double-fire) reads as a slight
+ * dim rather than a hard vanish. Leaflet sets opacity via the inline
+ * style attribute; CSS transitions still apply. Mirrors the same
+ * rule the parent page uses on `.ts-compare-overlay`. */
+.cl-compare-overlay {
+    transition: opacity 120ms ease;
+}

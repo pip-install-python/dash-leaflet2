@@ -1,0 +1,34 @@
+# Keep the image small and the build cache stable. The committed
+# dash_leaflet2/ bundle is what the app serves, so none of the JS toolchain
+# needs to reach the container.
+.git/
+.github/
+.venv/
+venv/
+node_modules/
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.compat/
+
+# TypeScript sources + toolchain — the bundle is pre-built and committed.
+src/
+webpack.config.js
+tsconfig.json
+package-lock.json
+
+# Local state and secrets
+.env
+.env.*
+page_visibility.json
+satellite_traffic.jsonl
+.satellite_traffic.jsonl.*
+visitor_analytics.json
+
+# Editor / OS
+.idea/
+.vscode/
+.DS_Store
+.claude/

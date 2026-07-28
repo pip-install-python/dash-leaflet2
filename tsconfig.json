@@ -1,0 +1,17 @@
+{
+  "compilerOptions": {
+    "jsx": "react",
+    "baseUrl": "src/ts",
+    "inlineSources": true,
+    "sourceMap": true,
+    "esModuleInterop": true,
+    "moduleResolution": "node",
+    "module": "esnext",
+    "target": "es2019",
+    "importHelpers": false,
+    "skipLibCheck": true,
+    "noImplicitAny": false,
+    "lib": ["dom", "es2019"]
+  },
+  "exclude": ["node_modules"]
+}

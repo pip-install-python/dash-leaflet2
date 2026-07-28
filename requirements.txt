@@ -1,0 +1,59 @@
+# ---------------------------------------------------------------------------
+# Documentation site requirements  (`python run.py`)
+#
+# The dash-leaflet2 PACKAGE itself needs only `dash>=4.1` — see pyproject.toml.
+# A `pip install dash-leaflet2` user needs nothing on this list. Everything here
+# exists to run the docs site and its live examples.
+#
+#     pip install -r requirements.txt
+#
+# Compatibility testing: scripts/compat_matrix.py installs this file with the
+# pinned Dash line stripped, then installs one specific Dash version per venv.
+# The pin therefore has to stay on a single line tagged `# COMPAT-MATRIX: dash`.
+# ---------------------------------------------------------------------------
+
+# --- Dash ------------------------------------------------------------------
+# The [fastapi] extra pulls in FastAPI + Starlette + Uvicorn + WebSockets +
+# Pydantic. DASH_BACKEND (read by lib/backend.py) flips between the bundled
+# Flask backend and the FastAPI backend, which is what the sim pages exercise.
+dash[fastapi]==4.2.0rc3  # COMPAT-MATRIX: dash
+
+# --- Docs shell ------------------------------------------------------------
+dash_mantine_components==2.7.0
+dash-iconify==0.1.2
+markdown2dash
+python-frontmatter
+dash-improve-my-llms>=2.0.0
+python-dotenv>=1.0
+pydantic>=2.0
+requests>=2.31
+
+# --- Live examples ---------------------------------------------------------
+# dash-mui-charts powers the TreeViewPro tile browser on /tile-layers-pro. That
+# one control is an MUI X Pro component: without MUI_PRO_API_KEY in the env it
+# renders with a watermark, and the rest of the page is unaffected.
+dash-mui-charts>=1.2.3
+
+# --- Vendored, docs-only ---------------------------------------------------
+# Two showcase pages depend on builds that are not (yet) on PyPI, so the
+# tarballs are committed under vendor/ and installed from there. Neither is
+# needed by the dash_leaflet2 package — only by the pages named below.
+#
+# dash-emoji-mart: PyPI's 0.0.3 errors on init; 0.0.5 is the working build.
+#   Used by: /emoji-iconify, /easy-button
+./vendor/dash_emoji_mart-0.0.5.tar.gz
+# flexlayout-dash: 1.1.0 renamed the import `dash_flex_layout` -> `flexlayout_dash`
+# and fixed a re-mount storm. That build is not on PyPI yet — switch this back to
+# `flexlayout-dash>=1.1.0` once it is published.
+#   Used by: /walking-sim
+./vendor/flexlayout_dash-1.1.0.tar.gz
+
+# --- Deployment ------------------------------------------------------------
+# gunicorn serves the Flask (WSGI) backend in the Dockerfile. The FastAPI
+# backend is ASGI and needs uvicorn instead — already pulled in by dash[fastapi].
+gunicorn>=21.2,<22
+
+# --- Development / testing (optional, not installed by default) -------------
+# build       — `python -m build --wheel` to produce the PyPI artifact
+# playwright  — browser leg of scripts/compat_matrix.py
+#     pip install build playwright && playwright install chromium

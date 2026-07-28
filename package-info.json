@@ -1,0 +1,13 @@
+{
+  "name": "dash-leaflet2",
+  "version": "0.0.1",
+  "description": "Leaflet 2-native Dash components. A from-scratch wrapper around Leaflet 2 core (no react-leaflet), built for Dash 4.",
+  "main": "src/ts/index.ts",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/pip-install-python/dash-leaflet2.git"
+  },
+  "homepage": "https://github.com/pip-install-python/dash-leaflet2",
+  "author": "Pip Install Python LLC <pipinstallpython@gmail.com>",
+  "license": "MIT"
+}

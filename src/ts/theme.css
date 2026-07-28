@@ -1,0 +1,621 @@
+/* ============================================================================
+ * dash-leaflet2 — liquid-glass theme for Leaflet UI
+ *
+ * Apple-style glassmorphism (backdrop-blur + translucent fill + inner top
+ * highlight) for tooltips, popups, zoom controls, and attribution. Theme-aware
+ * via DMC `--mantine-color-*` CSS variables, with fallbacks so non-DMC apps
+ * still get a sensible light/dark look. Loaded after leaflet.css.
+ * ========================================================================== */
+
+/* --- STACKING CONTEXT ----------------------------------------------------- */
+/* Leaflet's bundled CSS pushes panes to z-index 200–700 and .leaflet-top /
+   .leaflet-bottom (the control containers) to z-index 1000, with no z-index on
+   .leaflet-container itself. Those internal z-indexes then compete with anything
+   on the page — notably a DMC Popover whose portaled dropdown defaults to
+   z-index 300, which gets buried under the map's controls. Setting the
+   container to z-index 0 makes it a stacking context that confines all the
+   leaflet z-indexes within itself, so popovers / modals / overlays render
+   above the map as expected. */
+.leaflet-container {
+    z-index: 0;
+}
+
+/* --- TOOLTIP -------------------------------------------------------------- */
+.leaflet-tooltip {
+    background: color-mix(in srgb, var(--mantine-color-body, #ffffff) 62%, transparent);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    backdrop-filter: blur(20px) saturate(180%);
+    border: 1px solid
+        color-mix(in srgb, var(--mantine-color-default-border, rgba(0, 0, 0, 0.12)) 60%, transparent);
+    color: var(--mantine-color-text, #1a1b1e);
+    border-radius: 12px;
+    padding: 6px 11px;
+    font-weight: 500;
+    font-size: 12.5px;
+    letter-spacing: -0.005em;
+    box-shadow:
+        0 6px 24px -4px rgba(0, 0, 0, 0.18),
+        inset 0 1px 0 rgba(255, 255, 255, 0.28);
+    white-space: nowrap;
+}
+/* Hide leaflet's default ::before tooltip tip — the flat glass card reads
+   cleaner and the marker's tooltipAnchor already positions it correctly. */
+.leaflet-tooltip-top::before,
+.leaflet-tooltip-bottom::before,
+.leaflet-tooltip-left::before,
+.leaflet-tooltip-right::before {
+    display: none;
+}
+
+/* --- POPUP ---------------------------------------------------------------- */
+/* dl2.Map wraps the leaflet map-pane in a `.dl2-rotation-wrapper` with
+   `pointer-events: none` so map drags pass through to the container's pointerdown
+   listener. Leaflet's interactive layers (`.leaflet-interactive`,
+   `.leaflet-marker-icon.leaflet-interactive`) explicitly set `pointer-events: auto`
+   to override that — but Leaflet 2's stock CSS does NOT set it on `.leaflet-popup`,
+   so popup content (form widgets etc.) inherits `none` and becomes unclickable
+   (clicks fall through and drag the map). Re-enable hit testing on the popup
+   here; everything inside inherits `auto`. */
+.leaflet-popup {
+    pointer-events: auto;
+}
+.leaflet-popup-content-wrapper {
+    background: color-mix(in srgb, var(--mantine-color-body, #ffffff) 65%, transparent);
+    -webkit-backdrop-filter: blur(28px) saturate(180%);
+    backdrop-filter: blur(28px) saturate(180%);
+    border: 1px solid
+        color-mix(in srgb, var(--mantine-color-default-border, rgba(0, 0, 0, 0.12)) 60%, transparent);
+    color: var(--mantine-color-text, #1a1b1e);
+    border-radius: 16px;
+    padding: 2px;
+    box-shadow:
+        0 12px 36px -6px rgba(0, 0, 0, 0.22),
+        inset 0 1px 0 rgba(255, 255, 255, 0.30);
+}
+.leaflet-popup-content {
+    margin: 12px 16px;
+    font-size: 13px;
+    line-height: 1.5;
+}
+.leaflet-popup-tip {
+    background: color-mix(in srgb, var(--mantine-color-body, #ffffff) 65%, transparent);
+    -webkit-backdrop-filter: blur(28px) saturate(180%);
+    backdrop-filter: blur(28px) saturate(180%);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.10);
+}
+.leaflet-popup-close-button {
+    color: var(--mantine-color-text, #1a1b1e) !important;
+    opacity: 0.55;
+    font-weight: 500;
+    transition: opacity 0.15s;
+}
+.leaflet-popup-close-button:hover {
+    opacity: 1;
+    background: transparent !important;
+}
+
+/* --- ZOOM CONTROLS -------------------------------------------------------- */
+.leaflet-bar {
+    background: color-mix(in srgb, var(--mantine-color-body, #ffffff) 72%, transparent) !important;
+    -webkit-backdrop-filter: blur(16px) saturate(170%);
+    backdrop-filter: blur(16px) saturate(170%);
+    border: 1px solid
+        color-mix(in srgb, var(--mantine-color-default-border, rgba(0, 0, 0, 0.12)) 45%, transparent) !important;
+    border-radius: 10px !important;
+    box-shadow: 0 4px 18px -2px rgba(0, 0, 0, 0.15);
+    overflow: hidden;
+}
+.leaflet-bar a,
+.leaflet-bar a:link {
+    background: transparent !important;
+    color: var(--mantine-color-text, #1a1b1e) !important;
+    border-bottom-color:
+        color-mix(in srgb, var(--mantine-color-default-border, rgba(0, 0, 0, 0.12)) 35%, transparent) !important;
+    font-weight: 500;
+}
+.leaflet-bar a:hover {
+    background: color-mix(in srgb, var(--mantine-color-default-hover, rgba(0, 0, 0, 0.06)) 60%, transparent) !important;
+}
+.leaflet-bar a.leaflet-disabled {
+    opacity: 0.4;
+}
+
+/* --- LAYERS CONTROL ------------------------------------------------------- */
+.dl2-layers-control {
+    /* The .leaflet-bar background/border come from the rule above; only the inner UI
+       sizing needs styling here. */
+    overflow: visible;
+}
+.dl2-layers-ui {
+    font-size: 13px;
+    line-height: 1.3;
+    color: var(--mantine-color-text, #1a1b1e);
+}
+.dl2-layers-handle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    background: transparent;
+    border: 0;
+    cursor: pointer;
+    color: var(--mantine-color-text, #1a1b1e);
+    font-size: 16px;
+}
+.dl2-layers-ui.collapsed .dl2-layers-body {
+    display: none;
+}
+.dl2-layers-ui.open .dl2-layers-handle {
+    display: none;
+}
+.dl2-layers-body {
+    padding: 8px 10px 6px 10px;
+    min-width: 140px;
+}
+.dl2-layer-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 2px 0;
+    cursor: pointer;
+    user-select: none;
+}
+.dl2-layer-row input {
+    accent-color: var(--mantine-color-green-6, #2f9e44);
+    margin: 0;
+}
+.dl2-layers-sep {
+    border: 0;
+    border-top: 1px solid
+        color-mix(in srgb, var(--mantine-color-default-border, rgba(0, 0, 0, 0.12)) 40%, transparent);
+    margin: 6px 0;
+}
+
+/* --- EDIT CONTROL --------------------------------------------------------- */
+.dl2-edit-control {
+    overflow: visible;
+}
+.dl2-edit-ui {
+    position: relative;          /* anchors the absolute .dl2-edit-actions fly-out */
+    display: flex;
+    flex-direction: column;
+    padding: 4px;
+    gap: 2px;
+}
+.dl2-edit-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border: 0;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--mantine-color-text, #1a1b1e);
+    cursor: pointer;
+    transition: background 0.12s, color 0.12s;
+}
+.dl2-edit-btn:hover {
+    background:
+        color-mix(in srgb, var(--mantine-color-default-hover, rgba(0, 0, 0, 0.06)) 60%, transparent);
+}
+.dl2-edit-btn.active {
+    background:
+        color-mix(in srgb, var(--mantine-color-green-6, #2f9e44) 22%, transparent);
+    color: var(--mantine-color-green-6, #2f9e44);
+}
+.dl2-edit-btn.danger.active {
+    background:
+        color-mix(in srgb, var(--mantine-color-red-6, #fa5252) 22%, transparent);
+    color: var(--mantine-color-red-6, #fa5252);
+}
+
+/* EditControl: allow the inline sub-toolbar to spill outside the .leaflet-bar's clip. */
+.dl2-edit-control { overflow: visible !important; }
+
+/* Subtle inline separator between Draw and Edit icons in the same column (no boxed section). */
+.dl2-edit-section + .dl2-edit-section {
+    border-top: 1px solid
+        color-mix(in srgb, var(--mantine-color-default-border, rgba(0, 0, 0, 0.12)) 50%, transparent);
+    margin-top: 4px;
+    padding-top: 4px;
+}
+
+/* Contextual sub-toolbar — fly-out anchored to the right of the icon strip
+   (matching the dash-leaflet UX), not stacked below it. */
+.dl2-edit-actions {
+    position: absolute;
+    top: 0;
+    left: 100%;
+    margin-left: 6px;
+    display: flex;
+    flex-direction: row;
+    gap: 4px;
+    padding: 5px 6px;
+    background: color-mix(in srgb, var(--mantine-color-body, #ffffff) 75%, transparent);
+    -webkit-backdrop-filter: blur(16px) saturate(170%);
+    backdrop-filter: blur(16px) saturate(170%);
+    border: 1px solid
+        color-mix(in srgb, var(--mantine-color-default-border, rgba(0, 0, 0, 0.12)) 45%, transparent);
+    border-radius: 10px;
+    box-shadow: 0 4px 18px -2px rgba(0, 0, 0, 0.18);
+    white-space: nowrap;
+    z-index: 1000;
+}
+.dl2-edit-action-btn {
+    border: 1px solid
+        color-mix(in srgb, var(--mantine-color-default-border, rgba(0, 0, 0, 0.12)) 50%, transparent);
+    background: transparent;
+    color: var(--mantine-color-text, #1a1b1e);
+    font-size: 11.5px;
+    font-weight: 500;
+    padding: 4px 8px;
+    border-radius: 6px;
+    cursor: pointer;
+    line-height: 1.2;
+}
+.dl2-edit-action-btn:hover {
+    background:
+        color-mix(in srgb, var(--mantine-color-default-hover, rgba(0, 0, 0, 0.06)) 60%, transparent);
+}
+.dl2-edit-action-btn.primary {
+    background:
+        color-mix(in srgb, var(--mantine-color-green-6, #2f9e44) 18%, transparent);
+    color: var(--mantine-color-green-6, #2f9e44);
+    border-color:
+        color-mix(in srgb, var(--mantine-color-green-6, #2f9e44) 40%, transparent);
+}
+.dl2-edit-action-btn.danger {
+    background:
+        color-mix(in srgb, var(--mantine-color-red-6, #fa5252) 18%, transparent);
+    color: var(--mantine-color-red-6, #fa5252);
+    border-color:
+        color-mix(in srgb, var(--mantine-color-red-6, #fa5252) 40%, transparent);
+}
+
+/* Vertex handle shown on polyline/polygon vertices while in edit mode (draggable). */
+.dl2-vertex-handle {
+    background: var(--mantine-color-body, #ffffff);
+    border: 2px solid var(--mantine-color-green-6, #2f9e44);
+    border-radius: 50%;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+    cursor: grab;
+}
+.dl2-vertex-handle:active { cursor: grabbing; }
+
+/* Smaller white square shown at each placed vertex WHILE drawing (preview, not edit). */
+.dl2-vertex-preview {
+    background: #ffffff;
+    border: 1px solid #2f9e44;
+    border-radius: 1px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+    pointer-events: none;
+}
+
+/* Text-caption markers dropped by the EditControl `text` tool. The icon sizes to its
+   content (like TextMarker's) so Leaflet's drag can grab it; the inner div is the styled,
+   inline-editable caption. */
+.dl2-edit-text-icon {
+    background: transparent;
+    border: none;
+    overflow: visible;
+    width: max-content !important;
+    height: auto !important;
+}
+.dl2-edit-text {
+    white-space: pre;
+    cursor: move;
+    outline: none;
+    line-height: 1.15;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.22);
+    min-width: 0.4em;
+    min-height: 1em;
+}
+.dl2-edit-text.is-editing {
+    cursor: text;
+    user-select: text;
+    -webkit-user-select: text;
+    box-shadow: 0 0 0 1.5px rgba(56, 132, 255, 0.95), 0 6px 22px -6px rgba(0, 0, 0, 0.45);
+    border-radius: 4px;
+    padding: 0 2px;
+}
+
+/* --- editable ImageOverlay transform chrome (mirrors the TextMarker handles) --- */
+/* A selection box drawn over the image's screen rect; rotated about the anchor. The chrome
+   itself passes pointer events through (only the handles are interactive) so the image body
+   still receives drag-to-move. */
+.dl2-img-chrome {
+    position: absolute;
+    pointer-events: none;
+    box-shadow: 0 0 0 1.5px rgba(56, 132, 255, 0.95);
+    z-index: 650;
+}
+/* Transparent draggable surface filling the selection box — drag it to move the image
+   (the Leaflet image element itself can't be the drag target without breaking the pointer
+   stream, so the move grip lives here on the chrome). */
+.dl2-img-body {
+    position: absolute;
+    inset: 0;
+    pointer-events: auto;
+    cursor: move;
+    z-index: 1;
+}
+.dl2-img-handle {
+    position: absolute;
+    width: 12px;
+    height: 12px;
+    background: #ffffff;
+    border: 1.5px solid rgba(56, 132, 255, 0.95);
+    border-radius: 50%;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
+    pointer-events: auto;
+    z-index: 2;
+}
+.dl2-img-handle-resize { cursor: nwse-resize; }
+.dl2-img-handle-rotate {
+    left: 50%;
+    top: -26px;
+    margin-left: -6px;
+    cursor: grab;
+    background: rgba(56, 132, 255, 0.95);
+    border-color: #ffffff;
+}
+.dl2-img-handle-rotate:active { cursor: grabbing; }
+.dl2-img-rotate-line {
+    position: absolute;
+    left: 50%;
+    top: -20px;
+    width: 1.5px;
+    height: 20px;
+    margin-left: -0.75px;
+    background: rgba(56, 132, 255, 0.95);
+    pointer-events: none;
+}
+.dl2-img-editable .leaflet-image-layer { cursor: move; }
+
+/* Cursor-following guide tooltip that prompts the user during drawing
+   ("Click to start drawing" → "Click first point to close this shape"). */
+.dl2-draw-tooltip {
+    position: absolute;
+    pointer-events: none;
+    background: color-mix(in srgb, var(--mantine-color-body, #ffffff) 75%, transparent);
+    -webkit-backdrop-filter: blur(14px) saturate(170%);
+    backdrop-filter: blur(14px) saturate(170%);
+    border: 1px solid
+        color-mix(in srgb, var(--mantine-color-default-border, rgba(0, 0, 0, 0.12)) 50%, transparent);
+    color: var(--mantine-color-text, #1a1b1e);
+    border-radius: 8px;
+    padding: 4px 9px;
+    font-size: 12px;
+    font-weight: 500;
+    box-shadow: 0 4px 12px -2px rgba(0, 0, 0, 0.15);
+    white-space: nowrap;
+    z-index: 700;
+    transform: translate(12px, -4px); /* offset from cursor */
+}
+
+/* TileSelector — single toggle button (icon strip style, with active highlight). */
+.dl2-tile-selector-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    border: 0;
+    background: transparent;
+    color: var(--mantine-color-text, #1a1b1e);
+    cursor: pointer;
+    transition: background 0.12s, color 0.12s;
+}
+.dl2-tile-selector-btn:hover {
+    background:
+        color-mix(in srgb, var(--mantine-color-default-hover, rgba(0, 0, 0, 0.06)) 60%, transparent);
+}
+.dl2-tile-selector-btn.active {
+    background:
+        color-mix(in srgb, var(--mantine-color-blue-6, #228be6) 22%, transparent);
+    color: var(--mantine-color-blue-6, #228be6);
+}
+
+/* EasyButton — single-button control. Uses .leaflet-bar styling for the container. */
+.dl2-easy-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    border: 0;
+    background: transparent;
+    color: var(--mantine-color-text, #1a1b1e);
+    cursor: pointer;
+}
+.dl2-easy-button:hover {
+    background:
+        color-mix(in srgb, var(--mantine-color-default-hover, rgba(0, 0, 0, 0.06)) 60%, transparent);
+}
+
+/* --- MEASUREMENT TOOLTIPS (showMeasurementTooltips=True on dl2.EditControl) - */
+/* Permanent labels that follow shapes around. We override the default Leaflet
+   tooltip padding/font down to make them less attention-grabbing — they're
+   data overlays, not callouts. The optional name is rendered as <b>. Zoom-
+   gating is handled in EditControl.tsx (close below the draw zoom). */
+.leaflet-tooltip.dl2-measurement-tooltip {
+    font-size: 11px;
+    line-height: 1.3;
+    padding: 3px 8px !important;
+    text-align: center;
+    pointer-events: none;
+}
+.leaflet-tooltip.dl2-measurement-tooltip b {
+    font-weight: 600;
+    color: var(--mantine-color-text, #1a1b1e);
+}
+
+/* --- MINIMAP -------------------------------------------------------------- */
+/* The control container itself uses the .leaflet-bar liquid-glass treatment from
+   above for the rounded glass frame + border. The wrapper inside holds the second
+   Leaflet map and the corner toggle. When .minimized, the wrapper shrinks to a
+   single square so only the toggle button is left visible — clicking it expands. */
+.leaflet-control-minimap {
+    overflow: hidden;     /* clip the inner Leaflet map to the rounded frame */
+    padding: 0;
+}
+.leaflet-control-minimap-wrapper {
+    position: relative;
+    /* width/height set inline (driven by props + minimized state); transitioned so
+       toggling feels physical rather than snapping. */
+    transition: width 180ms ease, height 180ms ease;
+}
+.leaflet-control-minimap-inner {
+    width: 100%;
+    height: 100%;
+    /* The Leaflet 2 map mounted into this div renders its own .leaflet-container
+       below; nothing more needed here. */
+}
+/* Toggle button: a small chevron the user clicks to collapse/expand. Position-aware
+   so the chevron points toward the corner the minimap pins to. Class names mirror
+   the dash-leaflet/leaflet-minimap convention. */
+.leaflet-control-minimap-toggle-display {
+    position: absolute;
+    width: 19px;
+    height: 19px;
+    border: 0;
+    padding: 0;
+    cursor: pointer;
+    background: color-mix(in srgb, var(--mantine-color-body, #ffffff) 88%, transparent);
+    color: var(--mantine-color-text, #1a1b1e);
+    border-radius: 4px;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2;
+    transition: background 0.12s;
+    /* Two stacked diagonal arrows drawn with a gradient — points in/out of the
+       minimap corner depending on `minimized`. */
+}
+.leaflet-control-minimap-toggle-display:hover {
+    background: color-mix(in srgb, var(--mantine-color-default-hover, rgba(0, 0, 0, 0.06)) 100%, var(--mantine-color-body, #ffffff));
+}
+.leaflet-control-minimap-toggle-display::before {
+    /* Chevron rendered with a single border + rotation — cheap and theme-aware. */
+    content: '';
+    display: block;
+    width: 6px;
+    height: 6px;
+    border-right: 2px solid currentColor;
+    border-bottom: 2px solid currentColor;
+}
+/* Per-corner toggle placement: the toggle button always lives on the side of the
+   minimap that faces the main map (so it doesn't peek off-screen). The chevron
+   rotates to point INWARD (collapse) when expanded, OUTWARD (expand) when not. */
+.leaflet-control-minimap-toggle-display-bottomright {
+    top: 2px;
+    left: 2px;
+}
+.leaflet-control-minimap-toggle-display-bottomleft {
+    top: 2px;
+    right: 2px;
+}
+.leaflet-control-minimap-toggle-display-topright {
+    bottom: 2px;
+    left: 2px;
+}
+.leaflet-control-minimap-toggle-display-topleft {
+    bottom: 2px;
+    right: 2px;
+}
+/* Expanded: chevron points toward the corner (collapse direction). */
+.leaflet-control-minimap-wrapper.expanded.pos-bottomright .leaflet-control-minimap-toggle-display::before {
+    transform: rotate(135deg); /* points down-right -> toward bottom-right corner */
+    margin: -2px 0 0 2px;
+}
+.leaflet-control-minimap-wrapper.expanded.pos-bottomleft .leaflet-control-minimap-toggle-display::before {
+    transform: rotate(-135deg);
+    margin: -2px 2px 0 0;
+}
+.leaflet-control-minimap-wrapper.expanded.pos-topright .leaflet-control-minimap-toggle-display::before {
+    transform: rotate(45deg);
+    margin: 2px 0 0 2px;
+}
+.leaflet-control-minimap-wrapper.expanded.pos-topleft .leaflet-control-minimap-toggle-display::before {
+    transform: rotate(-45deg);
+    margin: 2px 2px 0 0;
+}
+/* Minimized: chevron points AWAY from the corner (expand direction). */
+.leaflet-control-minimap-wrapper.minimized.pos-bottomright .leaflet-control-minimap-toggle-display::before {
+    transform: rotate(-45deg);
+}
+.leaflet-control-minimap-wrapper.minimized.pos-bottomleft .leaflet-control-minimap-toggle-display::before {
+    transform: rotate(45deg);
+}
+.leaflet-control-minimap-wrapper.minimized.pos-topright .leaflet-control-minimap-toggle-display::before {
+    transform: rotate(-135deg);
+}
+.leaflet-control-minimap-wrapper.minimized.pos-topleft .leaflet-control-minimap-toggle-display::before {
+    transform: rotate(135deg);
+}
+/* When minimized, the toggle button fills the small wrapper. */
+.leaflet-control-minimap-wrapper.minimized .leaflet-control-minimap-toggle-display {
+    inset: 0;
+    width: auto;
+    height: auto;
+    border-radius: 0;
+}
+
+/* --- ATTRIBUTION ---------------------------------------------------------- */
+.leaflet-control-attribution {
+    background: color-mix(in srgb, var(--mantine-color-body, #ffffff) 75%, transparent) !important;
+    -webkit-backdrop-filter: blur(12px);
+    backdrop-filter: blur(12px);
+    color: var(--mantine-color-dimmed, #73726c) !important;
+    border-radius: 8px 0 0 0;
+    font-size: 10.5px;
+    padding: 2px 8px;
+}
+.leaflet-control-attribution a {
+    color: var(--mantine-color-blue-6, #228be6) !important;
+}
+
+/* --- GEOJSON CLUSTERS ----------------------------------------------------- */
+.dl2-cluster-bubble {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    color: var(--mantine-color-bright, #ffffff);
+    font-weight: 600;
+    font-size: 13px;
+    background: color-mix(in srgb, var(--mantine-color-blue-6, #228be6) 80%, transparent);
+    box-shadow:
+        0 4px 14px color-mix(in srgb, var(--mantine-color-blue-9, #1864ab) 38%, transparent),
+        inset 0 1px 0 rgba(255, 255, 255, 0.35);
+    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(10px);
+    cursor: pointer;
+    user-select: none;
+    transition: transform 120ms ease;
+}
+.dl2-cluster-bubble:hover { transform: scale(1.05); }
+.dl2-cluster-32 { font-size: 11px; }
+.dl2-cluster-40 { font-size: 13px; }
+.dl2-cluster-48 { font-size: 15px; }
+.dl2-cluster-56 { font-size: 17px; }
+
+/* --- FULLSCREEN BUTTON ---------------------------------------------------- */
+.dl2-fullscreen-control { background: transparent; border: 0; }
+.dl2-fullscreen-button {
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    color: var(--mantine-color-text, #1a1b1e);
+    background: transparent;
+}
+.dl2-fullscreen-button:hover { background: color-mix(in srgb, var(--mantine-color-body, #ffffff) 60%, transparent); }
+.dl2-fullscreen-button.dl2-fs-active { color: var(--mantine-color-blue-6, #228be6); }
+

@@ -1,0 +1,9 @@
+include README.md
+include LICENSE
+include dash_leaflet2/dash_leaflet2.js
+include dash_leaflet2/dash_leaflet2.js.LICENSE.txt
+include dash_leaflet2/package-info.json
+recursive-include dash_leaflet2 *.py
+# metadata.json (build-time react-docgen artifact, ~27 MB) is intentionally excluded —
+# it is not loaded at runtime. See the note in pyproject.toml [tool.setuptools.package-data].
+exclude dash_leaflet2/metadata.json

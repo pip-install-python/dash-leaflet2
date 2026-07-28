@@ -1,0 +1,36 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+build/
+dist/
+
+# Node / build toolchain
+node_modules/
+npm-debug.log*
+
+# The generated component bundle IS committed so `pip install -e .` works
+# without a JS build. Only the build-time react-docgen artifact is excluded —
+# it is ~27 MB and nothing loads it at runtime.
+dash_leaflet2/metadata.json
+
+# Secrets and local environment
+.env
+.env.*
+!.env.example
+
+# Runtime state written by the app
+page_visibility.json          # control-board overrides (per-deployment)
+satellite_traffic.jsonl       # 2plot.ai analytics ledger
+.satellite_traffic.jsonl.*    # its per-interval claim files
+visitor_analytics.json
+
+# Test harness scratch
+.compat/                      # scripts/compat_matrix.py venvs + raw results
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/

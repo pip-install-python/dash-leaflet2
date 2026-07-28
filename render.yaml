@@ -1,0 +1,121 @@
+# render.yaml — Render Blueprint for the dash-leaflet2 documentation site.
+# Deploys run.py as a Docker web service, fronted by https://leaflet.2plot.dev.
+# Blueprint spec: https://render.com/docs/blueprint-spec
+#
+# How to deploy:
+#   1. Push this repo (with Dockerfile + render.yaml) to GitHub.
+#   2. Render dashboard → New → Blueprint → select this repo.
+#   3. Render builds the Dockerfile and serves run:server.
+#   4. Add the custom domain leaflet.2plot.dev and point its CNAME at the
+#      service. The Clerk satellite domain below must match it exactly.
+#
+# Local equivalent (no Render needed):
+#   docker build -t dash-leaflet2-docs .
+#   docker run --rm -p 8050:8050 -e PORT=8050 dash-leaflet2-docs
+#   open http://localhost:8050
+services:
+  - type: web
+    name: dash-leaflet2-docs
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    # Free tier works for a docs site, but it sleeps after ~15 min idle and
+    # cold-starts on the next request. Use "starter" or higher for always-on —
+    # note the satellite analytics ledger also lives on the container
+    # filesystem, so evictions cost unreported traffic on free.
+    plan: free
+    # /healthz is the 2plot network convention (lib/satellite_analytics.py) and
+    # is excluded from traffic counts, so it makes a cleaner check than /.
+    healthCheckPath: /healthz
+    autoDeploy: true
+    envVars:
+      # --- Core --------------------------------------------------------
+      # Flask (WSGI) backend, served by gunicorn. Do NOT set fastapi/quart
+      # here: those are ASGI and would need uvicorn instead of gunicorn.
+      - key: DASH_BACKEND
+        value: flask
+      # gunicorn worker processes. 2 is a reasonable default; drop to 1 if the
+      # free tier's 512 MB feels tight. The Dockerfile also runs 4 threads per
+      # worker for callback concurrency.
+      - key: WEB_CONCURRENCY
+        value: "2"
+      # Public origin for canonical URLs, sitemap.xml and llms.txt.
+      - key: DASH_LEAFLET2_BASE_URL
+        value: https://leaflet.2plot.dev
+
+      # --- 2plot.dev ad network (lib/ad_client.py) ---------------------
+      # Without AD_SERVER_URL reachable the slot simply stays hidden, and a
+      # 60s circuit breaker stops retrying, so an outage never slows a page.
+      - key: AD_SERVER_URL
+        value: https://2plot.dev
+      # This app's identity in the ad network's /admin/ad-board tables.
+      - key: AD_APP_ID
+        value: dash-leaflet2
+
+      # --- 2plot.ai satellite analytics (lib/satellite_analytics.py) ----
+      # The shared HMAC secret every satellite holds. Set it in the Render
+      # dashboard (same value as on 2plot.ai) — never in this file.
+      # Without it the app still serves /healthz but reports nothing.
+      #   Hub side, to health-sweep this app hourly, add to 2plot.ai:
+      #   PULSE_POLL_TARGETS=...,leaflet=https://leaflet.2plot.dev/healthz
+      - key: CROSS_APP_WEBHOOK_SECRET
+        sync: false
+      # The series name this app reports under on 2plot.ai/traffic. "leaflet"
+      # is this app's 2plot network-directory key — the hub labels and colours
+      # the series from that directory.
+      - key: SATELLITE_APP_ID
+        value: leaflet
+      # Minimum seconds between rollup POSTs (the contract asks for hourly).
+      # 1800 halves what a free-tier eviction can swallow, and the reporter
+      # only POSTs when the day's numbers actually changed.
+      - key: SATELLITE_REPORT_INTERVAL_S
+        value: "1800"
+
+      # --- Clerk satellite auth (lib/auth.py) --------------------------
+      # All of these are OPTIONAL: with them absent the site runs fully public
+      # and /admin/control-board is ungated (which is why it is also excluded
+      # from robots.txt). Set ALL of the first three to turn auth on.
+      - key: CLERK_SECRET_KEY
+        sync: false
+      - key: CLERK_PUBLISHABLE_KEY
+        sync: false
+      - key: CLERK_SIGN_IN_URL
+        value: https://2plot.ai/sign-in
+      - key: CLERK_SIGN_UP_URL
+        value: https://2plot.ai/sign-up
+      # REQUIRED in satellite mode — production custom-domain instances cannot
+      # derive this from CLERK_SIGN_IN_URL.
+      - key: CLERK_FRONTEND_API
+        sync: false
+      # Must match the custom domain exactly, host only, no scheme.
+      - key: CLERK_SATELLITE_DOMAIN
+        value: leaflet.2plot.dev
+      - key: CLERK_IS_SATELLITE
+        value: "true"
+      # Signs the session + __dca_identity cookies. Without it dash-clerk-auth
+      # falls back to a PUBLIC dev default string.
+      - key: SESSION_SECRET
+        generateValue: true
+      # Allowlist for /admin/control-board. The OWNER_EMAIL in lib/auth.py
+      # always counts, so this is for additional administrators.
+      - key: ADMIN_EMAILS
+        sync: false
+
+      # --- Page visibility (lib/page_visibility.py) --------------------
+      # Baseline tier for pages whose frontmatter does not set one. "public"
+      # keeps the component documentation readable without an account; the
+      # control board can still flip any individual page live.
+      - key: PAGE_DEFAULT_VISIBILITY
+        value: public
+      # Overrides are written here. On the free tier the container filesystem
+      # is ephemeral, so control-board changes survive until the next deploy.
+      # Point this at a persistent disk if they must outlive one.
+      - key: PAGE_VISIBILITY_FILE
+        value: /app/page_visibility.json
+
+      # --- Optional ----------------------------------------------------
+      # MUI X Pro licence for the TreeViewPro tile browser on
+      # /tile-layers-pro. Absent → that one control renders watermarked; the
+      # rest of the page is unaffected.
+      - key: MUI_PRO_API_KEY
+        sync: false

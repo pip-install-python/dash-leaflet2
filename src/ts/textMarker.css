@@ -1,0 +1,270 @@
+/* ============================================================================
+ * dash-leaflet2 — TextMarker (editable on-map captions)
+ *
+ * The marker icon element is a 0×0 anchor point; the text box is absolutely
+ * positioned inside it (and translated per `anchor`). Selection chrome and the
+ * resize / rotate handles live on the box so they rotate with the text; the
+ * style toolbar is portaled into the map container and stays axis-aligned.
+ * ========================================================================== */
+
+/* The DivIcon shell — sized to its content (NOT 0×0, or Leaflet's drag never gets a
+   pointerdown on it). We carry the anchor offset + rotation in the inline transform. */
+.dl2-text-marker-icon {
+    background: transparent;
+    border: none;
+    overflow: visible;
+    width: max-content !important;
+    height: auto !important;
+}
+
+/* --- the text box (background pill + chrome; fills the icon) -------------- */
+.dl2-tm-box {
+    position: relative;
+    display: inline-block;
+    cursor: move;
+    user-select: none;
+    -webkit-user-select: none;
+    transition: box-shadow 0.12s ease;
+}
+
+.dl2-tm-box.is-selected {
+    box-shadow: 0 0 0 1.5px rgba(56, 132, 255, 0.95);
+}
+
+.dl2-tm-box.is-editing {
+    cursor: text;
+    box-shadow: 0 0 0 1.5px rgba(56, 132, 255, 0.95),
+        0 6px 22px -6px rgba(0, 0, 0, 0.45);
+}
+
+/* --- the editable typography (inner) ------------------------------------- */
+.dl2-tm-text {
+    white-space: pre;
+    outline: none;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.18);
+    /* A label with no background still needs a hit area for clicks/drags. */
+    min-width: 0.5em;
+    min-height: 1em;
+}
+
+.dl2-tm-box.is-editing .dl2-tm-text {
+    cursor: text;
+    user-select: text;
+    -webkit-user-select: text;
+}
+
+.dl2-tm-text.is-empty::after {
+    content: 'Double-click to edit';
+    opacity: 0.45;
+    font-style: italic;
+    text-shadow: none;
+}
+
+/* --- handles (resize / rotate) ------------------------------------------- */
+.dl2-tm-handle {
+    position: absolute;
+    width: 12px;
+    height: 12px;
+    background: #ffffff;
+    border: 1.5px solid rgba(56, 132, 255, 0.95);
+    border-radius: 50%;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
+    z-index: 2;
+}
+
+.dl2-tm-handle-resize {
+    right: -7px;
+    bottom: -7px;
+    cursor: nwse-resize;
+}
+
+.dl2-tm-handle-rotate {
+    left: 50%;
+    top: -26px;
+    margin-left: -6px;
+    cursor: grab;
+    background: rgba(56, 132, 255, 0.95);
+    border-color: #ffffff;
+}
+.dl2-tm-handle-rotate:active {
+    cursor: grabbing;
+}
+
+.dl2-tm-rotate-line {
+    position: absolute;
+    left: 50%;
+    top: -20px;
+    width: 1.5px;
+    height: 20px;
+    margin-left: -0.75px;
+    background: rgba(56, 132, 255, 0.95);
+    z-index: 1;
+}
+
+/* --- the contextual style toolbar (portaled into the map container) ------- */
+.dl2-tm-toolbar {
+    position: absolute;
+    top: 12px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 1200;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 6px 8px;
+    border-radius: 12px;
+    font-family: system-ui, -apple-system, sans-serif;
+    background: color-mix(in srgb, var(--mantine-color-body, #ffffff) 72%, transparent);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    backdrop-filter: blur(20px) saturate(180%);
+    border: 1px solid
+        color-mix(in srgb, var(--mantine-color-default-border, rgba(0, 0, 0, 0.12)) 60%, transparent);
+    box-shadow: 0 8px 28px -6px rgba(0, 0, 0, 0.28),
+        inset 0 1px 0 rgba(255, 255, 255, 0.3);
+    color: var(--mantine-color-text, #1a1b1e);
+    user-select: none;
+}
+
+.dl2-tm-toolbar button,
+.dl2-tm-toolbar select,
+.dl2-tm-toolbar input {
+    font-family: inherit;
+    color: inherit;
+}
+
+.dl2-tm-tb-select {
+    height: 28px;
+    border-radius: 7px;
+    border: 1px solid rgba(0, 0, 0, 0.12);
+    background: color-mix(in srgb, var(--mantine-color-body, #fff) 60%, transparent);
+    padding: 0 6px;
+    font-size: 12.5px;
+    cursor: pointer;
+    max-width: 96px;
+}
+
+.dl2-tm-tb-num {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    height: 28px;
+    border-radius: 7px;
+    border: 1px solid rgba(0, 0, 0, 0.12);
+    background: color-mix(in srgb, var(--mantine-color-body, #fff) 60%, transparent);
+    padding: 0 3px;
+}
+
+.dl2-tm-tb-step {
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    font-size: 16px;
+    line-height: 1;
+    width: 18px;
+    height: 22px;
+    border-radius: 5px;
+    opacity: 0.75;
+}
+.dl2-tm-tb-step:hover {
+    background: rgba(0, 0, 0, 0.08);
+    opacity: 1;
+}
+
+.dl2-tm-tb-size {
+    width: 40px;
+    border: none;
+    background: transparent;
+    text-align: center;
+    font-size: 12.5px;
+    -moz-appearance: textfield;
+}
+.dl2-tm-tb-size::-webkit-outer-spin-button,
+.dl2-tm-tb-size::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+.dl2-tm-tb-rot-ico {
+    font-size: 13px;
+    opacity: 0.7;
+    padding-left: 3px;
+}
+
+.dl2-tm-tb-btn {
+    width: 28px;
+    height: 28px;
+    border-radius: 7px;
+    border: 1px solid transparent;
+    background: transparent;
+    cursor: pointer;
+    font-size: 14px;
+    line-height: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+.dl2-tm-tb-btn:hover {
+    background: rgba(0, 0, 0, 0.08);
+}
+.dl2-tm-tb-btn.active {
+    background: rgba(56, 132, 255, 0.18);
+    border-color: rgba(56, 132, 255, 0.5);
+    color: var(--mantine-color-blue-7, #1c66d6);
+}
+
+.dl2-tm-tb-sep {
+    width: 1px;
+    height: 20px;
+    background: rgba(0, 0, 0, 0.12);
+    margin: 0 1px;
+}
+
+/* Color swatch: a labeled tile that opens the native color picker. */
+.dl2-tm-tb-swatch {
+    position: relative;
+    width: 28px;
+    height: 28px;
+    border-radius: 7px;
+    border: 1px solid rgba(0, 0, 0, 0.12);
+    cursor: pointer;
+    overflow: hidden;
+    display: inline-flex;
+    align-items: flex-end;
+    justify-content: center;
+}
+.dl2-tm-tb-swatch input[type='color'] {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    cursor: pointer;
+    border: none;
+    padding: 0;
+}
+.dl2-tm-tb-swatch-ink {
+    position: absolute;
+    left: 3px;
+    right: 3px;
+    top: 3px;
+    height: 13px;
+    border-radius: 3px;
+    box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.18);
+}
+.dl2-tm-tb-swatch-bg {
+    background-image: linear-gradient(45deg, #ccc 25%, transparent 25%),
+        linear-gradient(-45deg, #ccc 25%, transparent 25%),
+        linear-gradient(45deg, transparent 75%, #ccc 75%),
+        linear-gradient(-45deg, transparent 75%, #ccc 75%);
+    background-size: 8px 8px;
+    background-position: 0 0, 0 4px, 4px -4px, -4px 0;
+}
+.dl2-tm-tb-swatch-label {
+    position: relative;
+    font-size: 10px;
+    font-weight: 700;
+    line-height: 1;
+    padding-bottom: 2px;
+    opacity: 0.8;
+}
+.dl2-tm-tb-swatch.is-off .dl2-tm-tb-swatch-ink {
+    box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.18);
+}

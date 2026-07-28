@@ -1,0 +1,342 @@
+/* dash-leaflet2 demo styling
+   (See src/ts/theme.css for the compiled-package mirror of the Leaflet UI theme.) */
+
+/* Every example map div gets a sane default height + rounded clip. Pages can
+   override height inline. Background flips with the app's color scheme. */
+.leaflet2-map {
+  height: 60vh;
+  width: 100%;
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--mantine-color-default, #e8eaed); /* shows briefly before tiles paint */
+}
+
+/* Emoji / Iconify markers use a DivIcon; strip Leaflet's default white box + border. */
+.dl2-emoji-icon {
+  background: transparent;
+  border: none;
+}
+.dl2-emoji-icon iconify-icon {
+  vertical-align: top;
+}
+
+/* Iconify catalogue picker grid (emoji_iconify page). Uses DMC theme CSS vars so it
+   follows the app's light/dark scheme automatically. */
+.ei-iconify-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 4px;
+  max-height: 240px;
+  overflow-y: auto;
+  padding: 4px;
+  color: var(--mantine-color-dimmed);
+}
+.ei-icon-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  border-radius: 6px;
+  cursor: pointer;
+  background: transparent;
+  border: 1px solid var(--mantine-color-default-border);
+  color: var(--mantine-color-text);
+}
+.ei-icon-btn:hover {
+  background: var(--mantine-color-default-hover);
+  border-color: var(--mantine-color-green-5);
+}
+
+/* Custom Control built by the subclassing demo (ES6 `extends L.Control`). */
+.dl2-ctl {
+  background: rgba(255, 255, 255, 0.92);
+  padding: 6px 10px;
+  border-radius: 6px;
+  font: 12px/1.35 ui-monospace, SFMono-Regular, Menlo, monospace;
+  color: #1a1b1e;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
+}
+
+/* Live HUD strips (pointer events, canvas perf). */
+.dl2-hud {
+  font: 13px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace;
+  padding: 8px 12px;
+  border-radius: 6px;
+  background: #1a1b1e;
+  color: #a6e22e;
+  min-height: 1.4em;
+  word-break: break-word;
+}
+
+/* Flex row whose main area (the map) shrinks when a side panel opens. Used by both
+   /resize-observer (showcasing Leaflet 2's auto-resize) and /easy-button (just a
+   collapsible info panel layout). The main area can be the showcase's
+   .leaflet2-map div OR a custom wrapper with .dl2-resize-main — both work.
+   We never call invalidateSize — Leaflet 2 handles it. */
+.dl2-resize-row {
+  display: flex;
+  gap: 12px;
+  align-items: stretch;
+  height: 60vh;
+}
+.dl2-resize-row .leaflet2-map,
+.dl2-resize-row > .dl2-resize-main {
+  flex: 1 1 auto;
+  height: 100%;
+  min-width: 0;     /* let flex item shrink below its content width */
+}
+.dl2-resize-panel {
+  flex: 0 0 0px;
+  width: 0;
+  opacity: 0;
+  overflow: hidden;
+  transition: flex-basis 0.35s ease, width 0.35s ease, opacity 0.2s ease;
+  background: var(--mantine-color-default, #f1f3f5);
+  border-radius: 8px;
+}
+.dl2-resize-row.open .dl2-resize-panel {
+  flex-basis: var(--dl2-resize-panel-w, 320px);
+  width: var(--dl2-resize-panel-w, 320px);
+  opacity: 1;
+  padding: 16px;
+  overflow-y: auto;   /* if the panel content exceeds the row height, scroll inside */
+}
+
+/* ============================================================================
+ * Liquid-glass theme for Leaflet UI (kept in sync with src/ts/theme.css).
+ * Apple-style glassmorphism, theme-aware via DMC --mantine-color-* vars.
+ * ========================================================================== */
+
+/* The hooks-injected leaflet.css loads AFTER this file in the showcase, so we use
+   !important on the properties Leaflet has explicit defaults for. The compiled
+   package (src/ts/theme.css) loads after leaflet.css via webpack and doesn't need this. */
+
+/* Contain leaflet's internal z-indexes (panes up to 700, controls at 1000)
+   inside a single stacking context so DMC Popover/Modal/etc. (z-index ~300,
+   portaled to body) render above the map instead of being buried under its
+   controls. See src/ts/theme.css for the same rule in the compiled package. */
+.leaflet-container {
+  z-index: 0 !important;
+}
+
+/* ============================================================================
+ * Touch joystick (flight-sim + walking-sim)
+ *
+ * Visible on BOTH desktop and mobile now (per UX feedback). Desktop position:
+ * bottom-right corner of the map (compact secondary control alongside the
+ * keyboard, which is the primary input). Mobile: bottom-center, larger, for
+ * thumb reach — overrides via the touch-coarse media query at the bottom.
+ *
+ * Wired by inline JS inside the page's rAF setup callback — see flight_sim.py
+ * and walking_sim.py for the pointer handlers that write window._dl2_joystick.
+ * ========================================================================== */
+.dl2-joystick {
+  display: block;            /* visible everywhere — desktop and mobile */
+  position: absolute;
+  bottom: 18px;
+  right: 18px;               /* desktop default: bottom-right corner of the map */
+  pointer-events: auto;
+  z-index: 1100;             /* above leaflet controls (1000) */
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  touch-action: none;
+  /* Subtle fade so it doesn't compete with the map; per UX ask, base opacity
+     reduced 20% (0.8 vs the implicit 1.0 it was at). Hover/focus bumps it
+     back near full so the user knows it's interactive. */
+  opacity: 0.8;
+  transition: opacity 0.15s ease;
+}
+.dl2-joystick:hover { opacity: 1; }
+.dl2-joystick-base {
+  width: 130px;              /* desktop: more compact */
+  height: 130px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--mantine-color-body, #ffffff) 55%, transparent);
+  -webkit-backdrop-filter: blur(12px) saturate(160%);
+  backdrop-filter: blur(12px) saturate(160%);
+  border: 2px solid color-mix(in srgb, var(--mantine-color-default-border, rgba(0,0,0,0.2)) 70%, transparent);
+  box-shadow: 0 8px 24px -4px rgba(0,0,0,0.22), inset 0 1px 0 rgba(255,255,255,0.28);
+  position: relative;
+  cursor: grab;
+}
+.dl2-joystick-base:active { cursor: grabbing; }
+.dl2-joystick-controller {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--mantine-color-green-6, #2f9e44) 75%, transparent);
+  border: 2px solid color-mix(in srgb, var(--mantine-color-body, #ffffff) 85%, transparent);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.30);
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;       /* dragging is captured on the base */
+  will-change: transform;
+}
+.dl2-joystick-hint {
+  /* On desktop the keyboard is the primary input, so the hint is noise —
+     hide it. The touch media query below re-shows it. */
+  display: none;
+  margin-top: 6px;
+  text-align: center;
+  color: var(--mantine-color-dimmed, #73726c);
+  font-size: 11px;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  opacity: 0.85;
+}
+
+/* The sprite slot the walking-sim's rAF loop swaps frames into; keep it
+   sharp at small sizes (the pirate frames are pixel-art-style). */
+.ws-sprite-icon {
+  background: transparent;
+  border: 0;
+}
+.ws-sprite-frame {
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: crisp-edges;
+}
+
+/* ============================================================================
+ * Responsive map height for the sim pages (flight-sim, walking-sim)
+ * Inline style on dmc.Paper can't carry breakpoint-conditional values, so we
+ * drive the height from CSS here. The map inside fills 100% of its Paper.
+ * ========================================================================== */
+.dl2-sim-map-paper {
+  height: 70vh;
+}
+@media (max-width: 768px) {
+  .dl2-sim-map-paper {
+    height: 60vh;
+  }
+}
+
+/* ============================================================================
+ * Mobile-only joystick overrides — bigger fingertip-friendly base + controller
+ * and bottom-CENTER positioning (over bottom-right) so it's reachable with the
+ * thumb of whichever hand is holding the phone. The desktop styling (smaller,
+ * bottom-right corner) is the default; this only kicks in on touch-only /
+ * hybrid devices.
+ * ========================================================================== */
+@media (hover: none) and (pointer: coarse) {
+  .dl2-joystick {
+    bottom: 24px;
+    right: auto;             /* clear the desktop's bottom-right anchor */
+    left: 50%;
+    transform: translateX(-50%);
+  }
+  .dl2-joystick-base {
+    width: 170px;
+    height: 170px;
+  }
+  .dl2-joystick-controller {
+    width: 76px;
+    height: 76px;
+  }
+  /* On touch, the joystick IS the primary input — re-show the hint. */
+  .dl2-joystick-hint {
+    display: flex;
+  }
+}
+
+/* ============================================================================
+ * AppShell mobile polish — the navbar opens as an overlay drawer on mobile;
+ * give its links a slightly larger tap target so they're comfortable on touch.
+ * ========================================================================== */
+@media (max-width: 768px) {
+  .mantine-AppShellNavbar-root .mantine-NavLink-root {
+    padding-top: 10px;
+    padding-bottom: 10px;
+  }
+  /* Reduce default container padding on small screens so the demo cards
+     don't get cramped by their wrapper. */
+  .mantine-Container-root {
+    padding-left: 8px !important;
+    padding-right: 8px !important;
+  }
+}
+.leaflet-tooltip {
+  background: color-mix(in srgb, var(--mantine-color-body, #ffffff) 62%, transparent) !important;
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid color-mix(in srgb, var(--mantine-color-default-border, rgba(0,0,0,.12)) 60%, transparent) !important;
+  color: var(--mantine-color-text, #1a1b1e) !important;
+  border-radius: 12px !important;
+  padding: 6px 11px !important;
+  font-weight: 500;
+  font-size: 12.5px;
+  letter-spacing: -0.005em;
+  box-shadow: 0 6px 24px -4px rgba(0,0,0,.18), inset 0 1px 0 rgba(255,255,255,.28) !important;
+  white-space: nowrap;
+}
+.leaflet-tooltip-top::before,
+.leaflet-tooltip-bottom::before,
+.leaflet-tooltip-left::before,
+.leaflet-tooltip-right::before { display: none; }
+
+/* dl2.Map (compiled component) wraps the leaflet map-pane in a
+   `.dl2-rotation-wrapper { pointer-events: none }`. Leaflet 2's stock CSS does
+   not set `pointer-events: auto` on `.leaflet-popup`, so popup contents inherit
+   `none` and become unclickable (clicks fall through and drag the map). Mirror
+   the `theme.css` fix here for showcase pages that render compiled `dl2.*`
+   components (e.g. /easy-button). */
+.leaflet-popup {
+  pointer-events: auto !important;
+}
+.leaflet-popup-content-wrapper {
+  background: color-mix(in srgb, var(--mantine-color-body, #ffffff) 65%, transparent) !important;
+  -webkit-backdrop-filter: blur(28px) saturate(180%);
+  backdrop-filter: blur(28px) saturate(180%);
+  border: 1px solid color-mix(in srgb, var(--mantine-color-default-border, rgba(0,0,0,.12)) 60%, transparent) !important;
+  color: var(--mantine-color-text, #1a1b1e) !important;
+  border-radius: 16px !important;
+  padding: 2px !important;
+  box-shadow: 0 12px 36px -6px rgba(0,0,0,.22), inset 0 1px 0 rgba(255,255,255,.30) !important;
+}
+.leaflet-popup-content { margin: 12px 16px !important; font-size: 13px; line-height: 1.5; }
+.leaflet-popup-tip {
+  background: color-mix(in srgb, var(--mantine-color-body, #ffffff) 65%, transparent) !important;
+  -webkit-backdrop-filter: blur(28px) saturate(180%);
+  backdrop-filter: blur(28px) saturate(180%);
+  box-shadow: 0 6px 16px rgba(0,0,0,.10) !important;
+}
+.leaflet-popup-close-button {
+  color: var(--mantine-color-text, #1a1b1e) !important;
+  opacity: .55; font-weight: 500; transition: opacity .15s;
+}
+.leaflet-popup-close-button:hover { opacity: 1; background: transparent !important; }
+
+.leaflet-bar {
+  background: color-mix(in srgb, var(--mantine-color-body, #ffffff) 72%, transparent) !important;
+  -webkit-backdrop-filter: blur(16px) saturate(170%);
+  backdrop-filter: blur(16px) saturate(170%);
+  border: 1px solid color-mix(in srgb, var(--mantine-color-default-border, rgba(0,0,0,.12)) 45%, transparent) !important;
+  border-radius: 10px !important;
+  box-shadow: 0 4px 18px -2px rgba(0,0,0,.15);
+  overflow: hidden;
+}
+.leaflet-bar a, .leaflet-bar a:link {
+  background: transparent !important;
+  color: var(--mantine-color-text, #1a1b1e) !important;
+  border-bottom-color: color-mix(in srgb, var(--mantine-color-default-border, rgba(0,0,0,.12)) 35%, transparent) !important;
+  font-weight: 500;
+}
+.leaflet-bar a:hover {
+  background: color-mix(in srgb, var(--mantine-color-default-hover, rgba(0,0,0,.06)) 60%, transparent) !important;
+}
+.leaflet-bar a.leaflet-disabled { opacity: .4; }
+
+.leaflet-control-attribution {
+  background: color-mix(in srgb, var(--mantine-color-body, #ffffff) 75%, transparent) !important;
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  color: var(--mantine-color-dimmed, #73726c) !important;
+  border-radius: 8px 0 0 0;
+  font-size: 10.5px;
+  padding: 2px 8px;
+}
+.leaflet-control-attribution a { color: var(--mantine-color-blue-6, #228be6) !important; }

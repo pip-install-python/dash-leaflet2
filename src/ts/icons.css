@@ -1,0 +1,8 @@
+/* Emoji / Iconify markers use a DivIcon; strip Leaflet's default white box + border. */
+.dl2-div-icon {
+    background: transparent;
+    border: none;
+}
+.dl2-div-icon iconify-icon {
+    vertical-align: top;
+}

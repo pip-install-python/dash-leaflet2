@@ -309,7 +309,7 @@ def run_local(args, versions: list[str]) -> int:
                 f"({s['failed']} failed) in {row['elapsed_s']}s")
             rows.append(row)
 
-    report = markdown_report(rows, local=True, donor=str(donor_site))
+    report = markdown_report(rows, local=True)
     Path(args.report).write_text(report)
     print()
     print(report)
@@ -317,7 +317,7 @@ def run_local(args, versions: list[str]) -> int:
     return 0 if all(not r.get("summary", {}).get("failed") for r in rows) else 1
 
 
-def markdown_report(rows: list[dict], local: bool = False, donor: str = "") -> str:
+def markdown_report(rows: list[dict], local: bool = False) -> str:
     lines = [
         "# Dash compatibility matrix",
         "",
@@ -333,8 +333,7 @@ def markdown_report(rows: list[dict], local: bool = False, donor: str = "") -> s
             "> **Measured in `--local` mode.** Only **Dash** comes from each",
             "> target interpreter; the docs-site libraries",
             "> (dash-mantine-components, markdown2dash, dash-improve-my-llms, …)",
-            "> are lent from this project's virtualenv:",
-            f"> `{donor}`.",
+            "> are lent from this project's own virtualenv.",
             ">",
             "> So this measures *our code against Dash X*, not *a fresh dependency",
             "> resolution against Dash X*. A resolver conflict that only appears on",

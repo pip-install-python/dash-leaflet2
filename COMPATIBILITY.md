@@ -10,7 +10,7 @@ callback syntax-checked.
 > target interpreter; the docs-site libraries
 > (dash-mantine-components, markdown2dash, dash-improve-my-llms, …)
 > are lent from this project's virtualenv:
-> `/Users/pip/PycharmProjects/2plot_leaflet/.venv/lib/python3.12/site-packages`.
+> the project's own `.venv/lib/python3.12/site-packages`.
 >
 > So this measures *our code against Dash X*, not *a fresh dependency
 > resolution against Dash X*. A resolver conflict that only appears on

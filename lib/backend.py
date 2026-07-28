@@ -1,8 +1,13 @@
 """
 Backend selection helper for the Dash documentation boilerplate.
 
-Dash 4.1+ supports pluggable backends:
+Dash **4.2+** supports pluggable backends:
     app = Dash(backend="flask"  | "fastapi" | "quart")
+
+NOTE the floor. Dash's own notes suggest 4.1, but `Dash.__init__` in 4.1.0 has
+no `backend` parameter at all and raises TypeError — verified against two
+separate 4.1.0 installs by scripts/compat_matrix.py. `run.py` catches that and
+falls back to the bundled Flask backend, so the site still boots on 4.1.
 
 This module owns the single source of truth for which backend the app is
 running on, so both `run.py` and UI components (e.g. the navbar badge) stay

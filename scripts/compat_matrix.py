@@ -60,6 +60,79 @@ def log(msg: str) -> None:
     print(f"[compat] {msg}", flush=True)
 
 
+# ---------------------------------------------------------------------------
+# Offline mode
+# ---------------------------------------------------------------------------
+# `--local` skips venv creation entirely and runs the suite under interpreters
+# that already have the target Dash installed. This exists because building a
+# venv per version needs network and several GB; on a machine that already has
+# the versions lying around (or in an air-gapped CI) the measurement is the
+# same one, minus the install step.
+#
+# HONEST LIMITATION, repeated in the report: only DASH comes from the target
+# interpreter. The docs-site libraries (dash-mantine-components, markdown2dash,
+# dash-improve-my-llms, ...) are lent from THIS project's virtualenv, so the
+# matrix measures "our code against Dash X" and not "a fresh dependency
+# resolution against Dash X". A resolver conflict that only shows up on a clean
+# install will not be caught here — the full `compat_matrix.py` (or CI) is what
+# catches that.
+
+def discover_interpreters(search_root: Path) -> dict[str, Path]:
+    """Map dash version -> interpreter, for every venv under `search_root`."""
+    found: dict[str, Path] = {}
+    for info in search_root.glob("*/**/site-packages/dash-*.dist-info"):
+        if not info.is_dir():
+            continue
+        version = info.name[len("dash-"):-len(".dist-info")]
+        # .../<venv>/lib/python3.x/site-packages/dash-<v>.dist-info
+        venv = info.parent.parent.parent.parent
+        python = venv / "bin" / "python"
+        if python.exists():
+            found.setdefault(version, python)
+    return found
+
+
+def smoke_local(python: Path, version: str, backend: str, donor_site: Path) -> dict:
+    """Run the suite under `python`, lending it this project's site-packages."""
+    out = WORK_DIR / f"{version}-{backend}-local.json"
+    env = dict(
+        os.environ,
+        DASH_BACKEND=backend,
+        SATELLITE_ANALYTICS_DRY_RUN="1",
+        DL2_EXTRA_SITE=str(donor_site),
+        DL2_SMOKE_ARGS="\n".join(["--quiet", "--json", str(out)]),
+        PYTHONPATH="",  # must NOT leak a second dash onto the path
+    )
+    env.pop("CROSS_APP_WEBHOOK_SECRET", None)
+
+    t0 = time.time()
+    proc = subprocess.run(
+        [str(python), str(PROJECT_ROOT / "scripts" / "_compat_runner.py")],
+        cwd=PROJECT_ROOT, env=env, capture_output=True, text=True,
+    )
+    elapsed = round(time.time() - t0, 1)
+
+    resolved = version
+    for line in proc.stdout.splitlines():
+        if line.startswith("[runner] dash "):
+            resolved = line.split()[2]
+
+    if out.exists():
+        data = json.loads(out.read_text())
+    else:
+        tail = (proc.stderr or proc.stdout)[-2000:]
+        data = {
+            "dash_version": resolved,
+            "summary": {"total": 0, "passed": 0, "failed": 1},
+            "checks": [{"group": "harness", "name": "suite ran", "ok": False,
+                        "detail": tail}],
+        }
+    data.update(backend=backend, requested_version=version,
+                elapsed_s=elapsed, exit_code=proc.returncode,
+                dash_version=resolved, mode="local")
+    return data
+
+
 def run(cmd: list[str], **kw) -> subprocess.CompletedProcess:
     return subprocess.run(cmd, capture_output=True, text=True, **kw)
 
@@ -205,31 +278,91 @@ def browser_leg(py: Path, version: str, backend: str, port: int) -> dict:
             proc.kill()
 
 
-def markdown_report(rows: list[dict]) -> str:
+def run_local(args, versions: list[str]) -> int:
+    """`--local`: measure against interpreters that already have each Dash."""
+    donor = Path(sys.executable).parent.parent
+    donor_site = next(donor.glob("lib/python*/site-packages"), None)
+    if donor_site is None:
+        log("ERROR: could not locate this interpreter's site-packages")
+        return 2
+
+    available = discover_interpreters(Path(args.search_root))
+    log(f"found {len(available)} dash versions under {args.search_root}")
+
+    rows: list[dict] = []
+    for version in versions:
+        python = available.get(version)
+        if python is None:
+            log(f"{version}: NO interpreter found — skipping")
+            rows.append({
+                "requested_version": version, "backend": args.backends[0],
+                "dash_version": version, "elapsed_s": 0, "mode": "local",
+                "summary": {"total": 0, "passed": 0, "failed": 0},
+                "checks": [], "skipped": "no local interpreter with this version",
+            })
+            continue
+        for backend in args.backends:
+            log(f"{version}/{backend}: running under {python}")
+            row = smoke_local(python, version, backend, donor_site)
+            s = row["summary"]
+            log(f"{version}/{backend}: {s['passed']}/{s['total']} passed "
+                f"({s['failed']} failed) in {row['elapsed_s']}s")
+            rows.append(row)
+
+    report = markdown_report(rows, local=True, donor=str(donor_site))
+    Path(args.report).write_text(report)
+    print()
+    print(report)
+    log(f"wrote {args.report}")
+    return 0 if all(not r.get("summary", {}).get("failed") for r in rows) else 1
+
+
+def markdown_report(rows: list[dict], local: bool = False, donor: str = "") -> str:
     lines = [
         "# Dash compatibility matrix",
         "",
-        "Generated by `python scripts/compat_matrix.py`. Each cell is a full",
-        "install of the documentation site against that Dash version, driven",
-        "through `scripts/smoke_test.py`: every page registered, every layout",
-        "rendered and JSON-serialised, every route fetched.",
+        "Generated by `python scripts/compat_matrix.py`. Each cell drives the",
+        "documentation site against that Dash version through",
+        "`scripts/smoke_test.py`: every page registered, every layout rendered",
+        "and JSON-serialised, every route fetched, and every inline clientside",
+        "callback syntax-checked.",
         "",
+    ]
+    if local:
+        lines += [
+            "> **Measured in `--local` mode.** Only **Dash** comes from each",
+            "> target interpreter; the docs-site libraries",
+            "> (dash-mantine-components, markdown2dash, dash-improve-my-llms, …)",
+            "> are lent from this project's virtualenv:",
+            f"> `{donor}`.",
+            ">",
+            "> So this measures *our code against Dash X*, not *a fresh dependency",
+            "> resolution against Dash X*. A resolver conflict that only appears on",
+            "> a clean install will not show up here — the venv-per-version mode",
+            "> (plain `compat_matrix.py`, and the GitHub Actions matrix) is what",
+            "> catches that.",
+            "",
+        ]
+    lines += [
         "| Dash | Backend | Checks | Result | Time | Notes |",
         "|------|---------|--------|--------|------|-------|",
     ]
     for r in rows:
         s = r.get("summary", {})
         total, passed, failed = s.get("total", 0), s.get("passed", 0), s.get("failed", 0)
-        verdict = "✅ pass" if total and not failed else "❌ fail"
-        notes = ""
-        actual = r.get("dash_version")
-        if actual and actual != r.get("requested_version"):
-            notes = f"resolved to {actual}"
-        if failed:
-            first = next((c for c in r.get("checks", []) if not c["ok"]), None)
-            if first:
-                detail = first["detail"].splitlines()[-1][:90] if first["detail"] else ""
-                notes = (notes + "; " if notes else "") + f"{first['name']}: {detail}"
+        if r.get("skipped"):
+            verdict, notes = "⚠️ skipped", r["skipped"]
+        else:
+            verdict = "✅ pass" if total and not failed else "❌ fail"
+            notes = ""
+            actual = r.get("dash_version")
+            if actual and actual != r.get("requested_version"):
+                notes = f"resolved to {actual}"
+            if failed:
+                first = next((c for c in r.get("checks", []) if not c["ok"]), None)
+                if first:
+                    detail = first["detail"].splitlines()[-1][:90] if first["detail"] else ""
+                    notes = (notes + "; " if notes else "") + f"{first['name']}: {detail}"
         lines.append(
             f"| `{r['requested_version']}` | {r['backend']} | {passed}/{total} | "
             f"{verdict} | {r.get('elapsed_s', '?')}s | {notes} |"
@@ -260,10 +393,18 @@ def main() -> int:
                     help="also boot each venv and collect browser console errors")
     ap.add_argument("--report", default="COMPATIBILITY.md",
                     help="markdown report path (default: COMPATIBILITY.md)")
+    ap.add_argument("--local", action="store_true",
+                    help="use interpreters that already have the target Dash "
+                         "instead of building a venv per version (no network)")
+    ap.add_argument("--search-root", default=str(PROJECT_ROOT.parent),
+                    help="where --local looks for virtualenvs")
     args = ap.parse_args()
 
     versions = args.versions or DEFAULT_VERSIONS
     WORK_DIR.mkdir(exist_ok=True)
+
+    if args.local:
+        return run_local(args, versions)
 
     rows: list[dict] = []
     port = 8600

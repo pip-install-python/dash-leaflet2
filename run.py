@@ -104,16 +104,32 @@ hooks.script([
 # ----------------------------------------------------------------------------
 # Dash app
 # ----------------------------------------------------------------------------
-app = Dash(
-    __name__,
+_dash_kwargs = dict(
     use_pages=True,
-    backend=BACKEND,
     suppress_callback_exceptions=True,
     prevent_initial_callbacks=True,
     update_title=None,
     title=SITE_TITLE,
     index_string=open("templates/index.html").read(),
 )
+
+# `backend=` is Dash 4.2+, NOT 4.1 as its own release notes imply — verified
+# against two separate 4.1.0 installs, where `Dash()` has no such parameter and
+# raises TypeError. The dash_leaflet2 PACKAGE never touches it (it needs only
+# `dash>=4.1`), so this fallback is what lets the documentation site keep
+# running on the package's own support floor instead of quietly raising it.
+try:
+    app = Dash(__name__, backend=BACKEND, **_dash_kwargs)
+except TypeError:
+    print(
+        f"[dash-leaflet2] Dash {dash.__version__} has no `backend=` parameter "
+        "(added in 4.2) — falling back to the bundled Flask backend. The async "
+        "backends need Dash 4.2 or newer."
+    )
+    BACKEND = "flask"
+    BACKEND_INFO = get_backend_info(BACKEND)
+    app = Dash(__name__, **_dash_kwargs)
+
 app._backend_info = BACKEND_INFO
 
 # Post-construction Clerk wiring (sessions, /api/auth/*, request identity).

@@ -4,7 +4,7 @@ PAGE_TITLE_PREFIX = "dash-leaflet2 | "
 PRIMARY_COLOR = "green"
 
 # Keep in step with pyproject.toml and package.json when cutting a release.
-APP_VERSION = "0.1.0"
+APP_VERSION = "0.2.0"
 LEAFLET_VERSION = "2.0.0-alpha.1"
 
 SITE_TITLE = "dash-leaflet2 — Leaflet 2 on Dash 4"

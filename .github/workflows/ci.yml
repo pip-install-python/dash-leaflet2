@@ -1,0 +1,141 @@
+name: CI
+
+# Every push and PR runs the smoke suite against the full supported Dash range.
+# pyproject declares `dash>=4.1`; this is what keeps that claim honest, and it
+# is the same harness scripts/compat_matrix.py runs locally.
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  smoke:
+    name: Dash ${{ matrix.dash }} · Python ${{ matrix.python }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # The floor, the two intermediate minors, and the current release.
+        dash: ["4.1.0", "4.2.0", "4.3.0", "4.4.1"]
+        python: ["3.12"]
+        include:
+          # Also prove the oldest and newest interpreters we claim, against the
+          # current Dash — a full cross-product would be 20 jobs for little gain.
+          - dash: "4.4.1"
+            python: "3.9"
+          - dash: "4.4.1"
+            python: "3.13"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+          cache: pip
+
+      # node is what makes the clientside-JS syntax check real. Without it the
+      # smoke test skips that check rather than failing, so a broken
+      # clientside_callback would sail through — which is exactly how the
+      # light/dark tile swaps shipped invalid JS once already.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install Dash ${{ matrix.dash }} first
+        # Install the version under test BEFORE the rest, so the other
+        # requirements resolve against it rather than dragging in a newer Dash.
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install "dash[fastapi]==${{ matrix.dash }}"
+
+      - name: Install documentation-site requirements
+        # The pinned Dash line is stripped so it cannot override the matrix
+        # version. Same rule as scripts/compat_matrix.py.
+        run: |
+          grep -v 'COMPAT-MATRIX: dash' requirements.txt > /tmp/reqs.txt
+          python -m pip install -r /tmp/reqs.txt
+
+      - name: Report the resolved Dash version
+        # A silent upgrade here would make the whole matrix meaningless.
+        run: |
+          RESOLVED=$(python -c "import dash; print(dash.__version__)")
+          echo "requested=${{ matrix.dash }} resolved=$RESOLVED"
+          if [ "$RESOLVED" != "${{ matrix.dash }}" ]; then
+            echo "::warning::Dash resolved to $RESOLVED, not ${{ matrix.dash }}"
+          fi
+
+      - name: Smoke test
+        run: python scripts/smoke_test.py --json smoke-${{ matrix.dash }}-py${{ matrix.python }}.json
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: smoke-${{ matrix.dash }}-py${{ matrix.python }}
+          path: smoke-*.json
+          if-no-files-found: ignore
+
+  package:
+    name: Build + verify the wheel
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Release consistency
+        # Version drift across pyproject / package.json / package-info.json,
+        # a stale bundle, packaging leaks. None of these break a test run.
+        run: python scripts/check_release.py
+
+      - name: Build
+        run: |
+          python -m pip install --upgrade pip build twine
+          python -m build
+
+      - name: Check metadata
+        run: python -m twine check dist/*
+
+      - name: Install the wheel in a clean venv and import it
+        # The package must work with ONLY `dash` present — nothing from
+        # requirements.txt, which is the docs site's dependency set.
+        run: |
+          python -m venv /tmp/clean
+          /tmp/clean/bin/pip install --upgrade pip
+          /tmp/clean/bin/pip install dist/*.whl
+          /tmp/clean/bin/python - <<'PY'
+          import pathlib
+
+          import dash_leaflet2 as dl2
+
+          print("version:", dl2.__version__)
+
+          bundle = pathlib.Path(dl2.__file__).parent / "dash_leaflet2.js"
+          assert bundle.exists(), "JS bundle missing from the wheel"
+          print("bundle:", bundle.stat().st_size // 1024, "KB")
+
+          # The 27 MB react-docgen artifact must NOT ship.
+          meta = pathlib.Path(dl2.__file__).parent / "metadata.json"
+          assert not meta.exists(), "metadata.json leaked into the wheel"
+
+          for name in ("Map", "TileLayer", "Marker", "TileSelector", "EditControl"):
+              assert hasattr(dl2, name), f"missing component: {name}"
+          print("components OK")
+          PY
+
+      - name: Assert the wheel version matches pyproject
+        run: |
+          PY_VER=$(python -c "import re;print(re.search(r'^version = \"([^\"]+)\"', open('pyproject.toml').read(), re.M).group(1))")
+          WHEEL_VER=$(/tmp/clean/bin/python -c "import dash_leaflet2;print(dash_leaflet2.__version__)")
+          echo "pyproject=$PY_VER  installed=$WHEEL_VER"
+          test "$PY_VER" = "$WHEEL_VER"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/

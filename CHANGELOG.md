@@ -11,6 +11,15 @@ will move until v2 leaves alpha upstream.
 
 ## [Unreleased]
 
+Nothing yet.
+
+---
+
+## [0.2.0] — 2026-07-28
+
+First public release: the project splits into a private R&D checkout and this
+public mirror, which is what ships to PyPI and to https://leaflet.2plot.dev.
+
 ### Added — public release preparation
 
 The project is split into a private R&D checkout and this **public mirror**, which

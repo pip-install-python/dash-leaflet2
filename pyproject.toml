@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "dash-leaflet2"
-version = "0.1.0"
+version = "0.2.0"
 description = "Leaflet 2-native Dash components — a from-scratch wrapper around Leaflet 2 core (no react-leaflet), built for Dash 4."
 readme = "README.md"
 requires-python = ">=3.8"

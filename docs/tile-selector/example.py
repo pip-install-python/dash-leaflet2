@@ -21,10 +21,14 @@ import dash_mantine_components as dmc
 from dash import Input, Output, callback, html, no_update
 from dash_iconify import DashIconify
 
+from dl2_tiles import USGS_TOPO, register_theme_swap
 from dl2_locations import AUSTIN
 from dl2_shared import code_panel, info_panel
 
-CARTO_LIGHT = "https://basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png"
+# Basemap pair for this page — dl2_tiles owns the light/dark wiring.
+TILES = USGS_TOPO
+# The template the PICKED tile URLs are built from. Deliberately not the
+# basemap: this page's point is that the two are independent.
 OSM = "https://tile.openstreetmap.org/{z}/{x}/{y}.png"
 
 CODE = """import dash_leaflet2 as dl2
@@ -109,20 +113,13 @@ component = dmc.Stack(
                 zoom=11,
                 style={"height": "58vh", "width": "100%"},
                 children=[
-                    dl2.TileLayer(
-                        url=CARTO_LIGHT,
-                        attribution=(
-                            '&copy; <a href="https://openstreetmap.org/copyright">'
-                            "OpenStreetMap</a> &copy; "
-                            '<a href="https://carto.com/attributions">CARTO</a>'
-                        ),
-                    ),
+                    dl2.TileLayer(id="ts-tile", **TILES.kwargs("light")),
                     dl2.TileSelector(
                         id="ts-picker",
                         position="topright",
                         # The URLs handed back in `selectedTiles` point at THIS
                         # template — it does not have to be the tileset you are
-                        # displaying. Here we show CARTO but hand back OSM PNGs.
+                        # displaying. Here we show USGS Topo but hand back OSM PNGs.
                         tileUrl=OSM,
                         hoverColor="#fa5252",
                         selectedColor="#228be6",
@@ -208,3 +205,7 @@ def show_selection(tiles):
 def clear_selection(n_clicks):
     """Python → map: writing the [MUTABLE] prop clears the component's state."""
     return [] if n_clicks else no_update
+
+
+# Light/dark basemap, driven off the color-scheme store.
+register_theme_swap("ts-tile", TILES)

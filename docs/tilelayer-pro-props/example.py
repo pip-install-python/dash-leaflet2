@@ -10,7 +10,8 @@ zIndex slider reorders them; toggling 'detectRetina' swaps the hi-DPI tile reque
 
 import dash_leaflet2 as dl2
 import dash_mantine_components as dmc
-from dash import Input, Output, callback, html
+from dash import Input, Output, callback, clientside_callback, html
+from dl2_tiles import POSITRON, register_theme_swap
 from dl2_locations import CHARLESTON
 from dl2_shared import code_panel, header, info_panel
 
@@ -24,6 +25,15 @@ BLANK_TILE = (
 # A ~21 x 25 km box centred on the peninsula. In kilometres, not degrees, so
 # the clipped area is the same size here as in any other demo.
 CLIP_BOUNDS = CHARLESTON.bounds(10.6, 12.3)
+
+# Both layers theme. The base uses the POSITRON pair (CARTO serves it from the
+# a-d subdomain hosts, which this page needs). The labels overlay has its own
+# light/dark form — dark labels over a light base, light labels over a dark one
+# — so it is swapped alongside rather than left to wash out.
+TILES = POSITRON
+BASE_LIGHT = TILES.url("light")
+LABELS_LIGHT = "https://{s}.basemaps.cartocdn.com/rastertiles/voyager_only_labels/{z}/{x}/{y}.png"
+LABELS_DARK = "https://{s}.basemaps.cartocdn.com/rastertiles/dark_only_labels/{z}/{x}/{y}.png"
 
 CODE = """dl2.Map(center=[32.7833, -79.9333], zoom=10, children=[
     dl2.TileLayer(
@@ -73,7 +83,11 @@ component = dmc.Stack(
                             children=[
                                 dl2.TileLayer(
                                     id="tlpro-base",
-                                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+                                    # CARTO rather than OSM Mapnik: this page is
+                                    # ABOUT `subdomains`, so the URL has to keep
+                                    # its {s} token, and CARTO serves the a-d
+                                    # hosts in both a light and a dark form.
+                                    url=BASE_LIGHT,
                                     subdomains=["a", "b", "c"],
                                     detectRetina=True,
                                     minZoom=2,
@@ -82,7 +96,7 @@ component = dmc.Stack(
                                 ),
                                 dl2.TileLayer(
                                     id="tlpro-overlay",
-                                    url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager_only_labels/{z}/{x}/{y}.png",
+                                    url=LABELS_LIGHT,
                                     subdomains=["a", "b", "c", "d"],
                                     bounds=CLIP_BOUNDS,
                                     errorTileUrl=BLANK_TILE,
@@ -174,3 +188,11 @@ def update_zindex(v):
     return int(v) if v is not None else 10
 
 
+# Light/dark for both layers, driven off the color-scheme store.
+register_theme_swap("tlpro-base", TILES)
+
+clientside_callback(
+    f"(scheme) => (scheme === 'dark' ? '{LABELS_DARK}' : '{LABELS_LIGHT}')",
+    Output("tlpro-overlay", "url"),
+    Input("color-scheme-storage", "data"),
+)

@@ -34,6 +34,8 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import shutil
+import subprocess
 import sys
 import time
 import traceback
@@ -174,6 +176,43 @@ def _check_callbacks(res: Results, dash_mod, run_mod) -> None:
         res.add("callbacks", "callbacks registered", False, str(exc))
 
 
+def _check_clientside_js(res: Results, run_mod) -> None:
+    """Syntax-check every inline clientside callback with node.
+
+    Python-side tests cannot catch a malformed clientside callback: Dash ships
+    the string to the browser verbatim, so a syntax error is silent server-side
+    and the callback simply never runs. That is not hypothetical — building the
+    light/dark tile swaps with `repr()` and a blanket `'` -> `"` swap produced
+    invalid JS for every pair, because attribution strings contain
+    `<a href="...">`. Every map would have kept its initial basemap forever and
+    all 68 other checks would still have passed.
+    """
+    scripts = getattr(run_mod.app, "_inline_scripts", [])
+    if not scripts:
+        res.add("clientside", "inline scripts collected", False, "none found")
+        return
+    res.add("clientside", "inline scripts collected", True, f"{len(scripts)} scripts")
+
+    if not shutil.which("node"):
+        res.add("clientside", "javascript parses", True, "SKIPPED — node not installed")
+        return
+
+    bad: list[str] = []
+    for i, src in enumerate(scripts):
+        proc = subprocess.run(
+            ["node", "--check", "-"], input=src,
+            capture_output=True, text=True, timeout=20,
+        )
+        if proc.returncode:
+            first = next((ln for ln in proc.stderr.splitlines() if ln.strip()), "")
+            bad.append(f"script[{i}]: {first[:120]}")
+
+    res.add(
+        "clientside", "javascript parses", not bad,
+        "all valid" if not bad else f"{len(bad)} invalid — " + "; ".join(bad[:3]),
+    )
+
+
 def run_all() -> Results:
     res = Results()
     run_mod, dash_mod = _import_app(res)
@@ -183,6 +222,7 @@ def run_all() -> Results:
     _render_layouts(res, dash_mod)
     _http_checks(res, run_mod, dash_mod)
     _check_callbacks(res, dash_mod, run_mod)
+    _check_clientside_js(res, run_mod)
     return res
 
 

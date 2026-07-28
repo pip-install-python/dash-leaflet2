@@ -11,8 +11,12 @@ at runtime — exactly the surface dash-leaflet 1.x exposed.
 import dash_leaflet2 as dl2
 import dash_mantine_components as dmc
 from dash import Input, Output, callback
+from dl2_tiles import CYCLE, register_theme_swap
 from dl2_locations import NEW_ORLEANS
 from dl2_shared import code_panel, header, info_panel
+
+# Basemap pair for this page — dl2_tiles owns the light/dark wiring.
+TILES = CYCLE
 
 # A ~17 x 20 km box centred on the city — the same real-world size in every
 # demo that clamps or drapes something, wherever that demo is set.
@@ -62,7 +66,7 @@ component = dmc.Stack(
                             boxZoom=True,
                             pinchZoom=True,
                             style={"height": "55vh"},
-                            children=[dl2.TileLayer()],
+                            children=[dl2.TileLayer(id="mpp-tile", **TILES.kwargs("light"))],
                         ),
                         shadow="sm",
                         radius="md",
@@ -184,3 +188,7 @@ def viewport_readout(vp):
         f"zoom:   {vp.get('zoom')}\n"
         f"bounds: {vp.get('bounds')}"
     )
+
+
+# Light/dark basemap, driven off the color-scheme store.
+register_theme_swap("mpp-tile", TILES)

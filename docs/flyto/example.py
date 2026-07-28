@@ -39,14 +39,14 @@ from dash import (
     no_update,
 )
 from dash_iconify import DashIconify
+from dl2_tiles import POSITRON, register_theme_swap
 from dl2_shared import code_panel, header, info_panel
 
-CARTO_LIGHT = "https://basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png"
-CARTO_DARK = "https://basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png"
-ATTR = (
-    '&copy; <a href="https://openstreetmap.org/copyright">OpenStreetMap</a> '
-    '&copy; <a href="https://carto.com/attributions">CARTO</a>'
-)
+# Basemap pair for this page. dl2_tiles owns the light/dark wiring so
+# every example themes the same way — see register_theme_swap below.
+TILES = POSITRON
+TILE_URL = TILES.url("light")
+ATTR = TILES.attribution()
 
 # A small grand-tour. Each city has a sensible target zoom (CARTO lights up
 # urban detail nicely at z=11–12). The `bounds` entry triggers flyToBounds
@@ -187,7 +187,7 @@ component = dmc.Stack(
                             style={"height": "62vh"},
                             children=[
                                 dl2.TileLayer(
-                                    id="fly-tile", url=CARTO_LIGHT, attribution=ATTR
+                                    id="fly-tile", url=TILE_URL, attribution=ATTR
                                 ),
                                 # One marker per city — useful both visually and as a click target.
                                 *[
@@ -705,8 +705,4 @@ def viewport(vp):
 
 
 # ---- light/dark theme sync -------------------------------------------------
-clientside_callback(
-    "(checked) => (checked ? '%s' : '%s')" % (CARTO_LIGHT, CARTO_DARK),
-    Output("fly-tile", "url"),
-    Input("color-scheme-toggle", "checked"),
-)
+register_theme_swap("fly-tile", TILES)

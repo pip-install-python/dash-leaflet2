@@ -18,18 +18,18 @@ import dash_mantine_components as dmc
 from dash import Input, Output, State, callback, clientside_callback, ctx, dcc, html
 from dash_emoji_mart import DashEmojiMart
 from dash_iconify import DashIconify
+from dl2_tiles import ESRI_CANVAS, register_theme_swap
 from dl2_locations import DENVER
 from dl2_shared import code_panel, header, info_panel
 
 # CARTO Positron (light) + Dark Matter — the standard light/dark pair the rest of the
 # showcase already uses (see assets/leaflet2_maps.js). The tile URL is swapped at
 # runtime via a clientside callback driven by the app's color-scheme toggle.
-CARTO_LIGHT = "https://basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png"
-CARTO_DARK = "https://basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png"
-ATTR = (
-    '&copy; <a href="https://openstreetmap.org/copyright">OpenStreetMap</a> '
-    '&copy; <a href="https://carto.com/attributions">CARTO</a>'
-)
+# Basemap pair for this page. dl2_tiles owns the light/dark wiring so
+# every example themes the same way — see register_theme_swap below.
+TILES = ESRI_CANVAS
+TILE_URL = TILES.url("light")
+ATTR = TILES.attribution()
 
 MARKER_TYPES = ["Market", "Event", "Bounty", "Other"]
 TYPE_COLORS = {"Market": "green", "Event": "blue", "Bounty": "grape", "Other": "gray"}
@@ -147,7 +147,7 @@ component = dmc.Stack(
                                 },  # fills the dmc.Paper, which fills the flex row
                                 children=[
                                     dl2.TileLayer(
-                                        id="eb-tile", url=CARTO_LIGHT, attribution=ATTR
+                                        id="eb-tile", url=TILE_URL, attribution=ATTR
                                     ),
                                     dl2.EasyButton(
                                         id="eb-add",
@@ -540,14 +540,11 @@ clientside_callback(
 # checked=True means light. Mirror it to the dl2.TileLayer URL (CARTO Positron vs
 # Dark Matter) and to DashEmojiMart's `theme` prop so the picker UI follows along
 # too. Same pattern the /emoji-iconify page uses.
-clientside_callback(
-    "(checked) => (checked ? '%s' : '%s')" % (CARTO_LIGHT, CARTO_DARK),
-    Output("eb-tile", "url"),
-    Input("color-scheme-toggle", "checked"),
-)
+register_theme_swap("eb-tile", TILES)
 
 clientside_callback(
-    "(checked) => (checked ? 'light' : 'dark')",
+    # Same fix as the tile swap: read the STORE, not the header ActionIcon.
+    "(scheme) => (scheme === 'dark' ? 'dark' : 'light')",
     Output("eb-emoji", "theme"),
-    Input("color-scheme-toggle", "checked"),
+    Input("color-scheme-storage", "data"),
 )

@@ -34,15 +34,15 @@ from dash import (
     no_update,
 )
 from dash_iconify import DashIconify
+from dl2_tiles import OSM_CLASSIC, register_theme_swap
 from dl2_locations import MONTREAL
 from dl2_shared import code_panel, header, info_panel
 
-CARTO_LIGHT = "https://basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png"
-CARTO_DARK = "https://basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png"
-ATTR = (
-    '&copy; <a href="https://openstreetmap.org/copyright">OpenStreetMap</a> '
-    '&copy; <a href="https://carto.com/attributions">CARTO</a>'
-)
+# Basemap pair for this page. dl2_tiles owns the light/dark wiring so
+# every example themes the same way — see register_theme_swap below.
+TILES = OSM_CLASSIC
+TILE_URL = TILES.url("light")
+ATTR = TILES.attribution()
 
 DEFAULT_COLOR = "#2f9e44"
 PRESET_COLORS = [
@@ -216,7 +216,7 @@ component = dmc.Stack(
                                     children=[
                                         dl2.TileLayer(
                                             id="ecm-tile",
-                                            url=CARTO_LIGHT,
+                                            url=TILE_URL,
                                             attribution=ATTR,
                                         ),
                                         dl2.EditControl(
@@ -893,8 +893,4 @@ def features_readout(features, units):
 
 
 # ---- theme sync (light/dark) — mirrors /easy-button -----------------------
-clientside_callback(
-    "(checked) => (checked ? '%s' : '%s')" % (CARTO_LIGHT, CARTO_DARK),
-    Output("ecm-tile", "url"),
-    Input("color-scheme-toggle", "checked"),
-)
+register_theme_swap("ecm-tile", TILES)

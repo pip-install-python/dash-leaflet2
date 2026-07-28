@@ -15,8 +15,12 @@ import json
 import dash_leaflet2 as dl2
 import dash_mantine_components as dmc
 from dash import Input, Output, callback, html
+from dl2_tiles import ESRI_CANVAS, register_theme_swap
 from dl2_locations import PHILADELPHIA
 from dl2_shared import code_panel, header, info_panel
+
+# Basemap pair for this page — dl2_tiles owns the light/dark wiring.
+TILES = ESRI_CANVAS
 
 CODE_LG = """dl2.Map(children=[
     dl2.TileLayer(),
@@ -62,7 +66,7 @@ component = dmc.Stack(
                             zoom=12,
                             style={"height": "45vh"},
                             children=[
-                                dl2.TileLayer(),
+                                dl2.TileLayer(id="lg-tile", **TILES.kwargs("light")),
                                 html.Div(id="lg-container"),
                             ],
                         ),
@@ -197,3 +201,7 @@ def show_geojson(gj):
     if not gj:
         return "(no children yet)"
     return json.dumps(gj, indent=2)[:2000]
+
+
+# Light/dark basemap, driven off the color-scheme store.
+register_theme_swap("lg-tile", TILES)

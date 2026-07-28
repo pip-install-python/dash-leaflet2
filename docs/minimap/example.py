@@ -13,22 +13,29 @@ import dash_leaflet2 as dl2
 import dash_mantine_components as dmc
 from dash import Input, Output, State, callback, clientside_callback
 from dash_iconify import DashIconify
+from dl2_tiles import ESRI_STREET, POSITRON, register_theme_swap
 from dl2_locations import PITTSBURGH
 from dl2_shared import code_panel, header, info_panel
 
-CARTO_LIGHT = "https://basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png"
-CARTO_DARK = "https://basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png"
-ATTR = (
-    '&copy; <a href="https://openstreetmap.org/copyright">OpenStreetMap</a> '
-    '&copy; <a href="https://carto.com/attributions">CARTO</a>'
-)
+# TWO different basemaps on purpose. A minimap that renders the same tiles as
+# the map above it is just a smaller copy; giving the overview its own, more
+# generalised cartography is what makes it useful — you read context from the
+# inset and detail from the main map. Both pairs theme independently.
+MAIN_TILES = ESRI_STREET      # detailed street cartography
+MINI_TILES = POSITRON         # generalised, low-contrast overview
+
+CARTO_LIGHT = MAIN_TILES.url("light")
+ATTR = MAIN_TILES.attribution()
+MINI_LIGHT = MINI_TILES.url("light")
 
 CODE = """dl2.Map(children=[
-    dl2.TileLayer(url=CARTO_LIGHT),
+    dl2.TileLayer(url=ESRI_STREET_LIGHT),      # detailed cartography
     dl2.MiniMap(
         id="mini",
+        # A DIFFERENT basemap to the main map: the inset is for context,
+        # so it wants generalised tiles, not a smaller copy of the detail.
         position="bottomright",
-        url=CARTO_LIGHT,
+        url=CARTO_POSITRON_LIGHT,
         width=160,
         height=160,
         zoomLevelOffset=-5,
@@ -79,7 +86,7 @@ component = dmc.Stack(
                                 dl2.MiniMap(
                                     id="mini",
                                     position="bottomright",
-                                    url=CARTO_LIGHT,
+                                    url=MINI_LIGHT,
                                     width=160,
                                     height=160,
                                     zoomLevelOffset=-5,
@@ -219,14 +226,6 @@ def reposition(p):
 # Light/dark sync — same pattern every showcase page uses. Mirror the app
 # color-scheme toggle to BOTH the main tile layer URL and the minimap's URL so
 # the inner map theme stays in sync with the outer one.
-clientside_callback(
-    "(checked) => (checked ? '%s' : '%s')" % (CARTO_LIGHT, CARTO_DARK),
-    Output("mini-tile", "url"),
-    Input("color-scheme-toggle", "checked"),
-)
+register_theme_swap("mini-tile", MAIN_TILES)
 
-clientside_callback(
-    "(checked) => (checked ? '%s' : '%s')" % (CARTO_LIGHT, CARTO_DARK),
-    Output("mini", "url"),
-    Input("color-scheme-toggle", "checked"),
-)
+register_theme_swap("mini", MINI_TILES)

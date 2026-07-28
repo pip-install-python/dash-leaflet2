@@ -14,14 +14,15 @@ import dash
 import dash_leaflet2 as dl2
 import dash_mantine_components as dmc
 from dash import Input, Output, State, callback, ctx
+from dl2_tiles import TRANSIT, register_theme_swap
 from dl2_locations import TORONTO
 from dl2_shared import code_panel, header, info_panel
 
-CARTO_LIGHT = "https://basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png"
-ATTR = (
-    '&copy; <a href="https://openstreetmap.org/copyright">OpenStreetMap</a> '
-    '&copy; <a href="https://carto.com/attributions">CARTO</a>'
-)
+# Basemap pair for this page — dl2_tiles owns the light/dark wiring.
+TILES = TRANSIT
+
+TILE_URL = TILES.url("light")
+ATTR = TILES.attribution()
 
 CODE = '''dl2.Map(children=[
     dl2.TileLayer(),
@@ -68,7 +69,9 @@ component = dmc.Stack(
                             zoom=12,
                             style={"height": "62vh"},
                             children=[
-                                dl2.TileLayer(url=CARTO_LIGHT, attribution=ATTR),
+                                dl2.TileLayer(
+                                    id="ec-tile", **TILES.kwargs("light")
+                                ),
                                 dl2.EditControl(
                                     id="ec",
                                     position="topleft",
@@ -284,3 +287,7 @@ def drive_edit(e, c):
 @callback(Output("ec", "draw"), Input("ec-disable-rect", "checked"))
 def gate(disabled):
     return {"rectangle": not bool(disabled)}
+
+
+# Light/dark basemap, driven off the color-scheme store.
+register_theme_swap("ec-tile", TILES)

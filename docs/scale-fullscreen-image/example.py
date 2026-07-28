@@ -9,8 +9,12 @@ bounding box. Right column tweaks each piece live.
 import dash_leaflet2 as dl2
 import dash_mantine_components as dmc
 from dash import Input, Output, callback
+from dl2_tiles import NATGEO, register_theme_swap
 from dl2_locations import HONOLULU
 from dl2_shared import code_panel, header, info_panel
+
+# Basemap pair for this page — dl2_tiles owns the light/dark wiring.
+TILES = NATGEO
 
 # A ~17 x 20 km box centred on the city. Expressed in kilometres rather than
 # degrees so the overlay covers the same ground area at Honolulu's latitude as
@@ -67,7 +71,7 @@ component = dmc.Stack(
                             zoom=11,
                             style={"height": "60vh"},
                             children=[
-                                dl2.TileLayer(),
+                                dl2.TileLayer(id="sfi-tile", **TILES.kwargs("light")),
                                 dl2.ScaleControl(
                                     id="sfi-scale",
                                     position="bottomleft",
@@ -252,3 +256,7 @@ def image_readback(bounds, rotation, n):
         f"           [{b[1][0]:.4f}, {b[1][1]:.4f}]]\n"
         f"n_transforms: {n or 0}"
     )
+
+
+# Light/dark basemap, driven off the color-scheme store.
+register_theme_swap("sfi-tile", TILES)

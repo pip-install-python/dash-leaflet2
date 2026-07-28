@@ -184,7 +184,8 @@ clientside_callback(
 
 # Sync DashEmojiMart's theme to the app's color scheme (the header toggle: checked=light).
 clientside_callback(
-    "(checked) => (checked ? 'light' : 'dark')",
+    # Same fix as the tile swap: read the STORE, not the header ActionIcon.
+    "(scheme) => (scheme === 'dark' ? 'dark' : 'light')",
     Output("ei-emoji", "theme"),
-    Input("color-scheme-toggle", "checked"),
+    Input("color-scheme-storage", "data"),
 )

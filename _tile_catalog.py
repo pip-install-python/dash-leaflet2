@@ -255,6 +255,17 @@ _ESRI: list[dict[str, Any]] = [
         "max_zoom": 16,
     },
     {
+        # The counterpart to World_Light_Gray_Base above — same cartography,
+        # dark palette. Having both means dl2_tiles can offer an Esri pair that
+        # is a genuine light/dark restyle of ONE basemap rather than two
+        # unrelated maps swapped at the theme boundary.
+        "id": "esri_dark_gray",
+        "label": "Esri World Dark Gray",
+        "url": "https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}",
+        "attribution": _ATTR_ESRI,
+        "max_zoom": 16,
+    },
+    {
         "id": "esri_delorme",
         "label": "Esri DeLorme World Base",
         "url": "https://server.arcgisonline.com/ArcGIS/rest/services/Specialty/DeLorme_World_Base_Map/MapServer/tile/{z}/{y}/{x}",

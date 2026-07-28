@@ -33,20 +33,19 @@ import dash_leaflet2 as dl2
 import dash_mantine_components as dmc
 from dash import Input, Output, State, callback, clientside_callback, dcc, html
 from dash_iconify import DashIconify
+from dl2_tiles import ESRI_STREET, register_theme_swap
 from dl2_locations import MIAMI
 from dl2_shared import code_panel, header, info_panel
 
-CARTO_LIGHT = "https://basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png"
-CARTO_DARK = "https://basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png"
+# Basemap pair for this page. dl2_tiles owns the light/dark wiring so
+# every example themes the same way — see register_theme_swap below.
+TILES = ESRI_STREET
+TILE_URL = TILES.url("light")
 SAT = (
     "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/"
     "MapServer/tile/{z}/{y}/{x}"
 )
-ATTR = (
-    '&copy; <a href="https://openstreetmap.org/copyright">OpenStreetMap</a> '
-    '&copy; <a href="https://carto.com/attributions">CARTO</a> '
-    '· Satellite &copy; <a href="https://www.esri.com">Esri</a>'
-)
+ATTR = TILES.attribution()
 
 START = MIAMI.center
 START_ZOOM = 15
@@ -150,7 +149,7 @@ component = dmc.Stack(
                                             opacity=0.55,
                                         ),
                                         dl2.TileLayer(
-                                            id="fs-tile", url=CARTO_LIGHT, opacity=0.7
+                                            id="fs-tile", url=TILE_URL, opacity=0.7
                                         ),
                                         dl2.Marker(
                                             id="fs-aircraft",
@@ -552,8 +551,4 @@ def state_readout(vp):
     )
 
 
-clientside_callback(
-    "(checked) => (checked ? '%s' : '%s')" % (CARTO_LIGHT, CARTO_DARK),
-    Output("fs-tile", "url"),
-    Input("color-scheme-toggle", "checked"),
-)
+register_theme_swap("fs-tile", TILES)

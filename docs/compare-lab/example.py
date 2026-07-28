@@ -56,6 +56,7 @@ from dash import (
     no_update,
 )
 from dash_iconify import DashIconify
+from dl2_tiles import POSITRON, register_theme_swap
 from dl2_locations import SALT_LAKE_CITY
 from dash_mui_charts import TreeViewPro
 
@@ -66,8 +67,11 @@ from dash_mui_charts import TreeViewPro
 # CARTO basemap (no `{s}` subdomain so the URL is stable for the
 # clientside light/dark swap below — the swap just substitutes one URL
 # template for the other).
-CARTO_LIGHT = "https://basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png"
-CARTO_DARK = "https://basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png"
+# Basemap pair for this page. dl2_tiles owns the light/dark wiring so
+# every example themes the same way — see register_theme_swap below.
+TILES = POSITRON
+CARTO_LIGHT = TILES.url("light")
+CARTO_DARK = TILES.url("dark")
 CARTO_ATTR = (
     '&copy; <a href="https://openstreetmap.org/copyright">'
     "OpenStreetMap</a> &copy; "
@@ -432,14 +436,7 @@ component = dmc.Stack(
 
 # Basemap light/dark swap — the app's `color-scheme-toggle` is True when
 # the LIGHT theme is active (see app.py header()), so checked=True → light.
-clientside_callback(
-    """
-    (checked) => (checked ? '%s' : '%s')
-    """
-    % (CARTO_LIGHT, CARTO_DARK),
-    Output("cl-basemap", "url"),
-    Input("color-scheme-toggle", "checked"),
-)
+register_theme_swap("cl-basemap", TILES)
 
 
 # Source-layer slot. Critically NOT `prevent_initial_call` so it fires on

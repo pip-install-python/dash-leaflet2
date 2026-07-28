@@ -12,8 +12,12 @@ import random
 import dash_leaflet2 as dl2
 import dash_mantine_components as dmc
 from dash import Input, Output, callback, html
+from dl2_tiles import OCEAN, register_theme_swap
 from dl2_locations import SAN_DIEGO
 from dl2_shared import code_panel, header, info_panel
+
+# Basemap pair for this page — dl2_tiles owns the light/dark wiring.
+TILES = OCEAN
 
 CATEGORIES = ["fishing", "sailing", "ferry", "cargo"]
 COLORS = {
@@ -138,7 +142,7 @@ component = dmc.Stack(
                             zoom=10,
                             style={"height": "60vh"},
                             children=[
-                                dl2.TileLayer(),
+                                dl2.TileLayer(id="cl-tile", **TILES.kwargs("light")),
                                 dl2.GeoJSON(
                                     id="cl-geo",
                                     data=POINTS,
@@ -230,3 +234,7 @@ def show_click(feat):
     if not feat:
         return "(click a marker or cluster)"
     return json.dumps(feat, indent=2)
+
+
+# Light/dark basemap, driven off the color-scheme store.
+register_theme_swap("cl-tile", TILES)

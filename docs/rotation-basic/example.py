@@ -23,15 +23,15 @@ import dash_leaflet2 as dl2
 import dash_mantine_components as dmc
 from dash import Input, Output, State, callback, clientside_callback, ctx, dcc, html
 from dash_iconify import DashIconify
+from dl2_tiles import VOYAGER, register_theme_swap
 from dl2_locations import LONDON
 from dl2_shared import code_panel, header, info_panel
 
-CARTO_LIGHT = "https://basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png"
-CARTO_DARK = "https://basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png"
-ATTR = (
-    '&copy; <a href="https://openstreetmap.org/copyright">OpenStreetMap</a> '
-    '&copy; <a href="https://carto.com/attributions">CARTO</a>'
-)
+# Basemap pair for this page. dl2_tiles owns the light/dark wiring so
+# every example themes the same way — see register_theme_swap below.
+TILES = VOYAGER
+TILE_URL = TILES.url("light")
+ATTR = TILES.attribution()
 
 CODE = """dl2.Map(
     id="rb-map",
@@ -39,7 +39,7 @@ CODE = """dl2.Map(
     zoom=13,
     bearing=0,           # NEW: CSS-rotated map pane
     children=[
-        dl2.TileLayer(url=CARTO_LIGHT),
+        dl2.TileLayer(url=TILE_URL),
         # KeyboardControl: arrows rotate the map, Cmd/Ctrl+Arrow pans.
         dl2.KeyboardControl(id="rb-kbd", bearingStep=5, panStep=80),
         # rotateWithMap=False keeps the icon at a fixed SCREEN orientation
@@ -82,7 +82,7 @@ component = dmc.Stack(
                             style={"height": "62vh"},
                             children=[
                                 dl2.TileLayer(
-                                    id="rb-tile", url=CARTO_LIGHT, attribution=ATTR
+                                    id="rb-tile", url=TILE_URL, attribution=ATTR
                                 ),
                                 dl2.KeyboardControl(
                                     id="rb-kbd", bearingStep=5, panStep=80
@@ -342,8 +342,4 @@ def kbd_readout(n_rot, n_pan, last_key):
 
 
 # Theme sync — mirrors the other showcase pages.
-clientside_callback(
-    "(checked) => (checked ? '%s' : '%s')" % (CARTO_LIGHT, CARTO_DARK),
-    Output("rb-tile", "url"),
-    Input("color-scheme-toggle", "checked"),
-)
+register_theme_swap("rb-tile", TILES)

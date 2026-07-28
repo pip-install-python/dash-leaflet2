@@ -2,16 +2,21 @@
 ScaleControl, FullScreenControl, ImageOverlay — limited working example.
 
 A single map with the scale bar bottom-left, the fullscreen button top-left, and
-a sample raster (NASA Blue Marble) ImageOverlay draped over a Rockport, TX
+a sample raster ImageOverlay draped over a Honolulu, HI
 bounding box. Right column tweaks each piece live.
 """
 
 import dash_leaflet2 as dl2
 import dash_mantine_components as dmc
 from dash import Input, Output, callback
+from dl2_locations import HONOLULU
 from dl2_shared import code_panel, header, info_panel
 
-OVERLAY_BOUNDS = [[27.95, -97.15], [28.10, -96.95]]
+# A ~17 x 20 km box centred on the city. Expressed in kilometres rather than
+# degrees so the overlay covers the same ground area at Honolulu's latitude as
+# it would anywhere else — a fixed degree box would stretch east-west near the
+# equator and squash near the poles.
+OVERLAY_BOUNDS = HONOLULU.bounds(8.35, 9.83)
 # Public sample image used by Leaflet docs.
 SAMPLE_IMAGE = "https://leafletjs.com/examples/crs-simple/uqm_map_full.png"
 SAMPLE_IMAGE_2 = "https://maps.lib.utexas.edu/maps/historical/texas_southern_1895.jpg"
@@ -22,7 +27,7 @@ ANCHORS = [
     "bottom-left", "bottom", "bottom-right",
 ]
 
-CODE = """dl2.Map(center=[28.02, -97.05], zoom=12, children=[
+CODE = """dl2.Map(center=[21.3069, -157.8583], zoom=12, children=[
     dl2.TileLayer(),
     dl2.ScaleControl(position="bottomleft", metric=True, imperial=True),
     dl2.FullScreenControl(position="topleft"),
@@ -32,7 +37,7 @@ CODE = """dl2.Map(center=[28.02, -97.05], zoom=12, children=[
     dl2.ImageOverlay(
         id="img",
         url="https://leafletjs.com/examples/crs-simple/uqm_map_full.png",
-        bounds=[[27.95, -97.15], [28.10, -96.95]],
+        bounds=[[21.23, -157.95], [21.38, -157.76]],
         opacity=0.85,
         editable=True, selected=True, anchor="center", rotation=0,
     ),
@@ -58,7 +63,7 @@ component = dmc.Stack(
                     dmc.Paper(
                         dl2.Map(
                             id="sfi-map",
-                            center=[28.02, -97.05],
+                            center=HONOLULU.center,
                             zoom=11,
                             style={"height": "60vh"},
                             children=[

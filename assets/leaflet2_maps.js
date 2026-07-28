@@ -143,14 +143,46 @@
   }
 
   // ===========================================================================
+  // LOCATIONS
+  //
+  // Every demo used to open on the same patch of Rockport, TX, which made the
+  // documentation read as one map shown a dozen times. Each demo now opens
+  // somewhere different. This table is the JS half of the registry — the
+  // Python half is dl2_locations.py, and the two must agree for pages whose
+  // prose quotes coordinates (vector-layers, resize-observer, home).
+  //
+  // `at()` takes KILOMETRES, not degrees, and scales longitude by cos(lat).
+  // A degree of longitude is ~98 km in Houston and ~73 km in Vancouver, so
+  // reusing degree offsets across latitudes would visibly squash every shape.
+  // ===========================================================================
+  const CITY = {
+    vancouver: [49.2860, -123.1200],
+    portland: [45.5202, -122.6742],
+    newYork: [40.7484, -73.9857],
+    chicago: [41.8827, -87.6233],
+    dallas: [32.7791, -96.8005],
+    houston: [29.7589, -95.3677],
+    seattle: [47.6062, -122.3321],
+  };
+
+  /** A point `nKm` north and `eKm` east of `city`, as [lat, lon]. */
+  function at(city, nKm, eKm) {
+    const [lat, lon] = city;
+    return [
+      lat + nKm / 111.32,
+      lon + eKm / (111.32 * Math.cos((lat * Math.PI) / 180)),
+    ];
+  }
+
+  // ===========================================================================
   // DEMO REGISTRY
   // ===========================================================================
   const DEMOS = {
     // -- 1. Basics: prove a v2 map + tiles + marker + popup render ------------
     home(el, L) {
-      const map = new L.Map(el).setView([28.0206, -97.0544], 12);
+      const map = new L.Map(el).setView(CITY.vancouver, 12);
       osm(L).addTo(map);
-      new L.Marker([28.0206, -97.0544])
+      new L.Marker(CITY.vancouver)
         .addTo(map)
         .bindPopup("<b>Leaflet 2.0.0-alpha.1</b><br>running inside Dash 4 🛰️")
         .openPopup();
@@ -163,7 +195,7 @@
     // tilt and pointerType come for free. Live HUD is written straight to the
     // DOM (snappy); a throttled copy is pushed to Python to prove the round-trip.
     "pointer-events"(el, L) {
-      const map = new L.Map(el).setView([28.0206, -97.0544], 12);
+      const map = new L.Map(el).setView(CITY.portland, 12);
       osm(L).addTo(map);
 
       const hud = document.getElementById("pe-live");
@@ -207,7 +239,7 @@
     // -- 3. Vector layers: Polygon / Polyline / Circle / CircleMarker ---------
     // Clicking a shape round-trips its name to Python.
     "vector-layers"(el, L) {
-      const c = [28.0206, -97.0544];
+      const c = CITY.newYork;
       const map = new L.Map(el).setView(c, 12);
       osm(L).addTo(map);
 
@@ -217,10 +249,10 @@
       tag(
         new L.Polygon(
           [
-            [28.05, -97.10],
-            [28.06, -97.02],
-            [28.01, -97.00],
-            [28.00, -97.08],
+            at(c, 3.3, -4.9),
+            at(c, 4.5, 2.9),
+            at(c, -1.1, 4.9),
+            at(c, -2.2, -2.9),
           ],
           { color: "#2f9e44", weight: 2, fillOpacity: 0.25 }
         )
@@ -232,9 +264,9 @@
       tag(
         new L.Polyline(
           [
-            [28.03, -97.09],
-            [28.025, -97.05],
-            [28.04, -97.02],
+            at(c, 1.1, -3.9),
+            at(c, 0.6, -0.4),
+            at(c, 2.2, 2.9),
           ],
           { color: "#1971c2", weight: 4 }
         )
@@ -244,14 +276,14 @@
       );
 
       tag(
-        new L.Circle([28.0, -97.04], { radius: 1500, color: "#e8590c", fillOpacity: 0.2 })
+        new L.Circle(at(c, -2.2, 1.0), { radius: 1500, color: "#e8590c", fillOpacity: 0.2 })
           .bindTooltip("Circle (1.5km geo radius)")
           .addTo(map),
         "circle"
       );
 
       tag(
-        new L.CircleMarker([28.015, -97.07], { radius: 10, color: "#9c36b5", fillOpacity: 0.6 })
+        new L.CircleMarker(at(c, -0.6, -2.0), { radius: 10, color: "#9c36b5", fillOpacity: 0.6 })
           .bindTooltip("CircleMarker (fixed px)")
           .addTo(map),
         "circleMarker"
@@ -264,7 +296,7 @@
     // (one <canvas>, not N SVG nodes). Drop ~8000 points and time it. This is
     // the substrate for live vessel positions / sensor swarms.
     "canvas-overlay"(el, L) {
-      const center = [28.0206, -97.0544];
+      const center = CITY.chicago;
       // Hold an explicit Canvas renderer so we have a handle to repaint it.
       const renderer = new L.Canvas();
       const map = new L.Map(el, { renderer }).setView(center, 11);
@@ -308,7 +340,7 @@
     // base — that paints geo-anchored "sensor glow" blobs which re-project on
     // every pan/zoom settle.
     subclassing(el, L) {
-      const center = [28.0206, -97.0544];
+      const center = CITY.dallas;
       const map = new L.Map(el).setView(center, 12);
       osm(L).addTo(map);
 
@@ -393,9 +425,9 @@
     // no manual invalidateSize() inside collapsible/tab layouts. The "Toggle
     // side panel" button just shrinks the wrapper via CSS; the map fixes itself.
     "resize-observer"(el, L) {
-      const map = new L.Map(el).setView([28.0206, -97.0544], 12);
+      const map = new L.Map(el).setView(CITY.houston, 12);
       osm(L).addTo(map);
-      new L.Marker([28.0206, -97.0544]).addTo(map);
+      new L.Marker(CITY.houston).addTo(map);
       return map;
     },
 
@@ -462,7 +494,7 @@
 
     // -- 9. Events -> Python: full round-trip ---------------------------------
     "events-python"(el, L) {
-      const map = new L.Map(el).setView([28.0206, -97.0544], 12);
+      const map = new L.Map(el).setView(CITY.seattle, 12);
       osm(L).addTo(map);
 
       const view = () => {

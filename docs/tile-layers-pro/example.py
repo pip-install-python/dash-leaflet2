@@ -45,6 +45,7 @@ from dash import (
 )
 from dash_iconify import DashIconify
 from dash_mui_charts import TreeViewPro
+from dl2_locations import NASHVILLE
 from dl2_shared import code_panel, header, info_panel
 from _tile_catalog import (
     DEFAULT_BASE_SLUG,
@@ -332,7 +333,7 @@ component = dmc.Stack(
                             dmc.Paper(
                                 dl2.Map(
                                     id="tlp-map",
-                                    center=[28.05, -97.05],
+                                    center=NASHVILLE.center,
                                     zoom=5,
                                     style={"height": "70vh"},
                                     attributionControl=True,  # let layer attributions surface in the corner

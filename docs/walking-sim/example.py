@@ -63,6 +63,7 @@ import dash_leaflet2 as dl2
 import dash_mantine_components as dmc
 from dash import Input, Output, State, callback, clientside_callback, dcc, html
 from dash_iconify import DashIconify
+from dl2_locations import SAVANNAH
 from dl2_shared import info_panel
 
 # Esri ArcGIS tile services. Note the {z}/{y}/{x} order (ArcGIS convention) —
@@ -103,7 +104,7 @@ ESRI_ATTR_NATGEO = (
     "UNEP-WCMC, USGS, NASA, ESA, METI, NRCAN, GEBCO, NOAA, iPC"
 )
 
-START = [28.022, -97.053]
+START = SAVANNAH.center
 START_ZOOM = 18
 
 # Physics — kept in deg/sec; the integrator multiplies by dt. MAX_SPEED tuned

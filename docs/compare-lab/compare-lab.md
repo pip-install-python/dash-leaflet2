@@ -40,7 +40,7 @@ any particular imagery source.
    Dark Matter with the app shell's colour-scheme toggle, driven by a clientside
    callback so the change is instant.
 3. **Multi-zoom overlays.** "Seed 3 fake gens" drops tiles at matching z14 / z15
-   / z16 coordinates near Rockport, TX, so cross-zoom relationships line up and
+   / z16 coordinates over Salt Lake City, so cross-zoom relationships line up and
    the association-by-zoom logic has something real to chew on.
 4. **Every tree interaction wired** — selection toggles overlay visibility,
    sliders drive opacity, the kebab menu's Remove deletes both the tree leaf and

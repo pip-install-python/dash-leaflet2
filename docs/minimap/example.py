@@ -13,6 +13,7 @@ import dash_leaflet2 as dl2
 import dash_mantine_components as dmc
 from dash import Input, Output, State, callback, clientside_callback
 from dash_iconify import DashIconify
+from dl2_locations import PITTSBURGH
 from dl2_shared import code_panel, header, info_panel
 
 CARTO_LIGHT = "https://basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png"
@@ -61,7 +62,7 @@ component = dmc.Stack(
                     dmc.Paper(
                         dl2.Map(
                             id="mini-map",
-                            center=[28.02, -97.05],
+                            center=PITTSBURGH.center,
                             zoom=12,
                             style={"height": "62vh"},
                             children=[
@@ -69,7 +70,7 @@ component = dmc.Stack(
                                     id="mini-tile", url=CARTO_LIGHT, attribution=ATTR
                                 ),
                                 dl2.Marker(
-                                    position=[28.02, -97.05],
+                                    position=PITTSBURGH.center,
                                     iconify="mdi:lighthouse-on",
                                     iconColor="#e8590c",
                                     iconSize=32,

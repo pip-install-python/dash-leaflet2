@@ -28,7 +28,7 @@ What this page demonstrates:
      (light) and CARTO Dark Matter (dark) with the app-shell
      `color-scheme-toggle`, driven by a clientside callback so it is instant.
   3. **Multi-zoom overlays.** "Seed 3 fake gens" drops three coloured SVG tiles
-     at matching z14 / z15 / z16 coordinates near Rockport, TX, so cross-zoom
+     at matching z14 / z15 / z16 coordinates over Salt Lake City, so cross-zoom
      relationships line up and the association-by-zoom math has real input.
   4. **All TreeViewPro interactions wired** — selection toggles overlay
      visibility, sliders drive opacity, the kebab "Remove" deletes the leaf and
@@ -56,6 +56,7 @@ from dash import (
     no_update,
 )
 from dash_iconify import DashIconify
+from dl2_locations import SALT_LAKE_CITY
 from dash_mui_charts import TreeViewPro
 
 # ---------------------------------------------------------------------
@@ -84,11 +85,11 @@ ESRI_ATTR = (
 
 MUI_PRO_LICENSE_KEY = os.environ.get("MUI_PRO_API_KEY", "")
 
-# The three synthetic generation coords — chosen so the cross-zoom
-# nesting math is genuine (z15 is the NW child of z14, z16 is the NW
-# child of z15) and so the area aligns with the rest of the project's
-# Rockport-TX demos.
-SYNTH_KEYS = ["14/3776/6858", "15/7552/13716", "16/15104/27432"]
+# The three synthetic generation coords. `nested_tile_keys` walks down from
+# the real z14 tile containing the city, and the NW child of (x, y) is always
+# (2x, 2y) — so the cross-zoom nesting the association math is testing is
+# genuine, and the tiles actually sit over the city the map opens on.
+SYNTH_KEYS = SALT_LAKE_CITY.nested_tile_keys(14, levels=3)
 SYNTH_COLOR = ["#e64980", "#7950f2", "#15aabf"]  # one color per zoom
 
 
@@ -364,7 +365,7 @@ component = dmc.Stack(
                 dmc.Paper(
                     dl2.Map(
                         id="cl-map",
-                        center=[28.02, -97.05],
+                        center=SALT_LAKE_CITY.center,
                         zoom=11,
                         style={"height": "100%", "width": "100%"},
                         children=[

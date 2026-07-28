@@ -4,11 +4,11 @@ import dash_mantine_components as dmc
 from dash import Input, Output, callback, dcc
 from dl2_shared import code_panel, header, info_panel, map_div
 
-JS = """new leaflet.Polygon([[28.05,-97.10],[28.06,-97.02],[28.01,-97.00]],
+JS = """new leaflet.Polygon([[40.7780,-74.0438],[40.7888,-73.9513],[40.7385,-73.9276]],
     {color: "#2f9e44", fillOpacity: 0.25}).addTo(map);
-new leaflet.Polyline([[28.03,-97.09],[28.04,-97.02]], {weight: 4}).addTo(map);
-new leaflet.Circle([28.0,-97.04], {radius: 1500}).addTo(map);       // metres
-new leaflet.CircleMarker([28.015,-97.07], {radius: 10}).addTo(map); // pixels
+new leaflet.Polyline([[40.7583,-74.0319],[40.7682,-73.9513]], {weight: 4}).addTo(map);
+new leaflet.Circle([40.7286,-73.9738], {radius: 1500}).addTo(map);       // metres
+new leaflet.CircleMarker([40.7430,-74.0094], {radius: 10}).addTo(map); // pixels
 
 layer.on("click", () => set_props("vec-store", {data: {shape: "polygon"}}));"""
 

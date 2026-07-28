@@ -18,6 +18,7 @@ import dash_mantine_components as dmc
 from dash import Input, Output, State, callback, clientside_callback, ctx, dcc, html
 from dash_emoji_mart import DashEmojiMart
 from dash_iconify import DashIconify
+from dl2_locations import DENVER
 from dl2_shared import code_panel, header, info_panel
 
 # CARTO Positron (light) + Dark Matter — the standard light/dark pair the rest of the
@@ -139,7 +140,7 @@ component = dmc.Stack(
                         dmc.Paper(
                             dl2.Map(
                                 id="eb-map",
-                                center=[28.02, -97.05],
+                                center=DENVER.center,
                                 zoom=12,
                                 style={
                                     "height": "100%"

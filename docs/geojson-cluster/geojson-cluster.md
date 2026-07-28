@@ -33,7 +33,7 @@ any Leaflet 2 layer without depending on a global.
 
 ### Live demo
 
-200 random "vessel positions" around Rockport, TX, colored by category. Pan
+200 random "vessel positions" around San Diego, CA, colored by category. Pan
 out and they collapse into glass bubbles; pan in and they expand. Click a
 cluster and you fly to its children's bounding box.
 

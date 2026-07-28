@@ -9,6 +9,7 @@ activeOverlays back to Python; Python callbacks also push those props to flip th
 import dash_leaflet2 as dl2
 import dash_mantine_components as dmc
 from dash import Input, Output, State, callback
+from dl2_locations import MINNEAPOLIS
 from dl2_shared import code_panel, header, info_panel
 
 OSM = "https://tile.openstreetmap.org/{z}/{x}/{y}.png"
@@ -25,17 +26,18 @@ SENSORS = {
         {
             "type": "Feature",
             "properties": {"name": "buoy 1"},
-            "geometry": {"type": "Point", "coordinates": [-97.04, 28.04]},
+            # GeoJSON is [lon, lat] — the opposite order to Leaflet.
+            "geometry": {"type": "Point", "coordinates": MINNEAPOLIS.at_lonlat(2.2, 1.0)},
         },
         {
             "type": "Feature",
             "properties": {"name": "buoy 2"},
-            "geometry": {"type": "Point", "coordinates": [-97.08, 28.01]},
+            "geometry": {"type": "Point", "coordinates": MINNEAPOLIS.at_lonlat(-1.1, -2.9)},
         },
         {
             "type": "Feature",
             "properties": {"name": "buoy 3"},
-            "geometry": {"type": "Point", "coordinates": [-97.06, 28.06]},
+            "geometry": {"type": "Point", "coordinates": MINNEAPOLIS.at_lonlat(4.5, -1.0)},
         },
     ],
 }
@@ -77,7 +79,7 @@ component = dmc.Stack(
                     dmc.Paper(
                         dl2.Map(
                             id="lc-map",
-                            center=[28.02, -97.05],
+                            center=MINNEAPOLIS.center,
                             zoom=12,
                             style={"height": "60vh"},
                             children=[
@@ -103,12 +105,13 @@ component = dmc.Stack(
                                         ),
                                         dl2.Overlay(
                                             dl2.Polygon(
-                                                positions=[
-                                                    [28.05, -97.10],
-                                                    [28.06, -97.02],
-                                                    [28.01, -97.00],
-                                                    [28.00, -97.08],
-                                                ],
+                                                # (north_km, east_km) offsets
+                                                positions=MINNEAPOLIS.ring([
+                                                    (3.3, -4.9),
+                                                    (4.5, 2.9),
+                                                    (-1.1, 4.9),
+                                                    (-2.2, -2.9),
+                                                ]),
                                                 color="#2f9e44",
                                                 fillOpacity=0.25,
                                                 children=dl2.Tooltip(
@@ -120,7 +123,7 @@ component = dmc.Stack(
                                         ),
                                         dl2.Overlay(
                                             dl2.Circle(
-                                                center=[28.0, -97.04],
+                                                center=MINNEAPOLIS.at(-2.2, 1.0),
                                                 radius=1500,
                                                 color="#e8590c",
                                                 fillOpacity=0.2,

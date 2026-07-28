@@ -8,7 +8,7 @@ JS = """// Leaflet 2 observes its container with a ResizeObserver (trackResize,
 // default ON). When the container changes size — opening a side panel, a tab,
 // an accordion — the map re-renders itself. No more:
 //     map.invalidateSize();   // the classic Leaflet 1 dance
-const map = new leaflet.Map(el).setView([28.02, -97.05], 12);"""
+const map = new leaflet.Map(el).setView([29.7589, -95.3677], 12);"""
 
 component = dmc.Stack(
     [

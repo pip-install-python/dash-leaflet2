@@ -4,13 +4,14 @@ TileLayer pro props — limited working example.
 Demonstrates the new dl2.TileLayer surface (minZoom, bounds, errorTileUrl, zIndex,
 subdomains, detectRetina, tms). Two stacked tile layers are mounted into one map:
 a base OSM layer with subdomains + detectRetina, and an overlay layer constrained
-to a bounding box around Rockport TX with a transparent errorTileUrl. Toggling the
+to a bounding box around Charleston SC with a transparent errorTileUrl. Toggling the
 zIndex slider reorders them; toggling 'detectRetina' swaps the hi-DPI tile request.
 """
 
 import dash_leaflet2 as dl2
 import dash_mantine_components as dmc
 from dash import Input, Output, callback, html
+from dl2_locations import CHARLESTON
 from dl2_shared import code_panel, header, info_panel
 
 # 1x1 transparent PNG — replaces 404 tiles outside the bounds.
@@ -20,10 +21,11 @@ BLANK_TILE = (
     "wQAAAABJRU5ErkJggg=="
 )
 
-# Rough box around Rockport, TX.
-RCK_BOUNDS = [[27.93, -97.20], [28.12, -96.95]]
+# A ~21 x 25 km box centred on the peninsula. In kilometres, not degrees, so
+# the clipped area is the same size here as in any other demo.
+CLIP_BOUNDS = CHARLESTON.bounds(10.6, 12.3)
 
-CODE = """dl2.Map(center=[28.02, -97.05], zoom=10, children=[
+CODE = """dl2.Map(center=[32.7833, -79.9333], zoom=10, children=[
     dl2.TileLayer(
         id="base-tile",
         # Subdomains substituted into {s} — distribute requests across a, b, c.
@@ -51,7 +53,7 @@ component = dmc.Stack(
         header(
             "TileLayer pro props",
             "Two stacked tile layers — an OSM base (subdomains a/b/c, detectRetina) "
-            "and a CARTO labels-only overlay clipped to Rockport, TX via bounds. "
+            "and a CARTO labels-only overlay clipped to Charleston, SC via bounds. "
             "Move the overlay opacity slider to fade the labels in/out. "
             "Flip the zIndex segmented control to put the labels below or above the "
             "OSM base. Outside the bounds box, only the OSM base shows.",
@@ -63,7 +65,7 @@ component = dmc.Stack(
                     dmc.Paper(
                         dl2.Map(
                             id="tlpro-map",
-                            center=[28.02, -97.05],
+                            center=CHARLESTON.center,
                             zoom=10,
                             minZoom=2,
                             maxZoom=18,
@@ -82,7 +84,7 @@ component = dmc.Stack(
                                     id="tlpro-overlay",
                                     url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager_only_labels/{z}/{x}/{y}.png",
                                     subdomains=["a", "b", "c", "d"],
-                                    bounds=RCK_BOUNDS,
+                                    bounds=CLIP_BOUNDS,
                                     errorTileUrl=BLANK_TILE,
                                     opacity=0.85,
                                     zIndex=10,
@@ -144,7 +146,7 @@ component = dmc.Stack(
                             info_panel(
                                 "Overlay bounds",
                                 dmc.Code(
-                                    f"{RCK_BOUNDS}",
+                                    f"{CLIP_BOUNDS}",
                                     block=False,
                                 ),
                             ),

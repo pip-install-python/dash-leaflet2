@@ -1,7 +1,7 @@
 """
 GeoJSON clustering — limited working example.
 
-200 random vessel-position points around Rockport, TX. The hideout dict ships a
+200 random vessel-position points around San Diego, CA. The hideout dict ships a
 {category: color} map into the JS pointToLayer so circles paint without a
 Python round-trip. Slider on the right tunes superClusterOptions.radius live.
 """
@@ -12,6 +12,7 @@ import random
 import dash_leaflet2 as dl2
 import dash_mantine_components as dmc
 from dash import Input, Output, callback, html
+from dl2_locations import SAN_DIEGO
 from dl2_shared import code_panel, header, info_panel
 
 CATEGORIES = ["fishing", "sailing", "ferry", "cargo"]
@@ -27,8 +28,13 @@ def make_points(n=200, seed=42):
     rng = random.Random(seed)
     features = []
     for i in range(n):
-        lat = 28.02 + (rng.random() - 0.5) * 0.20
-        lng = -97.05 + (rng.random() - 0.5) * 0.25
+        # Scatter in kilometres, not degrees: a fixed degree jitter would
+        # produce an east-west-stretched blob at low latitudes and a
+        # squashed one up north. +/- 11 km N-S by +/- 13 km E-W.
+        lat, lng = SAN_DIEGO.at(
+            north_km=(rng.random() - 0.5) * 22.2,
+            east_km=(rng.random() - 0.5) * 25.0,
+        )
         category = rng.choice(CATEGORIES)
         features.append(
             {
@@ -116,7 +122,7 @@ component = dmc.Stack(
     [
         header(
             "GeoJSON clustering",
-            "200 vessel points around Rockport, TX. The hideout dict ships a "
+            "200 vessel points around San Diego, CA. The hideout dict ships a "
             "color map into the JS — clusters take the dominant category's "
             "color. Pan/zoom and the SuperCluster index re-renders for the "
             "new viewport.",
@@ -128,7 +134,7 @@ component = dmc.Stack(
                     dmc.Paper(
                         dl2.Map(
                             id="cl-map",
-                            center=[28.02, -97.05],
+                            center=SAN_DIEGO.center,
                             zoom=10,
                             style={"height": "60vh"},
                             children=[

@@ -34,6 +34,7 @@ from dash import (
     no_update,
 )
 from dash_iconify import DashIconify
+from dl2_locations import MONTREAL
 from dl2_shared import code_panel, header, info_panel
 
 CARTO_LIGHT = "https://basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png"
@@ -209,7 +210,7 @@ component = dmc.Stack(
                             dmc.Paper(
                                 dl2.Map(
                                     id="ecm-map",
-                                    center=[28.02, -97.05],
+                                    center=MONTREAL.center,
                                     zoom=12,
                                     style={"height": "62vh"},
                                     children=[

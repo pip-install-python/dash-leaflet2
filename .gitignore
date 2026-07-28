@@ -1,3 +1,7 @@
+# NOTE: gitignore has no inline comments. A trailing "# ..." becomes part of
+# the pattern, so the rule silently never matches. Every comment here is on its
+# own line for that reason.
+
 # Python
 __pycache__/
 *.py[cod]
@@ -21,14 +25,18 @@ dash_leaflet2/metadata.json
 .env.*
 !.env.example
 
-# Runtime state written by the app
-page_visibility.json          # control-board overrides (per-deployment)
-satellite_traffic.jsonl       # 2plot.ai analytics ledger
-.satellite_traffic.jsonl.*    # its per-interval claim files
+# Runtime state written by the app.
+# page_visibility.json — control-board overrides, per-deployment
+# satellite_traffic.jsonl — the 2plot.ai analytics ledger, plus its
+#   per-interval O_EXCL claim files. Committing it would publish visitor
+#   IP/user-agent hashes.
+page_visibility.json
+satellite_traffic.jsonl
+.satellite_traffic.jsonl.*
 visitor_analytics.json
 
-# Test harness scratch
-.compat/                      # scripts/compat_matrix.py venvs + raw results
+# Test harness scratch — scripts/compat_matrix.py venvs and raw results
+.compat/
 
 # OS / editor
 .DS_Store

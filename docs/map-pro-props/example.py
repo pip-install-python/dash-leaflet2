@@ -1,7 +1,7 @@
 """
 Map pro props — limited working example.
 
-A Rockport, TX harbor map. Sliders clamp the user's allowed zoom range, the
+A New Orleans riverfront map. Sliders clamp the user's allowed zoom range, the
 SegmentedControl swaps maxBounds on/off (pan past the edges and you'll bounce
 back), and six switches at the bottom toggle the interaction handlers
 (dragging, scrollWheelZoom, doubleClickZoom, boxZoom, pinchZoom, keyboard)
@@ -11,16 +11,19 @@ at runtime — exactly the surface dash-leaflet 1.x exposed.
 import dash_leaflet2 as dl2
 import dash_mantine_components as dmc
 from dash import Input, Output, callback
+from dl2_locations import NEW_ORLEANS
 from dl2_shared import code_panel, header, info_panel
 
-HARBOR_BOUNDS = [[27.95, -97.15], [28.10, -96.95]]
+# A ~17 x 20 km box centred on the city — the same real-world size in every
+# demo that clamps or drapes something, wherever that demo is set.
+HARBOR_BOUNDS = NEW_ORLEANS.bounds(8.35, 9.83)
 
 CODE = """dl2.Map(
-    center=[28.02, -97.05],
+    center=[29.9511, -90.0715],
     zoom=12,
     minZoom=10,                                # can't zoom out past 10
     maxZoom=18,                                # can't zoom in past 18
-    maxBounds=[[27.95, -97.15], [28.10, -96.95]],   # pan-clamped to the harbor
+    maxBounds=[[29.876, -90.174], [30.026, -89.969]],  # pan-clamped to the riverfront
     zoomControl=True,                          # +/- buttons (constructor-only)
     keyboard=True,                             # arrow keys (mutable)
     dragging=True,                             # pointer drag-pan (mutable)
@@ -46,7 +49,7 @@ component = dmc.Stack(
                     dmc.Paper(
                         dl2.Map(
                             id="mpp-map",
-                            center=[28.02, -97.05],
+                            center=NEW_ORLEANS.center,
                             zoom=12,
                             minZoom=10,
                             maxZoom=18,

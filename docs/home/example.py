@@ -17,7 +17,7 @@ app.layout = html.Div(className="leaflet2-map", **{"data-demo": "home"},
                       style={"height": "60vh"})
 
 # assets/leaflet2_maps.js mounts the map:
-#   const map = new leaflet.Map(el).setView([28.02, -97.05], 12);
+#   const map = new leaflet.Map(el).setView([49.286, -123.12], 12);
 #   new leaflet.TileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(map);
 """
 

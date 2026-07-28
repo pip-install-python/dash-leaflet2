@@ -14,9 +14,10 @@ Run:
 import json
 
 import dash_leaflet2 as dl2
+from dl2_locations import WASHINGTON_DC
 from dash import Dash, Input, Output, callback, html
 
-CENTER = [28.0206, -97.0544]
+CENTER = WASHINGTON_DC.center
 
 GEOJSON = {
     "type": "FeatureCollection",
@@ -24,14 +25,19 @@ GEOJSON = {
         {
             "type": "Feature",
             "properties": {"name": "Sector A"},
-            "geometry": {"type": "Point", "coordinates": [-97.02, 28.04]},
+            # GeoJSON is [lon, lat] — the opposite order to Leaflet.
+            "geometry": {"type": "Point", "coordinates": WASHINGTON_DC.at_lonlat(2.2, 2.9)},
         },
         {
             "type": "Feature",
             "properties": {"name": "Survey line"},
             "geometry": {
                 "type": "LineString",
-                "coordinates": [[-97.10, 28.05], [-97.04, 28.03], [-97.00, 28.06]],
+                "coordinates": [
+                    WASHINGTON_DC.at_lonlat(3.3, -4.9),
+                    WASHINGTON_DC.at_lonlat(1.1, 1.0),
+                    WASHINGTON_DC.at_lonlat(4.5, 4.9),
+                ],
             },
         },
     ],
@@ -79,10 +85,12 @@ app.layout = html.Div(
                         dl2.Overlay(
                             dl2.Polygon(
                                 positions=[
-                                    [28.05, -97.10],
-                                    [28.06, -97.02],
-                                    [28.01, -97.00],
-                                    [28.00, -97.08],
+                                    *WASHINGTON_DC.ring([
+                                        (3.3, -4.9),
+                                        (4.5, 2.9),
+                                        (-1.1, 4.9),
+                                        (-2.2, -2.9),
+                                    ])
                                 ],
                                 color="#2f9e44",
                                 fillOpacity=0.25,
@@ -93,7 +101,7 @@ app.layout = html.Div(
                         ),
                         dl2.Overlay(
                             dl2.Circle(
-                                center=[28.0, -97.04],
+                                center=WASHINGTON_DC.at(-2.2, 1.0),
                                 radius=1500,
                                 color="#e8590c",
                                 fillOpacity=0.2,
@@ -123,7 +131,7 @@ app.layout = html.Div(
                     ],
                 ),
                 dl2.Marker(
-                    position=[28.06, -97.02],
+                    position=WASHINGTON_DC.at(4.5, 2.9),
                     emoji="🛥️",
                     iconSize=34,
                     children=dl2.Tooltip(children="emoji marker"),
@@ -144,7 +152,7 @@ app.layout = html.Div(
                 dl2.TextMarker(
                     id="caption",
                     text="Harbor District",
-                    position=[28.05, -96.98],
+                    position=WASHINGTON_DC.at(3.3, 6.9),
                     color="#10243a",
                     backgroundColor="rgba(255,255,255,0.55)",
                     fontSize=28,

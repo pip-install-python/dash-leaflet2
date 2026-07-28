@@ -15,14 +15,15 @@ import json
 import dash_leaflet2 as dl2
 import dash_mantine_components as dmc
 from dash import Input, Output, callback, html
+from dl2_locations import PHILADELPHIA
 from dl2_shared import code_panel, header, info_panel
 
 CODE_LG = """dl2.Map(children=[
     dl2.TileLayer(),
     dl2.LayerGroup(children=[
-        dl2.Marker(position=[28.02, -97.05]),
-        dl2.Marker(position=[28.04, -97.02]),
-        dl2.Marker(position=[28.00, -97.08]),
+        dl2.Marker(position=PHILADELPHIA.center),
+        dl2.Marker(position=PHILADELPHIA.at(2.2, 2.9)),
+        dl2.Marker(position=PHILADELPHIA.at(-2.2, -2.9)),
     ]) if show_markers else None,
 ])"""
 
@@ -57,7 +58,7 @@ component = dmc.Stack(
                     dmc.Paper(
                         dl2.Map(
                             id="lg-map",
-                            center=[28.02, -97.05],
+                            center=PHILADELPHIA.center,
                             zoom=12,
                             style={"height": "45vh"},
                             children=[
@@ -95,7 +96,7 @@ component = dmc.Stack(
                     dmc.Paper(
                         dl2.Map(
                             id="fg-map",
-                            center=[28.02, -97.05],
+                            center=PHILADELPHIA.center,
                             zoom=12,
                             style={"height": "45vh"},
                             children=[
@@ -104,31 +105,34 @@ component = dmc.Stack(
                                     id="fg",
                                     children=[
                                         dl2.Polygon(
-                                            positions=[
-                                                [28.04, -97.10],
-                                                [28.06, -97.04],
-                                                [28.04, -96.99],
-                                                [28.02, -97.05],
-                                            ],
+                                            # (north_km, east_km) from the
+                                            # city centre — the shape keeps its
+                                            # real-world size at any latitude.
+                                            positions=PHILADELPHIA.ring([
+                                                (2.2, -4.9),
+                                                (4.5, 1.0),
+                                                (2.2, 5.9),
+                                                (0.0, 0.0),
+                                            ]),
                                             color="#228be6",
                                             fillOpacity=0.35,
                                         ),
                                         dl2.Polyline(
-                                            positions=[
-                                                [27.99, -97.10],
-                                                [27.99, -97.04],
-                                                [27.99, -96.98],
-                                            ],
+                                            positions=PHILADELPHIA.ring([
+                                                (-3.3, -4.9),
+                                                (-3.3, 1.0),
+                                                (-3.3, 6.9),
+                                            ]),
                                             color="#fa5252",
                                             weight=3,
                                         ),
                                         dl2.Circle(
-                                            center=[28.03, -97.02],
+                                            center=PHILADELPHIA.at(1.1, 2.9),
                                             radius=600,
                                             color="#40c057",
                                             fillOpacity=0.25,
                                         ),
-                                        dl2.Marker(position=[28.01, -97.06]),
+                                        dl2.Marker(position=PHILADELPHIA.at(-1.1, -1.0)),
                                     ],
                                 ),
                             ],
@@ -176,9 +180,9 @@ def render_group(show):
         return []
     return dl2.LayerGroup(
         children=[
-            dl2.Marker(position=[28.02, -97.05]),
-            dl2.Marker(position=[28.04, -97.02]),
-            dl2.Marker(position=[28.00, -97.08]),
+            dl2.Marker(position=PHILADELPHIA.center),
+            dl2.Marker(position=PHILADELPHIA.at(2.2, 2.9)),
+            dl2.Marker(position=PHILADELPHIA.at(-2.2, -2.9)),
         ]
     )
 

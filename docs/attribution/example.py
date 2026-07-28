@@ -27,6 +27,7 @@ from dash import (
     no_update,
 )
 from dash_iconify import DashIconify
+from dl2_locations import BOSTON
 from dl2_shared import code_panel, header, info_panel
 
 CARTO_LIGHT = "https://basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png"
@@ -90,7 +91,7 @@ component = dmc.Stack(
                     dmc.Paper(
                         dl2.Map(
                             id="attr-map",
-                            center=[28.0206, -97.0544],
+                            center=BOSTON.center,
                             zoom=10,
                             attributionControl=False,
                             style={"height": "60vh"},
@@ -99,7 +100,7 @@ component = dmc.Stack(
                                     id="attr-tile", url=CARTO_LIGHT, attribution=ATTR
                                 ),
                                 dl2.Marker(
-                                    position=[28.0206, -97.0544],
+                                    position=BOSTON.center,
                                     iconify="mdi:lighthouse-on",
                                     iconColor="#e8590c",
                                     iconSize=32,

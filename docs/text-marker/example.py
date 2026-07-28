@@ -12,13 +12,14 @@ same `geojson` channel as every drawn shape, as a `kind:"text"` Point.
 import dash_leaflet2 as dl2
 import dash_mantine_components as dmc
 from dash import Input, Output, callback, clientside_callback
+from dl2_locations import SAN_FRANCISCO
 from dl2_shared import code_panel, header, info_panel
 
 CARTO_LIGHT = "https://basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png"
 CARTO_DARK = "https://basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png"
 ATTR = "&copy; OpenStreetMap &copy; CARTO"
 
-CENTER = [37.808, -122.409]  # Fisherman's Wharf, San Francisco
+CENTER = SAN_FRANCISCO.at(1.4, -1.3)  # Fisherman's Wharf
 
 ANCHORS = [
     "top-left", "top", "top-right",

@@ -14,6 +14,7 @@ import dash
 import dash_leaflet2 as dl2
 import dash_mantine_components as dmc
 from dash import Input, Output, State, callback, ctx
+from dl2_locations import TORONTO
 from dl2_shared import code_panel, header, info_panel
 
 CARTO_LIGHT = "https://basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png"
@@ -63,7 +64,7 @@ component = dmc.Stack(
                     dmc.Paper(
                         dl2.Map(
                             id="ec-map",
-                            center=[28.02, -97.05],
+                            center=TORONTO.center,
                             zoom=12,
                             style={"height": "62vh"},
                             children=[

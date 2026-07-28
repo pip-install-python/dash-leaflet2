@@ -23,6 +23,7 @@ import dash_leaflet2 as dl2
 import dash_mantine_components as dmc
 from dash import Input, Output, State, callback, clientside_callback, ctx, dcc, html
 from dash_iconify import DashIconify
+from dl2_locations import LONDON
 from dl2_shared import code_panel, header, info_panel
 
 CARTO_LIGHT = "https://basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png"
@@ -75,7 +76,7 @@ component = dmc.Stack(
                     dmc.Paper(
                         dl2.Map(
                             id="rb-map",
-                            center=[51.505, -0.09],
+                            center=LONDON.center,
                             zoom=13,
                             bearing=0,
                             style={"height": "62vh"},

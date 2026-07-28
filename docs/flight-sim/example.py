@@ -33,6 +33,7 @@ import dash_leaflet2 as dl2
 import dash_mantine_components as dmc
 from dash import Input, Output, State, callback, clientside_callback, dcc, html
 from dash_iconify import DashIconify
+from dl2_locations import MIAMI
 from dl2_shared import code_panel, header, info_panel
 
 CARTO_LIGHT = "https://basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png"
@@ -47,7 +48,7 @@ ATTR = (
     '· Satellite &copy; <a href="https://www.esri.com">Esri</a>'
 )
 
-START = [28.02, -97.05]
+START = MIAMI.center
 START_ZOOM = 15
 
 # Physics — deg/s for the integrator (the rAF tick multiplies by dt in seconds).

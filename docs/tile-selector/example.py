@@ -21,6 +21,7 @@ import dash_mantine_components as dmc
 from dash import Input, Output, callback, html, no_update
 from dash_iconify import DashIconify
 
+from dl2_locations import AUSTIN
 from dl2_shared import code_panel, info_panel
 
 CARTO_LIGHT = "https://basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png"
@@ -29,7 +30,7 @@ OSM = "https://tile.openstreetmap.org/{z}/{x}/{y}.png"
 CODE = """import dash_leaflet2 as dl2
 
 dl2.Map(
-    center=[28.0206, -97.0544],
+    center=[30.2672, -97.7431],
     zoom=11,
     children=[
         dl2.TileLayer(url=OSM),
@@ -104,7 +105,7 @@ component = dmc.Stack(
         dmc.Paper(
             dl2.Map(
                 id="ts-map",
-                center=[28.0206, -97.0544],
+                center=AUSTIN.center,
                 zoom=11,
                 style={"height": "58vh", "width": "100%"},
                 children=[

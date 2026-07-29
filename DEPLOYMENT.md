@@ -134,13 +134,27 @@ All five are already literals in `render.yaml`; only `CLERK_SECRET_KEY` and
 
 Easy to conflate, and each fails differently.
 
-**1. Clerk's dashboard → Satellite domains.** `2plot.media`, `2plot.dev` and
-`2plot.xyz` are already configured. `leaflet.2plot.dev` is a *subdomain* of the
-existing `2plot.dev` entry, so **Enable allowed subdomains** on that entry
-should cover it without paying for another satellite domain. There is precedent
-in this network already: `cast.2plot.net` is a subdomain satellite of
-`2plot.net`. Confirm on the dashboard that the toggle is per-domain and applies
-to `2plot.dev` before assuming it covers this host.
+**1. Clerk's dashboard → Allowed subdomains.** `leaflet.2plot.dev` does NOT
+need its own paid satellite domain. The dashboard's Allowed Subdomains section
+accepts a subdomain belonging to *"your primary domain 2plot.ai **or satellite
+domains 2plot.media, 2plot.dev, 2plot.xyz**"*, so `leaflet.2plot.dev` is covered
+as a subdomain of the existing `2plot.dev` satellite.
+
+(Clerk's published docs for this feature mention only the primary domain and
+are incomplete — the dashboard text is authoritative.)
+
+> **Enabling the toggle is restrictive.** *"Only these subdomains will be
+> allowed to access the application. `www` is treated as a subdomain and must be
+> added explicitly."* So every subdomain already in use must be listed, not just
+> the new one. From this network's redirect whitelist that means at least
+> `www.2plot.media`, `www.2plot.xyz`, `www.2plot.net` and `cast.2plot.net`
+> alongside `leaflet.2plot.dev` — turning it on with only the new host listed
+> would cut the others off.
+>
+> Note also that `2plot.net`, `2plot.me`, `2plot.world` and `2plot.shop` appear
+> in `_DEFAULT_SATELLITE_ORIGINS` but not among the satellites the dashboard
+> names. Either that message is abbreviated or those were never registered —
+> in which case their subdomains cannot be allowlisted either.
 
 **2. The primary's own redirect whitelist** (`CLERK_ALLOWED_REDIRECT_ORIGINS`,
 read by `lib/auth.py` in the **2plotai** repo). This is *our* code, not Clerk's

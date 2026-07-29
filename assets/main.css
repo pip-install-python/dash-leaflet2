@@ -496,3 +496,30 @@ img[alt=logo] { width: 100%; }
     font-size: 12px;
     color: #909296;
 }
+/* ---------------------------------------------------------------------------
+ * Clerk avatar dropdown vs. the Table of Contents aside
+ * ---------------------------------------------------------------------------
+ * Measured on the deployed site:
+ *
+ *     header  z-index 100   position: fixed
+ *     aside   z-index 101   (Mantine sets --app-shell-aside-z-index to
+ *                            calc(100 + 1) — deliberately ABOVE the header)
+ *     navbar  z-index 101
+ *     #clerk-menu-dropdown  z-index 10000, position: absolute
+ *
+ * The dropdown's 10000 is worthless here. `position: fixed` + `z-index: 100`
+ * makes the header a STACKING CONTEXT, so 10000 only orders the dropdown among
+ * the header's own descendants — the header as a whole still paints below the
+ * aside. document.elementFromPoint() at the dropdown's centre returned the
+ * TOC's Stack, i.e. the menu was not merely hidden but unclickable.
+ *
+ * Raising the dropdown cannot fix that; the header has to clear the aside.
+ * 150 leaves the 102-199 band free and stays under the overlay/notification
+ * layers already in use (200 and 400).
+ *
+ * !important because DMC injects its own stylesheet and load order relative to
+ * assets/*.css is not guaranteed — the same reason assets/style.css does it.
+ * ------------------------------------------------------------------------ */
+header.mantine-AppShell-header {
+    z-index: 150 !important;
+}

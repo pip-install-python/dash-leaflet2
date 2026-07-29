@@ -213,6 +213,44 @@ def _check_clientside_js(res: Results, run_mod) -> None:
     )
 
 
+def _check_asset_js(res: Results) -> None:
+    """Syntax-check assets/*.js individually AND concatenated.
+
+    The concatenated pass is the one that matters. Dash serves everything in
+    `assets/` as separate classic <script> tags, which share ONE global lexical
+    scope — so a top-level `const log` in two files is a SyntaxError in the
+    second, and every handler in it silently never registers. Checking files
+    one at a time cannot see that: each is valid alone. Concatenating them
+    reproduces the browser's actual condition.
+    """
+    assets = sorted(Path("assets").glob("*.js"))
+    if not assets:
+        return
+    if not shutil.which("node"):
+        res.add("assets", "javascript parses", True, "SKIPPED — node not installed")
+        return
+
+    bad = []
+    for f in assets:
+        proc = subprocess.run(["node", "--check", str(f)],
+                              capture_output=True, text=True, timeout=20)
+        if proc.returncode:
+            first = next((ln for ln in proc.stderr.splitlines() if "Error" in ln), "")
+            bad.append(f"{f.name}: {first[:80]}")
+    res.add("assets", f"each of {len(assets)} files parses", not bad,
+            "all valid" if not bad else "; ".join(bad[:3]))
+
+    combined = "\n".join(f.read_text() for f in assets)
+    proc = subprocess.run(["node", "--check", "-"], input=combined,
+                          capture_output=True, text=True, timeout=30)
+    ok = proc.returncode == 0
+    detail = "no global collisions"
+    if not ok:
+        detail = next((ln for ln in proc.stderr.splitlines() if "Error" in ln),
+                      "see node output")[:120]
+    res.add("assets", "no collisions in shared global scope", ok, detail)
+
+
 def run_all() -> Results:
     res = Results()
     run_mod, dash_mod = _import_app(res)
@@ -223,6 +261,7 @@ def run_all() -> Results:
     _http_checks(res, run_mod, dash_mod)
     _check_callbacks(res, dash_mod, run_mod)
     _check_clientside_js(res, run_mod)
+    _check_asset_js(res)
     return res
 
 

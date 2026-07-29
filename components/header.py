@@ -5,14 +5,40 @@ Branding: satellite emoji + green "dash-leaflet2" title. Preserves the
 clientside callbacks (theme storage + Mantine forceColorScheme) keep working,
 AND the showcase pages' tile-URL light/dark callbacks (which target the same
 id with a Switch on the original app.py) — see `assets/leaflet2_maps.js`.
+
+The Clerk avatar lives here too. `lib/auth.py` registers Clerk with
+`headless=True`, which means the package injects NO UI of its own — so without
+`create_clerk_menu()` below there is simply no way to sign in, even though Clerk
+itself initialises correctly.
 """
 import dash_mantine_components as dmc
 from dash import Input, Output, clientside_callback
 from dash_iconify import DashIconify
 
 from components.backend_badge import create_backend_badge
+from lib.auth import clerk_enabled
 from lib.backend import get_backend_info
 from lib.constants import LEAFLET_VERSION
+
+
+def create_clerk_avatar():
+    """Clerk avatar / sign-in control, sat beside the colour-scheme toggle.
+
+    Returns None when Clerk is not configured, so local development and any
+    deploy without the keys renders the header exactly as before rather than
+    erroring on a missing component.
+
+    The package renders `#clerk-login-button` inside this widget, which is the
+    id `lib.auth._install_satellite_fixups` intercepts in the capture phase to
+    call `Clerk.redirectToSignIn()`. That indirection is required on a satellite
+    domain: the package's own handler calls `openSignIn()`, a modal that POSTs
+    to the satellite FAPI and 403s with "not allowed on a satellite domain".
+    """
+    if not clerk_enabled():
+        return None
+    from dash_clerk_auth import create_clerk_menu
+
+    return create_clerk_menu(show_dropdown=True, dropdown_align="right")
 
 
 def create_link(icon, href):
@@ -159,6 +185,9 @@ def create_header(data):
                             id="color-scheme-toggle",
                             size="lg",
                         ),
+                        # Sign in / avatar. None when Clerk is unconfigured —
+                        # DMC skips None children, so the header is unchanged.
+                        create_clerk_avatar(),
                     ],
                     gap="sm",
                 ),

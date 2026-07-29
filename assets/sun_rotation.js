@@ -1,10 +1,21 @@
+/* Debug logging, off by default. These handlers fire on every scroll event and
+ * flooded the production console with hundreds of identical lines, burying real
+ * errors. Set window.DL2_DEBUG = true in the console to turn them back on.
+ *
+ * Assigned to `window`, NOT declared with const/let: assets/*.js are classic
+ * scripts sharing one global lexical scope, so a top-level `const log` in each
+ * file throws "Identifier 'log' has already been declared" in every file after
+ * the first. The ||= keeps it idempotent whatever order Dash loads them in. */
+window.DL2_LOG = window.DL2_LOG ||
+    function () { if (window.DL2_DEBUG) console.log.apply(console, arguments); };
+
 /**
  * Sun Icon Rotation on Scroll
  * Rotates the sun icon (light theme icon) while user scrolls
  */
 
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('Sun rotation handler loaded');
+    window.DL2_LOG('Sun rotation handler loaded');
 
     let scrollTimeout;
     let lastScrollY = window.scrollY;
@@ -24,13 +35,13 @@ document.addEventListener('DOMContentLoaded', function() {
             // Add the appropriate class
             if (direction === 'down') {
                 sunIcon.classList.add('rotating-down');
-                console.log('Started sun rotation - clockwise (scrolling down)');
+                window.DL2_LOG('Started sun rotation - clockwise (scrolling down)');
             } else {
                 sunIcon.classList.add('rotating-up');
-                console.log('Started sun rotation - counter-clockwise (scrolling up)');
+                window.DL2_LOG('Started sun rotation - counter-clockwise (scrolling up)');
             }
         } else {
-            console.log('Sun icon not found');
+            window.DL2_LOG('Sun icon not found');
         }
     }
 
@@ -39,7 +50,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const sunIcon = getSunIcon();
         if (sunIcon) {
             sunIcon.classList.remove('rotating-up', 'rotating-down');
-            console.log('Stopped sun rotation');
+            window.DL2_LOG('Stopped sun rotation');
         }
     }
 
@@ -67,7 +78,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Add scroll listener with debug
     window.addEventListener('scroll', handleScroll, { passive: true });
-    console.log('Scroll listener attached');
+    window.DL2_LOG('Scroll listener attached');
 
     // Setup with MutationObserver for Dash page updates
     function setupSunRotation() {
@@ -75,10 +86,10 @@ document.addEventListener('DOMContentLoaded', function() {
         if (newSunIcon) {
             if (!newSunIcon.dataset.rotationSetup) {
                 newSunIcon.dataset.rotationSetup = 'true';
-                console.log('Sun rotation setup complete - icon found');
+                window.DL2_LOG('Sun rotation setup complete - icon found');
             }
         } else {
-            console.log('Sun icon not found during setup');
+            window.DL2_LOG('Sun icon not found during setup');
         }
     }
 
@@ -101,5 +112,5 @@ document.addEventListener('DOMContentLoaded', function() {
         subtree: true
     });
 
-    console.log('Sun rotation observer active');
+    window.DL2_LOG('Sun rotation observer active');
 });

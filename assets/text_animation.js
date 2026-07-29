@@ -1,3 +1,14 @@
+/* Debug logging, off by default. These handlers fire on every scroll event and
+ * flooded the production console with hundreds of identical lines, burying real
+ * errors. Set window.DL2_DEBUG = true in the console to turn them back on.
+ *
+ * Assigned to `window`, NOT declared with const/let: assets/*.js are classic
+ * scripts sharing one global lexical scope, so a top-level `const log` in each
+ * file throws "Identifier 'log' has already been declared" in every file after
+ * the first. The ||= keeps it idempotent whatever order Dash loads them in. */
+window.DL2_LOG = window.DL2_LOG ||
+    function () { if (window.DL2_DEBUG) console.log.apply(console, arguments); };
+
 /**
  * Claude-style typewriter animation for the navbar title.
  * Streams "dash-leaflet2" character-by-character with a blinking cursor.
@@ -5,7 +16,7 @@
  */
 
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('Text animation handler loaded');
+    window.DL2_LOG('Text animation handler loaded');
 
     const TEXT_TO_TYPE = "dash-leaflet2";
     const TYPING_SPEED = 80;  // ms per character
@@ -27,7 +38,7 @@ document.addEventListener('DOMContentLoaded', function() {
         } else {
             // Animation complete - remove typing class
             element.classList.remove('typing');
-            console.log('Typing animation complete');
+            window.DL2_LOG('Typing animation complete');
         }
     }
 
@@ -45,9 +56,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 typeWriter(TEXT_TO_TYPE, titleElement);
             }, INITIAL_DELAY);
 
-            console.log('Started text animation');
+            window.DL2_LOG('Started text animation');
         } else {
-            console.log('Title element not found');
+            window.DL2_LOG('Title element not found');
         }
     }
 
@@ -74,5 +85,6 @@ document.addEventListener('DOMContentLoaded', function() {
         subtree: true
     });
 
-    console.log('Text animation observer active');
+    window.DL2_LOG('Text animation observer active');
 });
+

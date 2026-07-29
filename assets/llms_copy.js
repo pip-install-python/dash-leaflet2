@@ -1,3 +1,14 @@
+/* Debug logging, off by default. These handlers fire on every scroll event and
+ * flooded the production console with hundreds of identical lines, burying real
+ * errors. Set window.DL2_DEBUG = true in the console to turn them back on.
+ *
+ * Assigned to `window`, NOT declared with const/let: assets/*.js are classic
+ * scripts sharing one global lexical scope, so a top-level `const log` in each
+ * file throws "Identifier 'log' has already been declared" in every file after
+ * the first. The ||= keeps it idempotent whatever order Dash loads them in. */
+window.DL2_LOG = window.DL2_LOG ||
+    function () { if (window.DL2_DEBUG) console.log.apply(console, arguments); };
+
 /**
  * Per-page "Copy llms.txt URL" button handler.
  *
@@ -10,7 +21,7 @@
  */
 
 document.addEventListener('DOMContentLoaded', function () {
-    console.log('LLM copy-button handler loaded');
+    window.DL2_LOG('LLM copy-button handler loaded');
 
     async function copyToClipboard(text) {
         // Modern Clipboard API path
@@ -75,7 +86,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     const original = button.textContent;
                     if (ok) {
                         flashButton(button, original, '✓ Copied!', 'var(--mantine-color-teal-6)');
-                        console.log('Copied to clipboard:', url);
+                        window.DL2_LOG('Copied to clipboard:', url);
                     } else {
                         throw new Error('All copy methods failed');
                     }
@@ -105,5 +116,5 @@ document.addEventListener('DOMContentLoaded', function () {
     const target = document.getElementById('_pages_content') || document.body;
     observer.observe(target, { childList: true, subtree: true });
 
-    console.log('LLM copy-button observer active');
+    window.DL2_LOG('LLM copy-button observer active');
 });

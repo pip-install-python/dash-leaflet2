@@ -16,7 +16,12 @@
 # The [fastapi] extra pulls in FastAPI + Starlette + Uvicorn + WebSockets +
 # Pydantic. DASH_BACKEND (read by lib/backend.py) flips between the bundled
 # Flask backend and the FastAPI backend, which is what the sim pages exercise.
-dash[fastapi]==4.2.0rc3  # COMPAT-MATRIX: dash
+#
+# Stable, deliberately. This pin is what the hosted documentation site actually
+# runs, and 4.2.0rc3 — a release candidate — was serving production until the
+# compatibility matrix confirmed 4.4.1 passes 70/70. The package itself is far
+# looser (`dash>=4.1` in pyproject.toml); this pin binds only the docs site.
+dash[fastapi]==4.4.1  # COMPAT-MATRIX: dash
 
 # --- Docs shell ------------------------------------------------------------
 # NOTE: python-frontmatter 1.3+ imports typing.TypeGuard, so running the docs

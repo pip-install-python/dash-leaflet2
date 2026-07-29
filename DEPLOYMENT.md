@@ -119,7 +119,7 @@ is logged.
 | `CLERK_SIGN_IN_URL` | `https://2plot.ai/sign-in` | The **primary** hosts sign-in. |
 | `CLERK_SIGN_UP_URL` | `https://2plot.ai/sign-up` | |
 | `CLERK_FRONTEND_API` | `https://<app>.clerk.accounts.dev` | **Required in satellite mode.** A production custom-domain instance cannot derive this from the sign-in URL. |
-| `CLERK_SATELLITE_DOMAIN` | `leaflet.2plot.dev` | Host only, no scheme. Must match the deployed domain exactly. |
+| `CLERK_SATELLITE_DOMAIN` | `2plot.dev` — the registered satellite, **not** the served host | Host only, no scheme. Must match the deployed domain exactly. |
 | `CLERK_IS_SATELLITE` | `true` | Leave false locally — Clerk rejects satellites on `localhost`. |
 | `SESSION_SECRET` | (generated) | Signs the session + `__dca_identity` cookies. Without it dash-clerk-auth uses a **public dev default**. |
 | `ADMIN_EMAILS` | `a@b.com,c@d.com` | Allowlist for `/admin/control-board`. `OWNER_EMAIL` always counts. |
@@ -153,7 +153,7 @@ instance and cannot host satellites):
 | `CLERK_SIGN_IN_URL` | `https://accounts.2plot.ai/sign-in` |
 | `CLERK_SIGN_UP_URL` | `https://accounts.2plot.ai/sign-up` |
 | `CLERK_FRONTEND_API` | `https://clerk.2plot.ai` |
-| `CLERK_SATELLITE_DOMAIN` | `leaflet.2plot.dev` |
+| `CLERK_SATELLITE_DOMAIN` | `2plot.dev` — the registered satellite, **not** the served host |
 | `CLERK_IS_SATELLITE` | `true` |
 
 All five are already literals in `render.yaml`; only `CLERK_SECRET_KEY` and

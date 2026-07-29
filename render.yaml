@@ -90,9 +90,20 @@ services:
       # derive this from CLERK_SIGN_IN_URL — it must be set explicitly.
       - key: CLERK_FRONTEND_API
         value: https://clerk.2plot.ai
-      # Must match the custom domain exactly, host only, no scheme.
+      # The REGISTERED SATELLITE DOMAIN — deliberately NOT the host this app is
+      # served on. clerk-js derives the Frontend API from this value as
+      # `clerk.<domain>`, and Clerk only issues those DNS records per satellite
+      # domain. `clerk.2plot.dev` exists (CNAME -> frontend-api.clerk.services);
+      # `clerk.leaflet.2plot.dev` is NXDOMAIN, because leaflet.2plot.dev is an
+      # ALLOWED SUBDOMAIN of the 2plot.dev satellite rather than a satellite of
+      # its own. Setting the served host here sends the browser to a Frontend
+      # API that does not resolve, and sign-in hangs on
+      # /v1/client/sync?redirect_url=...
+      #
+      # Session cookies are scoped to .2plot.dev, so leaflet.2plot.dev reads
+      # them as a subdomain — which is exactly what the allowlist enables.
       - key: CLERK_SATELLITE_DOMAIN
-        value: leaflet.2plot.dev
+        value: 2plot.dev
       - key: CLERK_IS_SATELLITE
         value: "true"
       # Signs the session + __dca_identity cookies. Without it dash-clerk-auth

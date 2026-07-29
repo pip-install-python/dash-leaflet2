@@ -2,170 +2,128 @@
 <html lang="en">
 <head>
     <!-- ========================================================================
-         ANALYTICS SECTION
-         Configure your analytics tracking here
-         ======================================================================== -->
+         dash-leaflet2 documentation — https://leaflet.2plot.dev
+         ========================================================================
+         This file was inherited from the Dash Documentation Boilerplate and had
+         never been customised. Everything below is now specific to this project.
+         Two rules if you edit it:
 
-    <!-- Google Analytics
-         Replace G-XXXXXXXXXX with your Google Analytics Measurement ID
-         Get your ID from: https://analytics.google.com/
-         Uncomment the lines below to enable -->
-    <!--
-    <script async src="https://www.googletagmanager.com/gtag/js?id=G-XXXXXXXXXX"></script>
-    <script>
-      window.dataLayer = window.dataLayer || [];
-      function gtag(){dataLayer.push(arguments);}
-      gtag('js', new Date());
-      gtag('config', 'G-XXXXXXXXXX');
-    </script>
-    -->
-
-    <!-- ========================================================================
-         BASIC META TAGS
-         Essential meta tags for character encoding and responsive design
+           1. Do NOT add a static description meta tag. Dash emits one per page
+              from the frontmatter, via the metas placeholder below. A static
+              one here produced TWO description tags on every page, the first
+              of them describing a different product entirely.
+           2. The canonical URL is set by script, not statically — see below.
          ======================================================================== -->
 
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 
-    <!-- ========================================================================
-         PRIMARY META TAGS
-         These are the main tags that define your site for search engines
-         Customize these for your project
-         ======================================================================== -->
+    <!-- Fallback title. Dash overrides this per page from register_page(title=). -->
+    <title>dash-leaflet2 — Leaflet 2 mapping components for Dash 4</title>
+    <meta name="title" content="dash-leaflet2 — Leaflet 2 mapping components for Dash 4">
 
-    <!-- Title - Shows in browser tab and search results (50-60 chars optimal) -->
-    <title>dash-leaflet2 — Leaflet 2 on Dash 4</title>
-
-    <!-- Main title for SEO - should match or complement the <title> tag -->
-    <meta name="title" content="dash-leaflet2 — Leaflet 2 on Dash 4">
-
-    <!-- Description - Shows in search results (150-160 chars optimal) -->
-    <meta name="description" content="A modern, responsive documentation system for Dash applications with Mantine Components, LLM integration, and interactive examples. Build beautiful docs fast.">
-
-    <!-- Keywords - Helps search engines understand your content (optional in 2024) -->
-    <meta name="keywords" content="Python Dash, documentation, Dash Mantine Components, interactive docs, Python documentation, Plotly Dash, markdown docs, technical documentation, developer tools">
-
-    <!-- Author - Your name or organization -->
-    <meta name="author" content="Your Name or Organization">
-
-    <!-- Robots - Tell search engines how to index your site -->
+    <meta name="keywords" content="dash-leaflet2, dash leaflet, leaflet 2, leaflet2, plotly dash maps, dash mapping components, python gis, interactive maps python, geojson dash, tile layer, pointer events, map rotation, react-leaflet alternative">
+    <meta name="author" content="Pip Install Python LLC">
     <meta name="robots" content="index, follow">
-
-    <!-- Language - Specify the primary language of your content -->
     <meta name="language" content="English">
 
     <!-- ========================================================================
-         OPEN GRAPH / FACEBOOK META TAGS
-         These control how your site appears when shared on Facebook, LinkedIn, etc.
-         Learn more: https://ogp.me/
+         OPEN GRAPH / TWITTER
+         ========================================================================
+         Only the two tags Dash does NOT emit itself.
+
+         dash.register_page() makes Dash generate per-page og:title, og:type,
+         og:description, og:image and the full twitter:* set on every request
+         (see _page_meta_tags in dash/_pages.py). Declaring those here as well
+         produced two of each, with the static copy describing the site instead
+         of the page — strictly worse than Dash's version, which is per-page and
+         accurate. They have been removed.
+
+         og:site_name and og:url are genuinely missing from Dash's set, so they
+         belong here. og:url is kept current by the canonical script below.
+
+         No og:image is declared: shipping a URL that 404s is worse than having
+         none, and no brand image exists yet. Dash emits an EMPTY og:image and
+         twitter:image for the same reason — to fix those properly, add
+         assets/og-image.png (1200x630) and pass image_url= to register_page in
+         pages/markdown.py.
          ======================================================================== -->
 
-    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="dash-leaflet2">
+    <meta property="og:url" content="https://leaflet.2plot.dev/">
 
-    <!-- OG URL - The canonical URL of your site -->
-    <meta property="og:url" content="https://yourdomain.com/">
-
-    <!-- OG Title - Title shown in social media shares (max 60 chars) -->
-    <meta property="og:title" content="dash-leaflet2 — Leaflet 2 on Dash 4">
-
-    <!-- OG Description - Description shown in social shares (max 200 chars) -->
-    <meta property="og:description" content="Build beautiful, interactive documentation for your Dash applications with markdown, custom directives, and LLM integration.">
-
-    <!-- OG Image - Preview image for social shares
-         Requirements: 1200x630px, JPG/PNG/GIF, < 8MB
-         Create your image at: https://www.canva.com/ or similar
-         Place in /assets/ folder and update path below -->
-    <meta property="og:image" content="https://yourdomain.com/assets/og-image.png">
-    <meta property="og:image:width" content="1200">
-    <meta property="og:image:height" content="630">
-
-    <!-- OG Site Name - Your site/brand name -->
-    <meta property="og:site_name" content="Dash Documentation Boilerplate">
-
-    <!-- ========================================================================
-         TWITTER CARD META TAGS
-         Control how your site appears when shared on Twitter/X
-         Learn more: https://developer.twitter.com/en/docs/twitter-for-websites/cards
-         ======================================================================== -->
-
-    <!-- Card type - summary_large_image shows large preview, summary shows small -->
-    <meta property="twitter:card" content="summary_large_image">
-
-    <!-- Twitter URL - Same as your canonical URL -->
-    <meta property="twitter:url" content="https://yourdomain.com/">
-
-    <!-- Twitter Title - Title for Twitter shares -->
-    <meta property="twitter:title" content="dash-leaflet2 — Leaflet 2 on Dash 4">
-
-    <!-- Twitter Description - Description for Twitter shares -->
-    <meta property="twitter:description" content="Build beautiful, interactive documentation for your Dash applications with markdown, custom directives, and LLM integration.">
-
-    <!-- Twitter Image - Same as OG image (1200x630px recommended) -->
-    <meta property="twitter:image" content="https://yourdomain.com/assets/og-image.png">
-
-    <!-- Optional: Twitter Creator - Your Twitter handle -->
-    <!-- <meta property="twitter:creator" content="@yourtwitterhandle"> -->
-
-    <!-- ========================================================================
-         FAVICON CONFIGURATION
-         Icons for browser tabs, bookmarks, and mobile home screens
-         Generate favicons at: https://realfavicongenerator.net/
-         ======================================================================== -->
-
-    <!-- Standard favicon (32x32 or 16x16) -->
-    <link rel="icon" type="image/x-icon" href="/assets/favicon.ico">
-
-    <!-- PNG favicons for modern browsers -->
-    <!-- <link rel="icon" type="image/png" sizes="32x32" href="/assets/favicon-32x32.png"> -->
-    <!-- <link rel="icon" type="image/png" sizes="16x16" href="/assets/favicon-16x16.png"> -->
-
-    <!-- Apple touch icon + web app manifest references intentionally removed
-         until we ship matching files in assets/. The boilerplate's placeholder
-         paths returned 500 on dash-leaflet2 (we did not copy those assets).
-         Re-add when the brand assets land. -->
-
-    <!-- Theme color - Mantine green to match the dash-leaflet2 brand. -->
+    <!-- Mantine green, matching the brand. -->
     <meta name="theme-color" content="#2f9e44">
 
     <!-- ========================================================================
          CANONICAL URL
-         Tells search engines which version of a page is the "main" one
-         Important for preventing duplicate content issues
-         ======================================================================== -->
+         ========================================================================
+         Set by script, deliberately.
 
-    <!-- Update with your actual domain -->
-    <link rel="canonical" href="https://dash-documentation-boilerplate.onrender.com">
+         This is a single-page app: one HTML document serves every route, so a
+         STATIC canonical necessarily lies about all but one page. The inherited
+         value still pointed at the upstream boilerplate's own deployment — a
+         different site entirely — which told search engines every page here
+         was a duplicate of somewhere else.
+
+         The origin is hard-coded rather than read from location.origin so that
+         hits on the Render URL (dash-leaflet2.onrender.com) consolidate onto the
+         custom domain instead of competing with it.
+         ======================================================================== -->
+    <link rel="canonical" href="https://leaflet.2plot.dev/">
+    <script>
+        (function () {
+            var ORIGIN = 'https://leaflet.2plot.dev';
+            function sync() {
+                var path = location.pathname.replace(/\/+$/, '') || '/';
+                var href = ORIGIN + (path === '/' ? '/' : path);
+
+                var canonical = document.querySelector('link[rel="canonical"]');
+                if (canonical) canonical.href = href;
+
+                // querySelectorAll, not querySelector: Dash emits its own
+                // twitter:url from request.url. That is correct on the entry
+                // page, but it is baked in server-side and goes STALE the
+                // moment Dash routes client-side — every later page would
+                // still advertise the URL the visitor first landed on. Both
+                // copies get corrected on every route change.
+                document.querySelectorAll(
+                    'meta[property="og:url"], meta[property="twitter:url"]'
+                ).forEach(function (m) { m.setAttribute('content', href); });
+            }
+
+            sync();
+
+            // Dash routes client-side through history.pushState, which fires no
+            // event — patch both history methods so the canonical follows SPA
+            // navigation rather than freezing on the entry page.
+            ['pushState', 'replaceState'].forEach(function (method) {
+                var original = history[method];
+                history[method] = function () {
+                    var result = original.apply(this, arguments);
+                    sync();
+                    return result;
+                };
+            });
+            window.addEventListener('popstate', sync);
+        })();
+    </script>
+
+    <!-- LLM-friendly rendering of the current page, for anything that prefers
+         markdown to a JS-rendered SPA. Served by dash-improve-my-llms. -->
+    <link rel="alternate" type="text/markdown" href="/llms.txt" title="LLM-friendly documentation">
 
     <!-- ========================================================================
-         SEARCH ENGINE VERIFICATION
-         Verify ownership of your site with Google, Bing, etc.
+         STRUCTURED DATA
          ======================================================================== -->
 
-    <!-- Google Search Console
-         Get your code from: https://search.google.com/search-console -->
-    <!-- <meta name="google-site-verification" content="YOUR_GOOGLE_VERIFICATION_CODE"> -->
-
-    <!-- Bing Webmaster Tools
-         Get your code from: https://www.bing.com/webmasters -->
-    <!-- <meta name="msvalidate.01" content="YOUR_BING_VERIFICATION_CODE"> -->
-
-    <!-- ========================================================================
-         STRUCTURED DATA (Schema.org)
-         Helps search engines understand your content and show rich results
-         Learn more: https://schema.org/
-         Test your markup: https://search.google.com/test/rich-results
-         ======================================================================== -->
-
-    <!-- Organization Schema - Defines your organization/brand -->
     <script type="application/ld+json">
     {
         "@context": "https://schema.org",
         "@type": "Organization",
-        "name": "Your Organization Name",
-        "description": "A modern documentation system for Dash applications with markdown support, custom directives, and LLM integration.",
-        "url": "https://dash-documentation-boilerplate.onrender.com",
-        "logo": "https://dash-documentation-boilerplate.onrender.com/assets/logo.png",
+        "name": "Pip Install Python LLC",
+        "description": "Open-source components and documentation for the Python and Plotly Dash ecosystem.",
+        "url": "https://pip-install-python.com",
         "sameAs": [
             "https://github.com/pip-install-python",
             "https://www.youtube.com/@pipinstallpython",
@@ -179,115 +137,118 @@
     }
     </script>
 
-    <!-- Software Application Schema - Defines your application -->
     <script type="application/ld+json">
     {
         "@context": "https://schema.org",
-        "@type": "SoftwareApplication",
-        "name": "Dash Documentation Boilerplate",
-        "description": "A modern, responsive documentation system for Dash applications",
-        "applicationCategory": "DeveloperApplication",
-        "operatingSystem": "Any",
-        "offers": {
-            "@type": "Offer",
-            "price": "29_000_000",
-            "priceCurrency": "USD"
-        },
+        "@type": "SoftwareSourceCode",
+        "name": "dash-leaflet2",
+        "description": "Leaflet 2-native mapping components for Plotly Dash 4. Wraps Leaflet 2 core directly instead of react-leaflet, exposing unified Pointer Events, BlanketOverlay canvas/WebGL layers, ES6-class subclassing, ResizeObserver sizing and map rotation as Dash components.",
+        "url": "https://leaflet.2plot.dev/",
+        "codeRepository": "https://github.com/pip-install-python/dash-leaflet2",
+        "programmingLanguage": ["Python", "TypeScript"],
+        "runtimePlatform": "Python 3.9+",
+        "license": "https://opensource.org/licenses/MIT",
         "author": {
             "@type": "Organization",
-            "name": "Pip Install Python LLC"
+            "name": "Pip Install Python LLC",
+            "url": "https://pip-install-python.com"
         },
-        "softwareVersion": "3.2.0",
-        "programmingLanguage": "Python"
+        "isAccessibleForFree": true,
+        "keywords": "dash, leaflet, leaflet2, maps, gis, geospatial, plotly, python"
     }
     </script>
 
     <!-- ========================================================================
-         LLM DISCOVERY META TAGS
-         These tags help AI assistants discover and use your documentation
-         Part of dash-improve-my-llms integration
+         LLM DISCOVERY
+         Consumed by dash-improve-my-llms. Per-page prose is at
+         /<page>/llms.txt; these point at the site-wide entry points.
          ======================================================================== -->
 
-    <meta name="llms-architecture" content="https://dash-documentation-boilerplate.onrender.com/sitemap.xml">
-    <meta name="llms-architecture" content="https://dash-documentation-boilerplate.onrender.com/architecture.txt">
-    <meta name="llms-page-json" content="https://dash-documentation-boilerplate.onrender.com/page.json">
-    <meta name="llms-txt" content="https://dash-documentation-boilerplate.onrender.com/llms.txt">
-    <meta name="llms-github-repo" content="https://github.com/pip-install-python/Dash-Documentation-Boilerplate">
-
+    <meta name="llms-txt" content="https://leaflet.2plot.dev/llms.txt">
+    <meta name="llms-architecture" content="https://leaflet.2plot.dev/sitemap.xml">
+    <meta name="llms-github-repo" content="https://github.com/pip-install-python/dash-leaflet2">
 
     <!-- ========================================================================
-         PERFORMANCE OPTIMIZATION
-         Preconnect to external domains to speed up resource loading
+         PERFORMANCE
+         Leaflet 2 and the Iconify web component are delivered from unpkg by the
+         dash.hooks in run.py; the tile hosts are hit on every map render.
          ======================================================================== -->
 
-    <!-- Google Fonts - If you're using custom fonts -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preconnect" href="https://unpkg.com" crossorigin>
+    <link rel="preconnect" href="https://basemaps.cartocdn.com" crossorigin>
+    <link rel="dns-prefetch" href="https://server.arcgisonline.com">
+    <link rel="dns-prefetch" href="https://tile.openstreetmap.org">
 
-    <!-- Common CDNs - Add any CDNs you use -->
-    <!-- <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin> -->
-    <!-- <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin> -->
-
-    <!-- ========================================================================
-         DASH-SPECIFIC TEMPLATE TAGS
-         These are required by Dash - DO NOT MODIFY
-         ======================================================================== -->
-
+    <!-- Required by Dash. The favicon placeholder below serves assets/favicon.ico
+         when present and Dash's own default otherwise. There is deliberately no
+         hard-coded <link rel="icon">: the inherited one pointed at a file this
+         project never shipped and 404'd on every page load. -->
     {%metas%}
     {%favicon%}
     {%css%}
 
     <!-- ========================================================================
          NO-JAVASCRIPT FALLBACK
-         Content shown to users/bots when JavaScript is disabled
-         Provides direct access to documentation for search engines and LLMs
          ======================================================================== -->
 
     <noscript>
-        <div style="padding: 20px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; max-width: 800px; margin: 0 auto; line-height: 1.6;">
-            <h1>Dash Documentation Boilerplate</h1>
-            <p><strong>This application requires JavaScript to run.</strong></p>
+        <div style="padding: 24px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; max-width: 820px; margin: 0 auto; line-height: 1.6;">
+            <h1>dash-leaflet2</h1>
+            <p><strong>Leaflet 2-native mapping components for Plotly Dash 4.</strong></p>
+            <p>
+                <code>dash-leaflet</code> is frozen on react-leaflet and Leaflet 1.9.
+                This library wraps Leaflet 2 core directly, which unlocks unified
+                Pointer Events, <code>BlanketOverlay</code> canvas/WebGL layers,
+                ES6-class subclassing, <code>ResizeObserver</code> sizing and map
+                rotation — all driven from Python.
+            </p>
 
-            <h2>For AI/LLM Access and Documentation:</h2>
-            <p>This site provides comprehensive documentation in multiple formats optimized for both humans and AI assistants:</p>
+            <p><strong>The interactive documentation requires JavaScript.</strong>
+               These formats do not:</p>
 
             <ul style="margin: 20px 0;">
-                <li><a href="https://dash-documentation-boilerplate.onrender.com/llms.txt" style="color: #12B886; text-decoration: none;"><strong>llms.txt</strong></a> - LLM-friendly documentation format</li>
-                <li><a href="https://dash-documentation-boilerplate.onrender.com/page.json" style="color: #12B886; text-decoration: none;"><strong>page.json</strong></a> - Technical architecture and components</li>
-                <li><a href="https://dash-documentation-boilerplate.onrender.com/architecture.txt" style="color: #12B886; text-decoration: none;"><strong>architecture.txt</strong></a> - Application structure overview</li>
-                <li><a href="https://dash-documentation-boilerplate.onrender.com/sitemap.xml" style="color: #12B886; text-decoration: none;"><strong>sitemap.xml</strong></a> - Complete site structure for search engines</li>
-                <li><a href="https://dash-documentation-boilerplate.onrender.com/robots.txt" style="color: #12B886; text-decoration: none;"><strong>robots.txt</strong></a> - Crawler instructions</li>
+                <li><a href="/llms.txt" style="color: #2f9e44;"><strong>llms.txt</strong></a> — the whole site as LLM-friendly markdown</li>
+                <li><a href="/sitemap.xml" style="color: #2f9e44;"><strong>sitemap.xml</strong></a> — every documentation page</li>
+                <li><a href="/robots.txt" style="color: #2f9e44;"><strong>robots.txt</strong></a> — crawler instructions</li>
             </ul>
 
-            <p>These endpoints provide detailed information about the application structure, components, functionality, and usage patterns in formats optimized for automated processing.</p>
+            <p>Every page also serves its own <code>/&lt;page&gt;/llms.txt</code>
+               containing the prose plus the complete, runnable example source.</p>
 
-            <h2>Features:</h2>
+            <h2>Install</h2>
+            <pre style="background:#f5f5f5;padding:12px;border-radius:6px;overflow-x:auto;"><code>pip install dash-leaflet2</code></pre>
+            <p>Requires Python 3.9+ and Dash 4.1+. The compiled JavaScript bundle
+               ships inside the package — no Node, no build step, no
+               <code>external_scripts</code>.</p>
+
+            <h2>Components</h2>
+            <p>26 in total: <code>Map</code>, <code>TileLayer</code>,
+               <code>Marker</code>, <code>Popup</code>, <code>Tooltip</code>,
+               <code>GeoJSON</code> (with clustering), <code>LayerGroup</code>,
+               <code>FeatureGroup</code>, <code>ImageOverlay</code>,
+               <code>Circle</code>, <code>CircleMarker</code>,
+               <code>Polyline</code>, <code>Polygon</code>,
+               <code>Rectangle</code>, <code>LayersControl</code>,
+               <code>EditControl</code>, <code>AttributionControl</code>,
+               <code>ScaleControl</code>, <code>FullScreenControl</code>,
+               <code>MiniMap</code>, <code>EasyButton</code>,
+               <code>KeyboardControl</code>, <code>TileSelector</code>,
+               <code>TextMarker</code>, and the <code>BaseLayer</code> /
+               <code>Overlay</code> pair.</p>
+
+            <h2>Links</h2>
             <ul>
-                <li>Markdown-based documentation with custom directives</li>
-                <li>Interactive component examples with live code</li>
-                <li>Data visualization with Plotly integration</li>
-                <li>Dark/light theme support</li>
-                <li>Mobile-responsive design</li>
-                <li>LLM-friendly documentation formats</li>
+                <li><a href="https://pypi.org/project/dash-leaflet2/" style="color: #2f9e44;">PyPI</a></li>
+                <li><a href="https://github.com/pip-install-python/dash-leaflet2" style="color: #2f9e44;">GitHub</a></li>
+                <li><a href="https://discord.gg/WEnZR35mrK" style="color: #2f9e44;">Discord</a></li>
+                <li><a href="https://pip-install-python.com" style="color: #2f9e44;">Pip Install Python</a></li>
             </ul>
         </div>
     </noscript>
 
 </head>
 <body>
-    <!-- ========================================================================
-         APPLICATION ENTRY POINT
-         This is where your Dash application renders
-         DO NOT MODIFY
-         ======================================================================== -->
-
     {%app_entry%}
-
-    <!-- ========================================================================
-         DASH FOOTER SCRIPTS
-         Required Dash scripts and configuration
-         DO NOT MODIFY
-         ======================================================================== -->
 
     <footer>
         {%config%}

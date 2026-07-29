@@ -349,6 +349,30 @@ def rollup(date: str, hits: list[dict] | None = None) -> dict | None:
 # Reporting
 # --------------------------------------------------------------------------
 
+def post_signed(route: str, payload: dict):
+    """Sign and POST one payload to the hub. Returns the response, or None.
+
+    The signature is HMAC_SHA256(secret, f"{ts}." + raw_body) over the EXACT
+    bytes sent, so the body is serialised once and reused — re-serialising for
+    the request would risk a different key order and a signature the hub
+    cannot verify.
+    """
+    import requests
+
+    secret = _secret()
+    body = json.dumps(payload, separators=(",", ":")).encode()
+    ts = str(int(time.time()))
+    sig = hmac.new(secret.encode(), f"{ts}.".encode() + body,
+                   hashlib.sha256).hexdigest()
+    return requests.post(
+        f"{HUB_URL}{route}", data=body,
+        headers={"Content-Type": "application/json",
+                 "X-AI-Canvas-Timestamp": ts,
+                 "X-AI-Canvas-Signature": sig},
+        timeout=POST_TIMEOUT_S,
+    )
+
+
 def post_rollup(payload: dict) -> bool:
     """Sign and POST one rollup. Returns True on a 2xx from the hub."""
     secret = _secret()
@@ -356,20 +380,8 @@ def post_rollup(payload: dict) -> bool:
         logger.info("[satellite-analytics] dry-run rollup: %s",
                     json.dumps(payload, separators=(",", ":")))
         return bool(DRY_RUN)
-    import requests
-
-    body = json.dumps(payload, separators=(",", ":")).encode()
-    ts = str(int(time.time()))
-    sig = hmac.new(secret.encode(), f"{ts}.".encode() + body,
-                   hashlib.sha256).hexdigest()
     try:
-        resp = requests.post(
-            f"{HUB_URL}/api/satellite/traffic", data=body,
-            headers={"Content-Type": "application/json",
-                     "X-AI-Canvas-Timestamp": ts,
-                     "X-AI-Canvas-Signature": sig},
-            timeout=POST_TIMEOUT_S,
-        )
+        resp = post_signed("/api/satellite/traffic", payload)
         if resp.status_code == 200:
             logger.info("[satellite-analytics] reported %s %s: %s human / %s bot",
                         APP_ID, payload["date"], payload["human_hits"],
@@ -380,6 +392,132 @@ def post_rollup(payload: dict) -> bool:
     except Exception as exc:  # noqa: BLE001 — a hub outage is not our problem
         logger.warning("[satellite-analytics] report failed: %s", exc)
     return False
+
+
+# --------------------------------------------------------------------------
+# Sign-in attribution — POST /api/satellite/auth
+# --------------------------------------------------------------------------
+# 2plot.ai is the Clerk PRIMARY, so every account is created there — but on a
+# satellite domain the correct call is Clerk.redirectToSignIn(), which sends the
+# visitor to Clerk's hosted pages and back WITHOUT ever touching a hub URL. The
+# hub therefore has no way to know the sign-in happened here. This beacon is the
+# only signal that attributes it to this app.
+#
+# PRIVACY: `who` is an opaque pseudonym, sha256(lowercased email)[:12] — the
+# network convention, matching the wallet provisioner. An email address or a
+# Clerk user id must NEVER be sent. The digest exists purely so repeated beacons
+# for one person collapse into a single *signer*; the hub counts events and
+# distinct `who` values separately.
+
+AUTH_EVENTS = ("sign_in", "sign_up")
+
+# The host this satellite is served on, for the optional `domain` field. Both
+# names are generic across the network, so this module stays a drop-in.
+SITE_DOMAIN = (os.environ.get("SATELLITE_DOMAIN")
+               or os.environ.get("CLERK_SATELLITE_DOMAIN") or "").strip() or None
+
+# Sessions already reported by THIS process. Bounded, and paired with an
+# on-disk claim so several gunicorn workers don't each beacon the same session.
+_signed_in_sessions: dict[str, float] = {}
+_SESSION_TTL_S = 12 * 3600
+
+
+def who_from_email(email: str) -> str:
+    """The network's opaque pseudonym: sha256(lowercased email)[:12]."""
+    return hashlib.sha256(email.strip().lower().encode()).hexdigest()[:12]
+
+
+def _claim_session(session_id: str) -> bool:
+    """Elect ONE worker to beacon for this session. Never raises.
+
+    Same O_EXCL trick as :func:`_claim`. Without it every gunicorn worker that
+    happens to serve a request for the session would send its own beacon —
+    harmless to the unique-signer count, but it inflates the event count.
+    """
+    safe = hashlib.sha256(session_id.encode()).hexdigest()[:16]
+    claim = LEDGER.with_name(f".{LEDGER.name}.signin-{safe}")
+    try:
+        fd = os.open(str(claim), os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o644)
+        os.close(fd)
+        return True
+    except FileExistsError:
+        return False
+    except Exception:
+        return True  # unwritable dir — better a duplicate than a lost signal
+
+
+def report_sign_in(email: str | None, path: str | None = None,
+                   event: str = "sign_in", session_id: str | None = None) -> bool:
+    """Beacon one sign-in to the hub. Best-effort; never raises.
+
+    Returns True when a beacon was actually sent (or dry-run logged). A failed
+    beacon must never break a sign-in, so every path here swallows.
+    """
+    try:
+        if not enabled() or event not in AUTH_EVENTS:
+            return False
+
+        payload: dict[str, Any] = {"app": APP_ID, "event": event}
+        if email:
+            payload["who"] = who_from_email(email)
+        if path and isinstance(path, str) and path.startswith("/"):
+            payload["path"] = path[:160]
+        if SITE_DOMAIN:
+            payload["domain"] = SITE_DOMAIN[:120]
+
+        if DRY_RUN or not _secret():
+            logger.info("[satellite-analytics] dry-run sign-in: %s",
+                        json.dumps(payload, separators=(",", ":")))
+            return bool(DRY_RUN)
+
+        resp = post_signed("/api/satellite/auth", payload)
+        if resp.status_code == 200:
+            logger.info("[satellite-analytics] reported %s for %s%s",
+                        event, APP_ID,
+                        f" ({payload['who']})" if payload.get("who") else "")
+            return True
+        logger.warning("[satellite-analytics] hub rejected %s: %s %s",
+                       event, resp.status_code, resp.text[:200])
+    except Exception as exc:  # noqa: BLE001 — analytics never breaks a sign-in
+        logger.warning("[satellite-analytics] sign-in beacon failed: %s", exc)
+    return False
+
+
+def note_authenticated(auth: dict | None, path: str | None = None) -> bool:
+    """Fire at most ONE beacon per session, from a clerk-auth-store payload.
+
+    ``auth`` is dash-clerk-auth's ``clerk-auth-store`` data:
+    ``{user_id, email, first_name, last_name, image_url, session_id}``. Only
+    ``email`` (hashed immediately) and ``session_id`` (used as the dedupe key,
+    never transmitted) are touched.
+
+    The store also re-emits on unrelated changes and is pre-hydrated on page
+    load, which is exactly why this dedupes on ``session_id`` rather than
+    trusting the callback to mean "just signed in".
+    """
+    try:
+        if not isinstance(auth, dict) or not enabled():
+            return False
+        email = auth.get("email")
+        session_id = auth.get("session_id")
+        if not email or not session_id:
+            return False  # signed out, or a partial store update
+
+        now = time.time()
+        if len(_signed_in_sessions) > 512:
+            for k in [k for k, t in _signed_in_sessions.items()
+                      if now - t > _SESSION_TTL_S]:
+                _signed_in_sessions.pop(k, None)
+        if now - _signed_in_sessions.get(session_id, 0) < _SESSION_TTL_S:
+            return False
+        _signed_in_sessions[session_id] = now
+
+        if not _claim_session(session_id):
+            return False
+        return report_sign_in(email, path=path, session_id=session_id)
+    except Exception:  # noqa: BLE001
+        logger.debug("note_authenticated failed", exc_info=True)
+        return False
 
 
 def _claim(bucket: int) -> bool:
@@ -394,9 +532,11 @@ def _claim(bucket: int) -> bool:
         return True  # unwritable dir (read-only fs): don't silence reporting
     # Sweep claims older than a day; cheap, and keeps the dir tidy.
     try:
-        for old in claim.parent.glob(f".{LEDGER.name}.claim-*"):
-            if old != claim and time.time() - old.stat().st_mtime > 86400:
-                old.unlink(missing_ok=True)
+        cutoff = time.time() - 86400
+        for pattern in (f".{LEDGER.name}.claim-*", f".{LEDGER.name}.signin-*"):
+            for old in claim.parent.glob(pattern):
+                if old != claim and old.stat().st_mtime < cutoff:
+                    old.unlink(missing_ok=True)
     except Exception:
         pass
     return True
@@ -586,11 +726,41 @@ def register_pageview_beacon(location_id: str = "url") -> None:
     )
 
 
-def beacon_component():
-    """Hidden sink for the beacon callback; place it in the app shell."""
-    from dash import dcc
+def register_sign_in_beacon(auth_store_id: str = "clerk-auth-store",
+                            location_id: str = "url") -> None:
+    """Beacon one signed sign-in per session to the hub.
 
-    return dcc.Store(id="satellite-pageview-beacon", data=None)
+    Driven off dash-clerk-auth's ``clerk-auth-store``, whose data carries the
+    ``session_id`` this dedupes on. ``prevent_initial_call=False`` is
+    deliberate and must stay: the app sets ``prevent_initial_callbacks=True``
+    globally, and the store is pre-hydrated from ``current_user()`` on page
+    load — so without it, a visitor arriving with an existing session is never
+    observed at all.
+    """
+    from dash import Input, Output, State, callback, no_update
+
+    @callback(
+        Output("satellite-signin-beacon", "data"),
+        Input(auth_store_id, "data"),
+        State(location_id, "pathname"),
+        prevent_initial_call=False,
+    )
+    def _report(auth, pathname):
+        note_authenticated(auth, path=pathname)
+        return no_update
+
+
+def beacon_component():
+    """Hidden sinks for the beacon callbacks; place in the app shell."""
+    from dash import dcc, html
+
+    return html.Div(
+        [
+            dcc.Store(id="satellite-pageview-beacon", data=None),
+            dcc.Store(id="satellite-signin-beacon", data=None),
+        ],
+        style={"display": "none"},
+    )
 
 
 def _health_body() -> dict:
@@ -608,6 +778,16 @@ def register(app, backend: str) -> None:
               "to report traffic to 2plot.ai")
         return
     register_pageview_beacon()
+    # Only wire the sign-in beacon when Clerk is actually running — without it
+    # `clerk-auth-store` never exists and the callback could never fire.
+    try:
+        from lib.auth import clerk_enabled
+
+        if clerk_enabled():
+            register_sign_in_beacon()
+            print("[satellite-analytics] sign-in beacon registered")
+    except Exception:  # noqa: BLE001 — no auth module, or Clerk absent
+        pass
     started = start_reporter()
     print(f"[satellite-analytics] app='{APP_ID}' hub={HUB_URL} "
           f"interval={REPORT_INTERVAL_S}s dry_run={DRY_RUN} reporter={started}")

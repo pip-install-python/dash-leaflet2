@@ -59,6 +59,35 @@ circuit breaker stops retrying — an outage never adds latency to a page view.
 | `SATELLITE_REPORT_INTERVAL_S` | `1800` | Minimum seconds between rollup POSTs. |
 | `SATELLITE_ANALYTICS_DRY_RUN` | — | `1` → track and log rollups, never POST. The smoke test sets this. |
 
+### Sign-in attribution → `POST /api/satellite/auth`
+
+2plot.ai is the Clerk primary, so every account is created there — but on a
+satellite domain the correct call is `Clerk.redirectToSignIn()`, which routes
+the visitor through Clerk's hosted pages and back **without ever touching a hub
+URL**. The hub therefore cannot tell that the sign-in happened here. This beacon
+is the only signal that attributes it to this app, and `/traffic` → *Where
+sign-ins happen* is what it feeds.
+
+One beacon per session observed becoming authenticated — deduped on the Clerk
+`session_id`, with an `O_EXCL` claim file so several gunicorn workers don't each
+send one. Same HMAC headers as the traffic rollup, and best-effort throughout: a
+failed beacon must never break a sign-in.
+
+**Nothing identifying is ever transmitted.** `who` is
+`sha256(lowercased email)[:12]` — the network convention, matching the wallet
+provisioner. The email is hashed the moment it is read, and the `session_id` is
+used only as a local dedupe key. Verified end-to-end against the hub's own
+`verify_and_record_auth` (HTTP 200), with an explicit assertion that the email,
+the Clerk user id and the session id appear nowhere in the request body:
+
+```json
+{"app":"leaflet","event":"sign_in","who":"85f85c0071e4",
+ "path":"/tile-selector","domain":"leaflet.2plot.dev"}
+```
+
+It rides `clerk-auth-store`, so it is registered only when Clerk is actually
+enabled — without Clerk that store never exists and the callback could not fire.
+
 To have the hub health-sweep this app hourly, add to **2plot.ai**:
 
 ```

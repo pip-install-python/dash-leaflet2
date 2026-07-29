@@ -51,33 +51,62 @@ The two `./vendor/*.tar.gz` lines are the risk — they replaced absolute
 
 ## Phase 1 — GitHub
 
-### 1.1 Retire the R&D remote first
+### 1.1 Free the name without destroying the backup
 
-`../dash-leaflet2` currently pushes to the same GitHub repo this mirror is
-about to take over, and **`docs/sprite-generator/` and `docs/tile-selector/`
-are untracked but NOT gitignored there**. A `git add -A && git push` in that
-checkout would publish both internal pages. Close that door before opening
-this one:
+`github.com/pip-install-python/dash-leaflet2` is a **private** repo holding the
+R&D project. Rename it rather than deleting it: the public mirror gets the name,
+and the private repo survives as the R&D backup — which matters, because the
+R&D checkout currently has ~106 uncommitted entries (including the two internal
+pages) that exist on one disk and nowhere else.
 
-```bash
-cd ../dash-leaflet2
-git remote remove origin
+**The order below is not arbitrary.** GitHub redirects the old URL to the new
+one after a rename. The local R&D checkout still has the *old* URL in its
+config, so the moment a new repo is created at that old name, the R&D checkout
+would be pointing straight at the **public** repo. Re-point it BEFORE creating
+the new repo.
 
-# Belt and braces — make the internal pages unstageable even by accident:
-printf '\n# Internal R&D — never mirrored, never pushed.\ndocs/sprite-generator/\ndocs/tile-selector/\n' >> .gitignore
-git check-ignore docs/sprite-generator && echo "safe"
-```
+1. **Rename on GitHub** — Settings → General → Repository name →
+   `dash-leaflet2-rnd`. Leave it private.
+
+2. **Re-point the local R&D checkout immediately**, before step 3:
+
+   ```bash
+   cd ../dash-leaflet2
+   git remote set-url origin https://github.com/pip-install-python/dash-leaflet2-rnd.git
+   git remote -v          # must show ...-rnd.git
+   ```
+
+   With origin now on the private repo, the internal pages should be
+   **committed** there — that is the backup, and the first time that work has
+   existed anywhere but this disk:
+
+   ```bash
+   git add -A && git commit -m "R&D snapshot" && git push
+   ```
+
+   Do NOT gitignore `docs/sprite-generator/` or `docs/tile-selector/` in this
+   checkout any more. They belong in the private repo. What keeps them out of
+   the public mirror is `scripts/sync_from_rnd.py`'s `DENY_DOCS`, plus the fact
+   that the mirror is a separate checkout with its own remote.
+
+3. **Create the new public repo** — `pip-install-python/dash-leaflet2`, public,
+   and **completely empty**: no README, no .gitignore, no licence. Any
+   initialising commit creates unrelated history and forces a `--force` push
+   that this plan is specifically designed to avoid.
 
 ### 1.2 Push the mirror
 
-The mirror's history is unrelated to the single commit currently on the remote,
-so this is a deliberate replacement:
+Against an empty repo this is an ordinary push — no `--force`, nothing
+overwritten:
 
 ```bash
 cd ../2plot_leaflet
 git remote add origin https://github.com/pip-install-python/dash-leaflet2.git
-git push --force origin main
+git push -u origin main
 ```
+
+If this errors with "Updates were rejected", the new repo was not created empty.
+Delete the initialising commit on GitHub rather than reaching for `--force`.
 
 ### 1.3 Repo settings
 

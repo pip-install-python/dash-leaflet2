@@ -265,9 +265,14 @@ keys, so a local `python run.py` is just the docs. See [DEPLOYMENT.md](./DEPLOYM
 
 ## Requirements
 
-- Python >= 3.8
+- Python >= 3.9  (the documentation site itself needs >= 3.10 — see below)
 - Dash >= 4.1
 - Node.js >= 16 — only to rebuild the JS bundle
+
+The **package** needs only Python 3.9+ and Dash 4.1+; every combination in
+that range is verified in CI. Running the **documentation site** from source
+additionally needs Python 3.10+, because `python-frontmatter` imports
+`typing.TypeGuard`. That floor does not apply to `pip install dash-leaflet2`.
 
 ## Leaflet 2 notes
 

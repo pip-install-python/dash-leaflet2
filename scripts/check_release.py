@@ -26,6 +26,7 @@ from __future__ import annotations
 import argparse
 import json
 import re
+import subprocess
 import sys
 from pathlib import Path
 
@@ -39,6 +40,46 @@ def check(label: str, ok: bool, detail: str = "") -> None:
     print(f"  {'PASS' if ok else 'FAIL'}  {label:<44} {detail}")
     if not ok:
         problems.append(f"{label}: {detail}")
+
+
+def check_bundle_freshness(bundle: Path) -> None:
+    """Is the committed JS bundle older than the TypeScript it is built from?
+
+    This deliberately does NOT compare filesystem mtimes. Git does not record
+    them, so a fresh clone stamps every file with its checkout time and the
+    comparison is decided by sub-second write ordering — which made this check
+    fail at random in CI while passing on the machine that built the bundle.
+
+    Git commit timestamps are the stable signal, and they answer the question
+    that actually matters: did someone edit a .tsx and commit without running
+    `npm run build`? Rebuilding and committing together puts both in the same
+    commit, so equal timestamps are the healthy case.
+    """
+    def last_commit(path: str) -> int | None:
+        try:
+            out = subprocess.run(
+                ["git", "log", "-1", "--format=%ct", "--", path],
+                cwd=ROOT, capture_output=True, text=True, timeout=15,
+            )
+            return int(out.stdout.strip()) if out.stdout.strip() else None
+        except Exception:  # noqa: BLE001 — not a git checkout, or no git
+            return None
+
+    bundle_at = last_commit(str(bundle.relative_to(ROOT)))
+    src_at = last_commit("src/ts")
+
+    if bundle_at is None or src_at is None:
+        notes.append(
+            "bundle freshness not checked — no git history here (a tarball "
+            "install, or a shallow clone without the relevant commits)."
+        )
+        print(f"  SKIP  {'bundle newer than src/ts':<44} no git history")
+        return
+
+    check("bundle newer than src/ts", bundle_at >= src_at,
+          "up to date" if bundle_at >= src_at else
+          f"STALE — src/ts committed {src_at - bundle_at}s after the bundle; "
+          "run npm run build and commit the result")
 
 
 def versions() -> dict[str, str]:
@@ -85,12 +126,7 @@ def main() -> int:
     check("JS bundle committed", bundle.exists(),
           f"{bundle.stat().st_size // 1024} KB" if bundle.exists() else "MISSING — run npm run build")
     if bundle.exists():
-        newest_src = max(
-            (p.stat().st_mtime for p in (ROOT / "src" / "ts").rglob("*")
-             if p.is_file()), default=0)
-        check("bundle newer than src/ts", bundle.stat().st_mtime >= newest_src,
-              "up to date" if bundle.stat().st_mtime >= newest_src
-              else "STALE — run npm run build")
+        check_bundle_freshness(bundle)
     generated = list((ROOT / "dash_leaflet2").glob("*.py"))
     check("generated component classes present", len(generated) > 20,
           f"{len(generated)} .py files")

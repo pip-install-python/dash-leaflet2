@@ -7,7 +7,11 @@ name = "dash-leaflet2"
 version = "0.2.0"
 description = "Leaflet 2-native Dash components — a from-scratch wrapper around Leaflet 2 core (no react-leaflet), built for Dash 4."
 readme = "README.md"
-requires-python = ">=3.8"
+# 3.9, not 3.8. Dash 4.4.1 itself requires >=3.9, so a 3.8 user would be
+# silently resolved back to dash 4.1.0 — a far worse experience than a clear
+# "needs 3.9". Python 3.8 has also been EOL since October 2024. Every version
+# in this range is verified by the package-python-range CI job.
+requires-python = ">=3.9"
 license = { text = "MIT" }
 authors = [{ name = "Pip Install Python LLC", email = "pipinstallpython@gmail.com" }]
 keywords = [
@@ -19,7 +23,6 @@ classifiers = [
     "Framework :: Dash",
     "Intended Audience :: Developers",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",

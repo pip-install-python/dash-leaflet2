@@ -13,9 +13,21 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
+# TWO different Python floors, which is what an earlier version of this file
+# got wrong by testing the docs site on 3.9:
+#
+#   * the PACKAGE needs >= 3.9 — `dash` 4.4.1 itself requires 3.9, and that is
+#     what `requires-python` in pyproject.toml promises. Verified by the
+#     `package` job, which installs the wheel with nothing but Dash.
+#   * the DOCS SITE needs >= 3.10 — `python-frontmatter` 1.3 imports
+#     `typing.TypeGuard`, which is 3.10+. Nothing we can do about it here, and
+#     it does not constrain the package at all.
+#
+# So the smoke job never runs below 3.10, and the package job never installs
+# the docs requirements.
 jobs:
   smoke:
-    name: Dash ${{ matrix.dash }} · Python ${{ matrix.python }}
+    name: Docs · Dash ${{ matrix.dash }} · Python ${{ matrix.python }}
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -24,10 +36,10 @@ jobs:
         dash: ["4.1.0", "4.2.0", "4.3.0", "4.4.1"]
         python: ["3.12"]
         include:
-          # Also prove the oldest and newest interpreters we claim, against the
-          # current Dash — a full cross-product would be 20 jobs for little gain.
+          # The docs-site Python range, against the current Dash. A full
+          # cross-product would be 16 jobs for very little extra signal.
           - dash: "4.4.1"
-            python: "3.9"
+            python: "3.10"
           - dash: "4.4.1"
             python: "3.13"
     steps:
@@ -84,6 +96,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          # check_release.py compares the git commit times of the bundle and
+          # src/ts. A shallow clone can omit the commit that last touched one
+          # of them, which turns the check into a false "no git history" skip.
+          fetch-depth: 0
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
@@ -139,3 +156,56 @@ jobs:
         with:
           name: dist
           path: dist/
+
+  package-python-range:
+    name: Package · Python ${{ matrix.python }}
+    needs: package
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # Every interpreter `requires-python` in pyproject.toml claims. This is
+        # what makes that claim measured rather than asserted — and it installs
+        # ONLY the wheel plus Dash, never the docs requirements, because the
+        # package's floor is not the docs site's.
+        python: ["3.9", "3.10", "3.11", "3.12", "3.13"]
+    steps:
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+      - name: Install the wheel (pulls in dash, nothing else)
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install dist/*.whl
+
+      - name: Import and build a layout
+        run: |
+          python - <<'PY'
+          import dash, dash_leaflet2 as dl2
+          from dash import Dash, html
+          from dash._utils import to_json
+
+          app = Dash(__name__)
+          app.layout = html.Div([
+              dl2.Map(id="m", center=[49.286, -123.12], zoom=12, children=[
+                  dl2.TileLayer(),
+                  dl2.Marker(id="pin", position=[49.286, -123.12],
+                             children=dl2.Tooltip("hi")),
+                  dl2.TileSelector(id="ts"),
+                  dl2.EditControl(id="ec"),
+                  dl2.LayersControl(children=[
+                      dl2.BaseLayer(dl2.TileLayer(), name="OSM", checked=True),
+                      dl2.Overlay(dl2.Circle(center=[49.286, -123.12], radius=800),
+                                  name="ring"),
+                  ]),
+              ]),
+          ])
+          to_json(app.layout)
+          print(f"dash={dash.__version__} dl2={dl2.__version__} "
+                f"components={len(dl2.__all__)} OK")
+          PY

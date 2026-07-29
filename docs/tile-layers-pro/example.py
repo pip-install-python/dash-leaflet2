@@ -164,7 +164,7 @@ dmc.Popover([
             itemsReordering=True, isItemEditable=True,
             showItemControls=True, sliderValues=sliders,
             kebabMenuItems=[{"label": "Remove layer", "value": "delete"}],
-            licenseKey=os.environ["MUI_PRO_API_KEY"],
+            licenseKey=os.environ.get("MUI_PRO_API_KEY", ""),   # optional
         ),
     ]),
 ])

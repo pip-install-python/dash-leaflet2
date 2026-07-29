@@ -31,21 +31,18 @@ python scripts/check_release.py --version 0.2.0
 python scripts/compat_matrix.py              # writes COMPATIBILITY.md
 ```
 
-**`compat_matrix.py` has not been run yet.** `COMPATIBILITY.md` currently marks
-4.1.0 / 4.2.0 / 4.3.0 / 4.4.1 as *pending* and only 4.2.0rc3 as measured. The
-README says "Dash 4.1+" and the PyPI metadata says `dash>=4.1`. Run it before
-publishing, or you are advertising a range you have not tested. If a version
-fails, either fix it or raise the floor in `pyproject.toml` — do not ship the
-claim unverified.
+**Status: done for 0.2.0.** The matrix has been run — 4.1.0 / 4.2.0 / 4.3.0 /
+4.4.1 all pass 70/70, and the package was verified separately with nothing but
+Dash installed. See `COMPATIBILITY.md`. `dash>=4.1` is measured, not assumed.
 
-Also verify the clean-clone install, which has never been exercised:
+That run is also what found `backend=` to be Dash 4.2+ rather than 4.1, which
+`run.py` now handles. Re-run the matrix for any release that touches `run.py`,
+the requirements, or the component build.
 
-```bash
-python -m venv /tmp/fresh && /tmp/fresh/bin/pip install -r requirements.txt
-```
-
-The two `./vendor/*.tar.gz` lines are the risk — they replaced absolute
-`file:///Users/pip/...` paths that would have broken for everyone.
+The clean-clone install has also been exercised (`pip install -r
+requirements.txt` into this project's venv), which is what proves the two
+`./vendor/*.tar.gz` lines work — they replaced absolute `file:///Users/...`
+paths that would have broken for everyone else.
 
 ---
 

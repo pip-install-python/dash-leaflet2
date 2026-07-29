@@ -7,9 +7,14 @@ flip a page between public / auth / admin / hidden and toggle whether its
 redeploy.
 
 Access: the ``ADMIN_EMAILS`` / ``ADMIN_USER_IDS`` allowlist plus the owner
-email (see ``lib.auth.is_admin_user``). With the Clerk keys absent (local dev)
-the board renders behind a dev-mode warning banner instead of the gate, so you
-can still work on it.
+email (see ``lib.auth.is_admin_user``).
+
+**This page fails CLOSED.** Everything else degrades to public when Clerk is
+unavailable — docs must stay readable — but this board can hide any page on the
+site, so without Clerk it returns a 404-style response instead. That is the
+DEFAULT state: ``dash-clerk-auth`` is not on PyPI and is not a dependency here,
+so a stock deploy has no Clerk. Set ``ALLOW_UNGATED_ADMIN=1`` to work on it
+locally.
 """
 from datetime import datetime
 
@@ -19,12 +24,13 @@ from dash import ALL, Input, Output, callback, ctx, html
 from dash.exceptions import PreventUpdate
 from dash_iconify import DashIconify
 
-from lib.auth import clerk_enabled, current_user, is_admin_user
+from lib.auth import admin_access_open, clerk_enabled, current_user, is_admin_user
 from lib.constants import PAGE_TITLE_PREFIX
 from lib.page_visibility import (
     TIERS,
     controllable_pages,
     forbidden_layout,
+    hidden_layout,
     set_llms_public,
     set_visibility,
     sign_in_layout,
@@ -228,6 +234,14 @@ def layout(**kwargs):
             return sign_in_layout("Control Board")
         if not is_admin_user(user):
             return forbidden_layout("Control Board")
+    elif not admin_access_open():
+        # Fail CLOSED. Everything else in this app degrades to public without
+        # Clerk, because docs must stay readable — but this board can hide any
+        # page on the site, so an ungated deploy would hand that to anyone who
+        # guesses the URL. `dash-clerk-auth` is not a dependency (not on PyPI),
+        # so this is the DEFAULT state, not an edge case.
+        # ALLOW_UNGATED_ADMIN=1 to work on the board locally.
+        return hidden_layout()
     return _build_board()
 
 
@@ -242,9 +256,14 @@ def save_visibility_change(_vis_values, _llms_values):
     trig = ctx.triggered_id
     if not isinstance(trig, dict):
         raise PreventUpdate
-    # Server-side re-check: pattern-matching callbacks stay callable even if
-    # someone reconstructs the components client-side.
-    if clerk_enabled() and not is_admin_user():
+    # Server-side re-check, and the half that actually matters: a 404 layout
+    # only hides the UI. Pattern-matching callbacks stay callable by anyone who
+    # can POST to /_dash-update-component with a reconstructed component id, so
+    # the same gate has to run here or the board is still writable.
+    if clerk_enabled():
+        if not is_admin_user():
+            raise PreventUpdate
+    elif not admin_access_open():
         raise PreventUpdate
 
     path = trig["path"]

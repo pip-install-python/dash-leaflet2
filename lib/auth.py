@@ -99,6 +99,28 @@ def _split_csv(raw: str | None) -> set[str]:
     return {item.strip().lower() for item in (raw or "").split(",") if item.strip()}
 
 
+def admin_access_open() -> bool:
+    """May admin surfaces render and act while Clerk is unavailable?
+
+    Default **False** — admin surfaces fail CLOSED.
+
+    The rest of this module fails open by design: with no Clerk keys every
+    visibility tier degrades to public, because a documentation site must never
+    brick over a missing credential. That is the right trade for *reading*
+    docs. It is the wrong trade for `/admin/control-board`, which can hide or
+    unhide any page on the site: falling open there means anyone who guesses
+    the URL gets a working admin panel.
+
+    `dash-clerk-auth` is not on PyPI (the 0.9.0 build with the satellite fixes
+    is vendored across the 2plot network), so it is NOT a dependency here and
+    `clerk_enabled()` is False on a default deploy. Without this gate the board
+    would have shipped wide open.
+
+    Set ``ALLOW_UNGATED_ADMIN=1`` to work on the board locally.
+    """
+    return (os.getenv("ALLOW_UNGATED_ADMIN") or "").strip() == "1"
+
+
 def is_admin_user(user=None) -> bool:
     """Email / user-id allowlist via ADMIN_EMAILS / ADMIN_USER_IDS (case-insensitive).
 

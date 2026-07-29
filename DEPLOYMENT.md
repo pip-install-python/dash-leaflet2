@@ -95,6 +95,43 @@ is logged.
 | `SESSION_SECRET` | (generated) | Signs the session + `__dca_identity` cookies. Without it dash-clerk-auth uses a **public dev default**. |
 | `ADMIN_EMAILS` | `a@b.com,c@d.com` | Allowlist for `/admin/control-board`. `OWNER_EMAIL` always counts. |
 | `DISABLE_CLERK` | `1` | Dev kill switch — reads as "intentionally off" without touching the keys. Never set in production. |
+| `ALLOW_UNGATED_ADMIN` | `1` | Lets `/admin/control-board` render without Clerk. **Never set in production.** |
+
+> **`dash-clerk-auth` is not a dependency of this project.** The 0.9.0 build
+> carrying the satellite fixes is not on PyPI — it is vendored across the 2plot
+> network — so a stock deploy has **no Clerk at all** and `clerk_enabled()` is
+> `False` however many `CLERK_*` variables you set.
+>
+> That is safe for the documentation itself, which is public anyway. It is not
+> safe for `/admin/control-board`, so that page fails **closed**: without Clerk
+> it returns a 404-style response and its save callback refuses writes, rather
+> than handing an open admin panel to anyone who guesses the URL.
+>
+> The tarball is already committed to `vendor/`; `requirements.txt` has the
+> line **commented out**. Uncomment it (and `clerk-backend-api>=5.0.0,<6`) to
+> enable Clerk. Two reasons it is off by default:
+>
+> 1. The package registers a `[dash_hooks]` entry point that Dash auto-imports
+>    at **every** `Dash()` construction, so installing it puts Clerk in the boot
+>    path of the whole site — a broken transitive dependency would take down the
+>    documentation, not just sign-in.
+> 2. **Clerk satellite domains need a production Clerk instance.** The 2plot.ai
+>    primary is currently a *dev* instance — `pk_test` key, frontend API on
+>    `fine-rhino-96.clerk.accounts.dev`. Dev instances do not support
+>    multi-domain, so `CLERK_IS_SATELLITE=true` against it cannot work.
+>
+> **Values for this satellite, once the primary is on production Clerk:**
+>
+> | Variable | Value |
+> |---|---|
+> | `CLERK_SIGN_IN_URL` | the primary's sign-in URL (dev today: `https://fine-rhino-96.accounts.dev/sign-in`) |
+> | `CLERK_FRONTEND_API` | the primary's frontend API (dev today: `https://fine-rhino-96.clerk.accounts.dev`) |
+> | `CLERK_SATELLITE_DOMAIN` | `leaflet.2plot.dev` |
+> | `CLERK_IS_SATELLITE` | `true` |
+>
+> `https://leaflet.2plot.dev` must also be added to the primary's
+> `CLERK_ALLOWED_REDIRECT_ORIGINS`. It is **not** there today — the list has
+> `https://2plot.dev`, and a subdomain is a different origin.
 
 **Two satellite fixes** are applied in `lib/auth.py` for dash-clerk-auth 0.9.0.
 They are the difference between a working satellite and a broken one:

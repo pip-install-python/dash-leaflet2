@@ -73,20 +73,23 @@ services:
 
       # --- Clerk satellite auth (lib/auth.py) --------------------------
       # All of these are OPTIONAL: with them absent the site runs fully public
-      # and /admin/control-board is ungated (which is why it is also excluded
-      # from robots.txt). Set ALL of the first three to turn auth on.
+      # and /admin/control-board returns a 404 (it fails CLOSED — see
+      # lib.auth.admin_access_open). Set ALL of the first three to turn auth on.
       - key: CLERK_SECRET_KEY
         sync: false
       - key: CLERK_PUBLISHABLE_KEY
         sync: false
+      # The 2plot.ai PRIMARY on its production Clerk instance. These are the
+      # Account Portal and Frontend API custom domains, not the *.accounts.dev
+      # hosts — those belong to the dev instance and cannot host satellites.
       - key: CLERK_SIGN_IN_URL
-        value: https://2plot.ai/sign-in
+        value: https://accounts.2plot.ai/sign-in
       - key: CLERK_SIGN_UP_URL
-        value: https://2plot.ai/sign-up
-      # REQUIRED in satellite mode — production custom-domain instances cannot
-      # derive this from CLERK_SIGN_IN_URL.
+        value: https://accounts.2plot.ai/sign-up
+      # REQUIRED in satellite mode. A production custom-domain instance cannot
+      # derive this from CLERK_SIGN_IN_URL — it must be set explicitly.
       - key: CLERK_FRONTEND_API
-        sync: false
+        value: https://clerk.2plot.ai
       # Must match the custom domain exactly, host only, no scheme.
       - key: CLERK_SATELLITE_DOMAIN
         value: leaflet.2plot.dev

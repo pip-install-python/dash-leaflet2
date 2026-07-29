@@ -107,31 +107,57 @@ is logged.
 > it returns a 404-style response and its save callback refuses writes, rather
 > than handing an open admin panel to anyone who guesses the URL.
 >
-> The tarball is already committed to `vendor/`; `requirements.txt` has the
-> line **commented out**. Uncomment it (and `clerk-backend-api>=5.0.0,<6`) to
-> enable Clerk. Two reasons it is off by default:
+> **Clerk is enabled** — `vendor/dash_clerk_auth-0.9.0.tar.gz` is committed and
+> active in `requirements.txt`. One operational risk to know before debugging a
+> dead site: the package registers a `[dash_hooks]` entry point that Dash
+> auto-imports at **every** `Dash()` construction, so it sits in the boot path
+> of the whole site whether or not Clerk is configured. Rollback is to comment
+> those two lines and redeploy — `/admin/control-board` fails closed without
+> Clerk, so nothing is left exposed.
+
+**Values for this satellite** (2plot.ai on its **production** Clerk instance —
+the custom domains, not the `*.accounts.dev` hosts, which belong to the dev
+instance and cannot host satellites):
+
+| Variable | Value |
+|---|---|
+| `CLERK_SIGN_IN_URL` | `https://accounts.2plot.ai/sign-in` |
+| `CLERK_SIGN_UP_URL` | `https://accounts.2plot.ai/sign-up` |
+| `CLERK_FRONTEND_API` | `https://clerk.2plot.ai` |
+| `CLERK_SATELLITE_DOMAIN` | `leaflet.2plot.dev` |
+| `CLERK_IS_SATELLITE` | `true` |
+
+All five are already literals in `render.yaml`; only `CLERK_SECRET_KEY` and
+`CLERK_PUBLISHABLE_KEY` need entering in the dashboard.
+
+### Registering the satellite on the primary — two separate lists
+
+Easy to conflate, and each fails differently.
+
+**1. Clerk's dashboard → Satellite domains.** `2plot.media`, `2plot.dev` and
+`2plot.xyz` are already configured. `leaflet.2plot.dev` is a *subdomain* of the
+existing `2plot.dev` entry, so **Enable allowed subdomains** on that entry
+should cover it without paying for another satellite domain. There is precedent
+in this network already: `cast.2plot.net` is a subdomain satellite of
+`2plot.net`. Confirm on the dashboard that the toggle is per-domain and applies
+to `2plot.dev` before assuming it covers this host.
+
+**2. The primary's own redirect whitelist** (`CLERK_ALLOWED_REDIRECT_ORIGINS`,
+read by `lib/auth.py` in the **2plotai** repo). This is *our* code, not Clerk's
+dashboard, and it is applied to `Clerk.load()` on the primary. Without it the
+primary refuses to redirect back here after sign-in.
+
+> **The env var REPLACES the default list — it does not extend it.** Setting it
+> to just the new origin would silently break every existing satellite. Use the
+> full value:
 >
-> 1. The package registers a `[dash_hooks]` entry point that Dash auto-imports
->    at **every** `Dash()` construction, so installing it puts Clerk in the boot
->    path of the whole site — a broken transitive dependency would take down the
->    documentation, not just sign-in.
-> 2. **Clerk satellite domains need a production Clerk instance.** The 2plot.ai
->    primary is currently a *dev* instance — `pk_test` key, frontend API on
->    `fine-rhino-96.clerk.accounts.dev`. Dev instances do not support
->    multi-domain, so `CLERK_IS_SATELLITE=true` against it cannot work.
+> ```
+> CLERK_ALLOWED_REDIRECT_ORIGINS=https://2plot.media,https://www.2plot.media,https://2plot.net,https://www.2plot.net,https://2plot.xyz,https://www.2plot.xyz,https://cast.2plot.net,https://2plot.dev,https://2plot.me,https://2plot.world,https://2plot.shop,https://leaflet.2plot.dev
+> ```
 >
-> **Values for this satellite, once the primary is on production Clerk:**
->
-> | Variable | Value |
-> |---|---|
-> | `CLERK_SIGN_IN_URL` | the primary's sign-in URL (dev today: `https://fine-rhino-96.accounts.dev/sign-in`) |
-> | `CLERK_FRONTEND_API` | the primary's frontend API (dev today: `https://fine-rhino-96.clerk.accounts.dev`) |
-> | `CLERK_SATELLITE_DOMAIN` | `leaflet.2plot.dev` |
-> | `CLERK_IS_SATELLITE` | `true` |
->
-> `https://leaflet.2plot.dev` must also be added to the primary's
-> `CLERK_ALLOWED_REDIRECT_ORIGINS`. It is **not** there today — the list has
-> `https://2plot.dev`, and a subdomain is a different origin.
+> The alternative is a one-line addition to `_DEFAULT_SATELLITE_ORIGINS` in
+> `2plotai/lib/auth.py` and a redeploy, which is less error-prone if you are not
+> already overriding the list.
 
 **Two satellite fixes** are applied in `lib/auth.py` for dash-clerk-auth 0.9.0.
 They are the difference between a working satellite and a broken one:

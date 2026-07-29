@@ -55,7 +55,6 @@ dash-mui-charts>=1.2.3
 #   Used by: /walking-sim
 ./vendor/flexlayout_dash-1.1.0.tar.gz
 # dash-clerk-auth: authentication for the HOSTED documentation site only.
-# STAGED BUT NOT ENABLED — uncomment both lines to turn Clerk on.
 #
 # It is deliberately NOT a package dependency and never can be: pyproject.toml
 # declares `dependencies = ["dash>=4.1"]` and ships `packages =
@@ -63,27 +62,19 @@ dash-mui-charts>=1.2.3
 # sees lib/auth.py, and never installs this. CI asserts that against the built
 # wheel. Enabling it here changes the Render deployment only.
 #
-# Why it is commented out rather than simply added:
+# ONE OPERATIONAL RISK, worth knowing before you debug a dead site: the package
+# registers a `[dash_hooks]` entry point that Dash auto-imports during EVERY
+# `Dash()` construction. Installing it puts Clerk in the boot path of the whole
+# documentation site, configured or not — so a broken transitive dependency
+# takes down the docs, not just sign-in. Rollback is to comment these two lines
+# and redeploy; /admin/control-board fails CLOSED without Clerk, so nothing is
+# left exposed by doing so.
 #
-#   1. The package registers a `[dash_hooks]` entry point, which Dash
-#      auto-imports during EVERY `Dash()` construction. Installing it therefore
-#      puts it in the boot path of the whole site, configured or not — a broken
-#      transitive dep takes down the documentation, not just sign-in.
-#   2. Clerk satellite domains require a PRODUCTION Clerk instance. The 2plot.ai
-#      primary is currently a dev instance (pk_test, *.accounts.dev frontend
-#      API), and dev instances do not support multi-domain, so
-#      CLERK_IS_SATELLITE=true against it cannot work yet.
-#   3. Nothing depends on it today: /admin/control-board fails CLOSED without
-#      Clerk (404 + the save callback refuses writes), and every docs page is
-#      public by design.
-#
-# Turn it on once 2plot.ai is on a production Clerk instance AND
-# https://leaflet.2plot.dev is in the primary's CLERK_ALLOWED_REDIRECT_ORIGINS.
 # 0.9.0 carries the two satellite fixes lib/auth.py depends on; it is not on
 # PyPI, and is vendored the same way across 2plotai, 2plotxyz and HoneyComb.
 #   Used by: lib/auth.py, /admin/control-board
-# ./vendor/dash_clerk_auth-0.9.0.tar.gz
-# clerk-backend-api>=5.0.0,<6
+./vendor/dash_clerk_auth-0.9.0.tar.gz
+clerk-backend-api>=5.0.0,<6
 
 # --- Deployment ------------------------------------------------------------
 # gunicorn serves the Flask (WSGI) backend in the Dockerfile. The FastAPI

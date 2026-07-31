@@ -30,7 +30,11 @@ dash_mantine_components==2.7.0
 dash-iconify==0.1.2
 markdown2dash
 python-frontmatter
-dash-improve-my-llms>=2.0.0
+# 2.3.3, not 2.0: the upgrade alone fixes the assign-vs-merge home-page stub
+# (2.2.0 merge semantics), directive leakage into agent markdown (2.3.3), and
+# the OAI/Anthropic robots taxonomy (2.3.2/2.3.3). The [flask] extra is just
+# flask>=2.0, already present via Dash.
+dash-improve-my-llms[flask]>=2.3.3
 python-dotenv>=1.0
 pydantic>=2.0
 requests>=2.31

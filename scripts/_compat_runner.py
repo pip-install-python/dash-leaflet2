@@ -15,6 +15,10 @@ Import order is the whole trick:
 
 Env:
     DL2_EXTRA_SITE   donor site-packages directory
+    DL2_PIN_MODULES  comma-separated modules to import BEFORE the donor path is
+                     appended, so the target interpreter's copy wins. `dash` is
+                     always pinned; add others when the target holds the version
+                     under test (e.g. dash_improve_my_llms).
     DL2_SMOKE_ARGS   arguments to forward to smoke_test.py, newline-separated
 """
 import os
@@ -30,6 +34,27 @@ import dash  # noqa: E402,F401
 _resolved = dash.__version__
 _origin = Path(dash.__file__).resolve()
 
+# Any other module whose TARGET version is the thing under test has to be
+# imported here too, for the same reason: once it is in sys.modules the donor
+# path appended below cannot shadow it.
+_pinned = []
+for _name in (os.environ.get("DL2_PIN_MODULES") or "").split(","):
+    _name = _name.strip()
+    if not _name:
+        continue
+    try:
+        _mod = __import__(_name)
+        _ver = getattr(_mod, "__version__", None)
+        if _ver is None:
+            import importlib.metadata as _md
+            try:
+                _ver = _md.version(_name.replace("_", "-"))
+            except Exception:
+                _ver = "?"
+        _pinned.append(f"{_name}=={_ver}")
+    except Exception as _exc:
+        _pinned.append(f"{_name} FAILED ({_exc})")
+
 # 2. Now lend the target the docs-site libraries it is missing.
 extra = os.environ.get("DL2_EXTRA_SITE")
 if extra and extra not in sys.path:
@@ -37,6 +62,8 @@ if extra and extra not in sys.path:
 
 # Report what actually got used, so a silently-wrong measurement is visible.
 print(f"[runner] dash {_resolved} from {_origin.parent.parent.parent.parent}")
+if _pinned:
+    print(f"[runner] pinned from target: {', '.join(_pinned)}")
 print(f"[runner] donor site-packages: {extra or '(none)'}")
 
 sys.argv = ["smoke_test.py"] + [

@@ -45,10 +45,11 @@ from dash_improve_my_llms import (
     LLMSConfig,
     RobotsConfig,
     add_llms_routes,
+    mark_hidden,
     register_page_metadata,
 )
 
-from lib import auth, satellite_analytics
+from lib import auth, network_directory, satellite_analytics
 from lib.backend import get_backend_info, resolve_backend
 from lib.constants import APP_VERSION, BASE_URL, LEAFLET_VERSION, SITE_TITLE
 
@@ -140,6 +141,19 @@ auth.configure_app(app)
 # ----------------------------------------------------------------------------
 app._base_url = BASE_URL
 app._robots_config = RobotsConfig(
+    # DELIBERATE open posture, reviewed against dash-improve-my-llms 2.3.3.
+    #
+    # 2.3.3 makes `True` safe — it blocks the real training crawlers (GPTBot,
+    # ClaudeBot, CCBot) while still allowing Claude-User, Claude-SearchBot and
+    # ChatGPT-User, so the old reason to run `False` (blocking broke claude.ai
+    # fetches through the legacy aliases) is gone. We stay `False` anyway,
+    # because for MIT-licensed component documentation being in the training
+    # corpus is the point: it is how a model recommends this library to someone
+    # who never visits the site. Flip to `True` if that calculus changes.
+    #
+    # Note this diverges from the fleet fingerprint in
+    # handoff/existing_subdomains.md, whose verification expects
+    # `ClaudeBot -> Disallow`. The divergence is intentional, not drift.
     block_ai_training=False,
     allow_ai_search=True,
     allow_traditional=True,
@@ -165,13 +179,37 @@ register_page_metadata(
 # are not supported" errors when the search dropdown re-rendered).
 # ----------------------------------------------------------------------------
 
+# Cross-host network directory. A sitemap is scoped to its own origin by
+# design, so nothing in this site's markup would otherwise say the other 2plot
+# hosts exist — an agent landing here sees one library and no ecosystem. This
+# emits <link rel="related"> tags, a "## Network" section in /llms.txt, and
+# followed links in the prerendered body. Must run BEFORE add_llms_routes.
+#
+# The peer list is kept in one place (copied verbatim from the boilerplate) and
+# self-excludes by URL, so there is nothing app-specific to edit here — editing
+# it per repo is how twelve copies drift apart.
+network_directory.apply(BASE_URL)
+
+# /admin/control-board is an admin surface, not documentation. It is the one
+# registered page with no llms.txt prose, so it must be marked hidden BEFORE
+# add_llms_routes — otherwise it is the sole reason the missing-prose warning
+# below can never reach zero. mark_hidden also keeps it out of the sitemap and
+# out of /llms.txt, which matches the robots `disallowed_paths` above.
+mark_hidden("/admin/control-board")
+
 # Wire up /llms.txt, /<page>/llms.txt, /robots.txt, /sitemap.xml + bot
-# middleware. dash-improve-my-llms 2.0 auto-detects the active backend
+# middleware. dash-improve-my-llms auto-detects the active backend
 # (flask / fastapi / quart) and dispatches to the matching adapter, so we
 # no longer have to gate this on the backend. Per-page prose is registered
 # through lib.page_visibility.register_llms_doc (see pages/markdown.py) so the
 # control board's llms.txt switch can swap a page's body for a stub.
-add_llms_routes(app, LLMSConfig(warn_missing_llms_doc=False))
+#
+# warn_missing_llms_doc is deliberately TRUE. It was silenced while the home
+# page still lost its prose to the assign-semantics bug in 2.0; 2.2.0 made
+# register_page_metadata MERGE, so every page now keeps the llms_doc the
+# markdown loader gave it and the warning should stay at zero. If it starts
+# firing, a page has genuinely lost its prose — which is worth hearing about.
+add_llms_routes(app, LLMSConfig(warn_missing_llms_doc=True))
 
 # ----------------------------------------------------------------------------
 # 2plot.ai satellite analytics: /healthz for the hub's hourly health sweep,

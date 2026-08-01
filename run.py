@@ -49,7 +49,7 @@ from dash_improve_my_llms import (
     register_page_metadata,
 )
 
-from lib import auth, network_directory, satellite_analytics
+from lib import auth, bulletin, network_directory, satellite_analytics
 from lib.backend import get_backend_info, resolve_backend
 from lib.constants import (
     APP_VERSION,
@@ -221,6 +221,22 @@ mark_hidden("/admin/control-board")
 # markdown loader gave it and the warning should stay at zero. If it starts
 # firing, a page has genuinely lost its prose — which is worth hearing about.
 add_llms_routes(app, LLMSConfig(warn_missing_llms_doc=True))
+
+# The hub's announcement feed, rendered in the header of this site's llms.txt
+# viewer. Opt-in: with NETWORK_BULLETIN_URL unset the feature is simply off and
+# the viewer still renders, so the failure mode is an announcement that never
+# appears — which nobody notices.
+#
+# Hence a function that RETURNS whether it wired, and a boot line that says so.
+# The boilerplate shipped four commented-out lines here for weeks, against a
+# hub endpoint that was already serving, and the only symptom was silence. An
+# unwired host still renders both banner panels; the tell is one generic tip
+# where the hub publishes two.
+print(
+    "[dash-leaflet2] network bulletin: "
+    + (f"wired -> {bulletin.url()}" if bulletin.configure()
+       else "off (NETWORK_BULLETIN_URL unset)")
+)
 
 # ----------------------------------------------------------------------------
 # 2plot.ai satellite analytics: /healthz for the hub's hourly health sweep,

@@ -91,6 +91,8 @@ HUB_URL = "https://2plot.dev"
 # URL is served from the 2plot CDN so a sleeping free-tier container never
 # costs a preview. Keep in step with lib/constants.OG_IMAGE_URL.
 OG_IMAGE_URL = "https://cdn.2plot.ai/github_assets/leaflet.2plot.dev.png"
+OG_IMAGE_WIDTH = 1200
+OG_IMAGE_HEIGHT = 630
 
 # --- robots.txt fingerprint, and this site's DELIBERATE divergence -----------
 # pip metadata is invisible from outside a running host, so the robots.txt
@@ -126,11 +128,16 @@ class SmokeFailure(Exception):
     pass
 
 
-def fetch(url: str, ua: str = UA, method: str = "GET",
-          body: bytes | None = None, headers: dict | None = None,
-          timeout: int = TIMEOUT, retries: int = 3):
-    """(status, headers, text) — HTTP errors are results, not exceptions;
+def fetch_raw(url: str, ua: str = UA, method: str = "GET",
+              body: bytes | None = None, headers: dict | None = None,
+              timeout: int = TIMEOUT, retries: int = 3):
+    """(status, headers, BYTES) — HTTP errors are results, not exceptions;
     network errors raise AFTER retries.
+
+    Bytes rather than text, because one caller needs them: the social card is a
+    PNG and its real dimensions live in the IHDR chunk at bytes 16..24. A
+    decode with `errors="replace"` substitutes U+FFFD for every invalid byte
+    and is one-way, so the header would be gone before it could be read.
 
     Response headers come back lower-cased: gunicorn sends `content-type`,
     proxies often re-case it — callers must not care.
@@ -146,13 +153,26 @@ def fetch(url: str, ua: str = UA, method: str = "GET",
         try:
             with urllib.request.urlopen(req, timeout=timeout) as r:
                 return (r.status, {k.lower(): v for k, v in r.headers.items()},
-                        r.read().decode("utf-8", "replace"))
+                        r.read())
         except urllib.error.HTTPError as e:
             return (e.code, {k.lower(): v for k, v in e.headers.items()},
-                    e.read().decode("utf-8", "replace"))
+                    e.read())
         except Exception as exc:  # timeout, reset, truncated read, …
             last_exc = exc
     raise last_exc
+
+
+def fetch(url: str, ua: str = UA, method: str = "GET",
+          body: bytes | None = None, headers: dict | None = None,
+          timeout: int = TIMEOUT, retries: int = 3):
+    """(status, headers, text) — `fetch_raw` with the body decoded.
+
+    A thin delegate ON PURPOSE. The in-process test patches ONE transport, and
+    if these were two independent implementations the card check would keep
+    reaching the real CDN from a unit test while everything else was stubbed.
+    """
+    status, hdrs, raw = fetch_raw(url, ua, method, body, headers, timeout, retries)
+    return status, hdrs, raw.decode("utf-8", "replace")
 
 
 def record(name: str, verdict: str, detail: str = "") -> None:
@@ -305,11 +325,33 @@ def satellite_checks(base: str) -> None:
         expect(bool(twitter) and all(t.strip() for t in twitter),
                "twitter:image is missing or empty")
 
-        # The image has to actually exist. A 404 here is the whole card.
-        img_status, img_headers, _ = fetch(OG_IMAGE_URL)
+        expect("/assets/" not in images[0],
+               "the app is serving its own card — a cold container blanks the "
+               "preview, and the platform caches the miss")
+
+        # The file has to exist AND be the shape the tags promise. Read the
+        # BYTES, not the decoded text: PNG stores its dimensions in the IHDR
+        # chunk at bytes 16..24, which a lossy decode destroys.
+        #
+        # This is the check that catches a re-upload at a different size —
+        # every offline test stays green while the platform reserves the box
+        # the tags declare and crops the image into it. It is how the previous
+        # card (1280x515, 2.49:1, and the 2plot wordmark rather than a per-site
+        # card at all) went unnoticed.
+        img_status, img_headers, raw = fetch_raw(OG_IMAGE_URL)
         expect(img_status == 200, f"the og:image URL returns {img_status}")
         expect(img_headers.get("content-type", "").startswith("image/"),
                f"og:image serves {img_headers.get('content-type')!r}")
+        # 24 bytes is exactly the signature plus the IHDR width/height, which
+        # is all this reads — `>` rather than `>=` would reject a perfectly
+        # readable header for being minimal.
+        expect(raw[1:4] == b"PNG" and len(raw) >= 24,
+               "og:image is not a PNG (or is truncated)")
+        actual_w = int.from_bytes(raw[16:20], "big")
+        actual_h = int.from_bytes(raw[20:24], "big")
+        expect((actual_w, actual_h) == (OG_IMAGE_WIDTH, OG_IMAGE_HEIGHT),
+               f"the CDN file is {actual_w}x{actual_h}, the tags declare "
+               f"{OG_IMAGE_WIDTH}x{OG_IMAGE_HEIGHT}")
 
     def installable_as_an_app():
         """The manifest, and whether a browser could offer to install this.
@@ -347,7 +389,7 @@ def satellite_checks(base: str) -> None:
         ("crawler_gets_prose", crawler_gets_prose),
         ("agents_and_browsers_get_different_types",
          agents_and_browsers_get_different_types),
-        ("social_card_is_shareable", social_card_is_shareable),
+        ("social_card_real_pixels", social_card_is_shareable),
         ("installable_as_an_app", installable_as_an_app),
     ):
         check(name, fn)

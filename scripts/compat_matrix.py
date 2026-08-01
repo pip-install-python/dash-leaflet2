@@ -181,6 +181,21 @@ def make_venv(version: str) -> tuple[Path, Path] | None:
         log(f"{version}: requirements install FAILED\n{r.stderr[-1500:]}")
         return None
 
+    # markdown2dash is deliberately NOT in requirements.txt: it declares
+    # `gunicorn>=21.2,<22`, which pip cannot resolve against the CVE-driven
+    # `gunicorn>=23` floor (CVE-2024-6827, CVE-2024-1135 — request smuggling).
+    # Its real dependencies are listed there instead, and it installs without
+    # its dependency graph. `pages/markdown.py` imports it, so without this
+    # every venv in the matrix boots an app with no documentation pages and
+    # the whole run measures nothing. Same pair as the Dockerfile, ci.yml and
+    # release.yml.
+    log(f"{version}: installing markdown2dash (--no-deps)")
+    r = run([str(py), "-m", "pip", "install", "-q", "--no-deps",
+             "markdown2dash==0.1.2"], cwd=PROJECT_ROOT)
+    if r.returncode:
+        log(f"{version}: markdown2dash install FAILED\n{r.stderr[-1500:]}")
+        return None
+
     # Confirm the resolver did not quietly upgrade Dash to satisfy something.
     r = run([str(py), "-c", "import dash; print(dash.__version__)"])
     actual = r.stdout.strip()

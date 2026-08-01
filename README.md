@@ -148,6 +148,10 @@ You can also run the docs site locally:
 
 ```bash
 pip install -r requirements.txt
+# markdown2dash pins gunicorn<22, against the CVE-driven gunicorn>=23 floor
+# in requirements.txt. Its real dependencies are listed there, so it installs
+# without its dependency graph — the docs pages need it.
+pip install --no-deps markdown2dash==0.1.2
 python run.py                 # open http://127.0.0.1:8050
 ```
 

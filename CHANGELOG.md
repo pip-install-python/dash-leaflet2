@@ -15,6 +15,70 @@ Nothing yet.
 
 ---
 
+## [0.2.2] — 2026-08-01
+
+The rest of the 2plot network standard, from the checklist's "found on the
+email pass" — the items that each bit a satellite which already looked
+finished. Documentation site and network wiring only; no `dl2.*` component
+changed.
+
+> **Deploy note.** `og:image` now declares 1200×630, and the battery reads the
+> CDN file's real pixels after every deploy. The new card
+> (`scripts/make_social_card.py`) must be uploaded to
+> `cdn.2plot.ai/github_assets/leaflet.2plot.dev.png` **before** this ships, or
+> `social_card_real_pixels` fails the deploy — deliberately.
+
+### Fixed
+
+- **The network bulletin was never wired.** The hub publishes announcements and
+  tips at `2plot.dev/api/network/bulletin`, and every satellite renders them in
+  its llms.txt viewer header. This host had no `lib/bulletin.py` at all, so it
+  showed "No announcements." and one generic tip where the hub publishes two —
+  and an unwired host still renders both panels, which is why nobody noticed.
+  Note that `dash_improve_my_llms/bulletin.py` never reads
+  `NETWORK_BULLETIN_URL`: setting that variable without this code does nothing,
+  silently. `run.py` now prints which of the two states it booted in.
+- **The social card was the wrong shape, and the wrong image.** 1280×515
+  (2.49:1) is wider than both the Open Graph ideal and Twitter's 2:1 slot, so
+  every platform cropped it — and the file was the 2plot network wordmark
+  rather than a card for this site. Replaced with a generated 1200×630 card,
+  and the battery now reads the served PNG's IHDR so a re-upload at a different
+  size cannot pass while every offline test stays green.
+- **`dash-clerk-auth` 0.9.0 renders a dead avatar on satellites** — the header
+  control appears and never resolves the signed-in user. This host is a
+  satellite of the 2plot.ai primary, so it is exactly the affected shape.
+  Vendored 0.9.1.
+- **`markdown2dash` was installed without `--no-deps` in two places** —
+  `scripts/compat_matrix.py` and the README quickstart. In the matrix that
+  meant every per-Dash-version venv booted an app with no documentation pages,
+  so the compatibility run measured nothing.
+- **`AD_APP_ID` was the package name, not the directory key.** The hub lists
+  `dash-leaflet2` under `legacy_ids` and folds it in at ingest specifically
+  "until leaflet's own network-standard pass sets `AD_APP_ID=leaflet`". It now
+  does, and `SATELLITE_APP_KEY` is set alongside `SATELLITE_APP_ID`.
+
+### Added
+
+- **The Control Board appears in the nav, to admins only** — its own section in
+  both the desktop navbar and the mobile drawer, hidden by default and revealed
+  server-side by the same predicate the page itself uses. The link is cosmetic:
+  `/admin/control-board` gates itself on every render and again in its mutating
+  callback, and fails closed without Clerk.
+- `lib/bulletin.py`, `scripts/make_social_card.py`, `tests/test_bulletin.py`,
+  `tests/test_admin_nav.py`, and `social_card_real_pixels` in the battery.
+- `SITE_SHORT_NAME` (with `PAGE_TITLE_PREFIX` derived from it rather than typed
+  twice) and `OG_IMAGE_TYPE`.
+
+### Changed
+
+- **`BASE_URL` accepts `APP_BASE_URL` first**, falling back to this repo's
+  `DASH_LEAFLET2_BASE_URL`. An alias, never a rename — both are set in
+  `render.yaml`, because removing one of two env names from a live service is
+  how a host starts advertising the wrong canonical origin and deindexes
+  itself quietly.
+
+---
+
 ## [0.2.1] — 2026-07-31
 
 Brings this satellite onto the **2plot network standard** that 2plot.ai (root),

@@ -78,6 +78,13 @@ analytics and its CI.
   markdown's H1 and the README. This matters because the home page is
   registered as `"Home"`, which `resolve_site_title` skips as generic; without
   the explicit registration the site published a framework fallback.
+- **An introduction video** on the home page and in the README —
+  [*Dash Leaflet 2.0: Drone Tracking, Image Overlays & Map Packages in
+  Python*](https://youtu.be/Wlmw98JrJZI). Embedded from
+  `youtube-nocookie.com`, so the player sets no visitor-tracking cookies on a
+  site that otherwise counts nothing beyond an anonymised page view, and
+  accompanied by a plain link — an agent reading `/llms.txt` never sees an
+  iframe, and neither does anyone whose browser blocks the embed.
 - **`scripts/network_smoke.py`** — the network's named-check battery, run
   against the CI container and against production with identical check names.
   Proves identity, the agent-facing document surfaces, the robots fingerprint,

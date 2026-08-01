@@ -73,6 +73,20 @@ all live inside `dash_leaflet2.js`. A normal `pip install` needs no Node and no
 > alpha and APIs will move until v2 leaves alpha upstream. See
 > [CHANGELOG.md](./CHANGELOG.md) for what's shipped, fixed and known-broken.
 
+## Watch the introduction
+
+<div align="center">
+
+<a href="https://youtu.be/Wlmw98JrJZI">
+  <img src="https://img.youtube.com/vi/Wlmw98JrJZI/maxresdefault.jpg" alt="Dash Leaflet 2.0: Drone Tracking, Image Overlays &amp; Map Packages in Python" width="720">
+</a>
+
+**[Dash Leaflet 2.0: Drone Tracking, Image Overlays &amp; Map Packages in Python](https://youtu.be/Wlmw98JrJZI)**
+
+</div>
+
+Drone tracking, image overlays and map packages, built with this library.
+
 ## Installation
 
 ```bash

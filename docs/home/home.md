@@ -34,6 +34,16 @@ reach of a Python callback:
 The demo below is the whole claim in one page: Leaflet `2.0.0-alpha.1`,
 rendering inside Dash 4, with no JavaScript build step.
 
+### Watch the introduction
+
+[Dash Leaflet 2.0: Drone Tracking, Image Overlays & Map Packages in
+Python](https://youtu.be/Wlmw98JrJZI) — drone tracking, image overlays and map
+packages, built with this library.
+
+.. exec::docs.home.video
+    :code: false
+    :border: false
+
 ### Live demo
 
 .. exec::docs.home.example

@@ -42,3 +42,6 @@ visitor_analytics.json
 .DS_Store
 .idea/
 .vscode/
+# Claude Code's per-project working directory: local settings, scratch writes
+# and screenshots. Nothing here is needed to build, run or deploy the project.
+.claude/

@@ -1,34 +1,181 @@
+# CI for leaflet.2plot.dev AND for the dash-leaflet2 PyPI package.
+#
+# This repo is unusual among the 2plot satellites: it ships two artifacts from
+# one tree. The network's CI baseline (copied from
+# dash-documentation-boilerplate, which 2plot.ai and 2plot.dev also run) covers
+# the documentation site; the `package*` jobs below are this repo's own and
+# cover the wheel. Both have to stay green.
+#
+# The network baseline, and why each piece is here:
+#
+#   * least-privilege `permissions` and a cancel-in-progress `concurrency`
+#     group, so a workflow cannot write more than it reads and a rapid second
+#     push does not race the first;
+#   * an explicit `timeout-minutes` on every job — the default is six hours,
+#     which is how a hung `curl` burns a day of runner minutes unnoticed;
+#   * `actionlint`, because an invalid workflow file is the one defect CI
+#     structurally cannot report: the run dies before a job exists to fail;
+#   * the real Docker image, built with a buildx GHA cache, then BOOTED, then
+#     probed by the same battery that runs against production;
+#   * version fingerprints asserted INSIDE the image, because pip metadata is
+#     invisible from the outside and a stale artifact serves quietly;
+#   * a secretless in-process pytest suite — no CLERK_*, no
+#     CROSS_APP_WEBHOOK_SECRET — because the fail-closed behaviour is only
+#     provable when nothing is configured;
+#   * an advisory pip-audit.
+
 name: CI
 
-# Every push and PR runs the smoke suite against the full supported Dash range.
-# pyproject declares `dash>=4.1`; this is what keeps that claim honest, and it
-# is the same harness scripts/compat_matrix.py runs locally.
+# Deliberately NOT `push: branches: [main]`. cd.yml runs on that push and its
+# first job `uses:` this workflow, so a push to main would otherwise start two
+# runs of it — which then contend for the `ci-${{ github.ref }}` concurrency
+# group below and cancel each other. The work still gets done, but every push
+# leaves a `cancelled` CI run next to the green CD one, which reads as a
+# failure at a glance.
+#
+# So: pull requests get their own CI, and `main` is owned by CD. There is no
+# coverage gap — CD cannot deploy without this workflow passing first.
 on:
-  push:
-    branches: [main]
   pull_request:
   workflow_dispatch:
+  # Called by cd.yml so a deploy can never ship something the matrix rejected.
+  workflow_call:
+
+# Read-only. Nothing here publishes, comments or tags; the deploy lives in
+# cd.yml behind a `production` environment, and the PyPI release in release.yml.
+permissions:
+  contents: read
 
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
-# TWO different Python floors, which is what an earlier version of this file
-# got wrong by testing the docs site on 3.9:
-#
-#   * the PACKAGE needs >= 3.9 — `dash` 4.4.1 itself requires 3.9, and that is
-#     what `requires-python` in pyproject.toml promises. Verified by the
-#     `package` job, which installs the wheel with nothing but Dash.
-#   * the DOCS SITE needs >= 3.10 — `python-frontmatter` 1.3 imports
-#     `typing.TypeGuard`, which is 3.10+. Nothing we can do about it here, and
-#     it does not constrain the package at all.
-#
-# So the smoke job never runs below 3.10, and the package job never installs
-# the docs requirements.
+env:
+  PIP_DISABLE_PIP_VERSION_CHECK: "1"
+  FORCE_COLOR: "1"
+  # Never let a CI run inherit production behaviour: the satellite reporter
+  # keys off CROSS_APP_WEBHOOK_SECRET, which is absent here by design.
+  APP_ENV: ci
+
 jobs:
-  smoke:
+  lint:
+    name: lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install flake8
+      - name: flake8
+        run: flake8 lib components pages tests scripts run.py usage.py
+
+      # The workflows lint themselves. This is not belt-and-braces: an invalid
+      # workflow file is the one defect CI structurally cannot report, because
+      # the run dies before a job exists to fail. A double-quoted string inside
+      # a ${{ }} expression is a LEX error that invalidates the whole file, and
+      # it surfaces only as `conclusion: failure` with zero jobs and nothing to
+      # click. actionlint catches it in a second, with the column underlined.
+      - name: actionlint
+        run: |
+          bash <(curl -fsSL https://raw.githubusercontent.com/rhysd/actionlint/v1.7.7/scripts/download-actionlint.bash) 1.7.7
+          ./actionlint -color
+
+  test:
+    name: pytest · ${{ matrix.backend }} · py${{ matrix.python }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        # Flask is what production runs (the Dockerfile sets DASH_BACKEND);
+        # FastAPI is run.py's local default, so both need coverage. The
+        # before_request ordering that makes bot_hits countable is a WSGI
+        # concern, which is exactly why Flask cannot be the only backend here.
+        python: ["3.12"]
+        backend: [flask, fastapi]
+        include:
+          # The docs site's Python floor and ceiling, on the default backend.
+          # 3.10 is the floor: python-frontmatter 1.3 imports typing.TypeGuard.
+          - python: "3.10"
+            backend: flask
+          - python: "3.13"
+            backend: flask
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+          cache: pip
+
+      - name: Install the app
+        run: |
+          pip install -r requirements.txt
+          # markdown2dash 0.1.2 declares gunicorn<22 against the CVE-driven
+          # gunicorn>=23 floor. Same two-command install as the Dockerfile.
+          pip install --no-deps markdown2dash==0.1.2
+          # Dash's own extras are required for the ASGI backends: a bare
+          # `fastapi` install is not enough for dash.backends._fastapi to
+          # import. httpx backs starlette's TestClient.
+          if [ "${{ matrix.backend }}" != "flask" ]; then
+            pip install "dash[${{ matrix.backend }}]" httpx
+            pip install "dash-improve-my-llms[${{ matrix.backend }}]>=2.3.4"
+          fi
+          pip install pytest
+
+      - name: Confirm the pinned dependency versions
+        run: |
+          python - <<'PY'
+          import dash, dash_improve_my_llms as pkg, gunicorn
+
+          def parts(v):
+              return tuple(int(x) for x in v.split(".")[:3] if x.isdigit())
+
+          # The docs site pins 4.4.1; the PACKAGE floor (dash>=4.1) is proven
+          # separately by the `package-python-range` job below.
+          assert parts(dash.__version__)[:2] >= (4, 1), dash.__version__
+          # 2.3.4 is the network standard: below it `resolve_site_title` does
+          # not exist and this site's published identity degrades to app.title.
+          assert parts(pkg.__version__) >= (2, 3, 4), pkg.__version__
+          # 21.x carried two request-smuggling CVEs (CVE-2024-6827,
+          # CVE-2024-1135). markdown2dash's spurious <22 pin must not win.
+          assert parts(gunicorn.__version__)[:2] >= (23, 0), gunicorn.__version__
+          print(f"dash {dash.__version__}, dash-improve-my-llms "
+                f"{pkg.__version__}, gunicorn {gunicorn.__version__}")
+          PY
+
+      # No CLERK_*, no CROSS_APP_WEBHOOK_SECRET, no SESSION_SECRET here ON
+      # PURPOSE. tests/conftest.py pins them empty and the fail-closed checks
+      # depend on that posture; a secret injected here would make the suite
+      # pass for the wrong reason.
+      - name: Test suite (${{ matrix.backend }}, zero secrets)
+        env:
+          DASH_BACKEND: ${{ matrix.backend }}
+        run: pytest tests -q
+
+      - name: Boot under a production server
+        if: matrix.backend == 'flask'
+        run: |
+          gunicorn run:server -b 127.0.0.1:8050 --daemon --access-logfile - --error-logfile -
+          for _ in $(seq 1 30); do
+            curl -sf http://127.0.0.1:8050/healthz && break
+            sleep 1
+          done
+          # A page that renders under the test client can still fail under a
+          # real WSGI worker — different import path, different working
+          # directory, no test-client conveniences.
+          curl -sf http://127.0.0.1:8050/ > /dev/null
+          curl -sf http://127.0.0.1:8050/pointer-events > /dev/null
+          # The battery, against the same server a satellite deploys.
+          python3 scripts/network_smoke.py --base-url http://127.0.0.1:8050
+
+  docs-compat:
     name: Docs · Dash ${{ matrix.dash }} · Python ${{ matrix.python }}
     runs-on: ubuntu-latest
+    timeout-minutes: 25
     strategy:
       fail-fast: false
       matrix:
@@ -71,6 +218,7 @@ jobs:
         run: |
           grep -v 'COMPAT-MATRIX: dash' requirements.txt > /tmp/reqs.txt
           python -m pip install -r /tmp/reqs.txt
+          python -m pip install --no-deps markdown2dash==0.1.2
 
       - name: Report the resolved Dash version
         # A silent upgrade here would make the whole matrix meaningless.
@@ -91,9 +239,93 @@ jobs:
           path: smoke-*.json
           if-no-files-found: ignore
 
+  docker:
+    name: docker image · boot · battery
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    needs: [test]
+    steps:
+      - uses: actions/checkout@v4
+
+      # The same build Render runs. This is where a dependency-resolution
+      # failure surfaces — at CI time, not deploy time, where the only signal
+      # is a dashboard log while the old image keeps serving.
+      - uses: docker/setup-buildx-action@v3
+      - name: Build the production image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          tags: dash-leaflet2-docs:ci
+          load: true
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # pip metadata is invisible from outside a running host, so the versions
+      # are asserted here, inside the artifact that actually ships.
+      - name: Version fingerprints inside the image
+        run: |
+          docker run --rm dash-leaflet2-docs:ci python -c "
+          from importlib.metadata import version
+
+          def parts(v):
+              return tuple(int(x) for x in v.split('.')[:3] if x.isdigit())
+
+          v = version('dash')
+          print('dash', v)
+          assert parts(v)[:2] >= (4, 1), f'expected dash >=4.1, image has {v}'
+
+          v = version('dash-improve-my-llms')
+          print('dash-improve-my-llms', v)
+          assert parts(v) >= (2, 3, 4), f'expected >=2.3.4 (resolve_site_title), image has {v}'
+
+          # markdown2dash installs with --no-deps to dodge its gunicorn<22
+          # pin; this assert is what proves the dodge kept working. 21.x
+          # carried two request-smuggling CVEs (CVE-2024-6827, CVE-2024-1135).
+          v = version('gunicorn')
+          print('gunicorn', v)
+          assert parts(v)[:2] >= (23, 0), f'expected gunicorn>=23, image has {v}'
+
+          # ...and that skipping its dependency graph did not skip the package.
+          import markdown2dash  # noqa: F401
+          print('markdown2dash importable')
+          "
+
+      # Boot with no secrets: Clerk falls open (dev mode) and the reporter
+      # stays dormant. What this catches is any import-time or preload crash —
+      # the class of failure where the platform loops the worker and the deploy
+      # never goes live.
+      - name: Boot the container and wait for /healthz
+        run: |
+          docker run -d --name docs -p 8050:8050 dash-leaflet2-docs:ci
+          for i in $(seq 1 60); do
+            if curl -sf http://127.0.0.1:8050/healthz > /dev/null; then
+              echo "healthy after ~$((i*2))s"
+              exit 0
+            fi
+            if [ "$(docker inspect -f '{{.State.Running}}' docs)" != "true" ]; then
+              echo "container exited during boot:"
+              docker logs docs
+              exit 1
+            fi
+            sleep 2
+          done
+          echo "never became healthy; last logs:"
+          docker logs --tail 100 docs
+          exit 1
+
+      # The SAME script CD runs against https://leaflet.2plot.dev, so a failure
+      # in CI and a failure in production read identically.
+      - name: Smoke battery against the booted container
+        run: python3 scripts/network_smoke.py --base-url http://127.0.0.1:8050
+
+      - name: Container logs (for the record)
+        if: always()
+        run: docker logs --tail 40 docs 2>/dev/null || true
+
   package:
     name: Build + verify the wheel
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
         with:
@@ -161,6 +393,7 @@ jobs:
     name: Package · Python ${{ matrix.python }}
     needs: package
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     strategy:
       fail-fast: false
       matrix:
@@ -209,3 +442,22 @@ jobs:
           print(f"dash={dash.__version__} dl2={dl2.__version__} "
                 f"components={len(dl2.__all__)} OK")
           PY
+
+  pip-audit:
+    name: pip-audit (advisory)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # Advisory on purpose. A CVE in a transitive dependency of a docs site is
+    # worth knowing about the day it lands, and worth nobody's broken build at
+    # 2am. The report is the value; flip this off once the baseline is quiet.
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install pip-audit
+      # Skip local vendor/ paths — pip-audit can only assess PyPI dists.
+      - run: |
+          grep -v '^\./vendor/' requirements.txt > /tmp/req-pypi.txt
+          pip-audit -r /tmp/req-pypi.txt --skip-editable

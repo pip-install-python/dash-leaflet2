@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "dash-leaflet2"
-version = "0.2.0"
+version = "0.2.1"
 description = "Leaflet 2-native Dash components — a from-scratch wrapper around Leaflet 2 core (no react-leaflet), built for Dash 4."
 readme = "README.md"
 # 3.9, not 3.8. Dash 4.4.1 itself requires >=3.9, so a 3.8 user would be

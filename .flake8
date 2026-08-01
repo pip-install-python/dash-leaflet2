@@ -1,0 +1,27 @@
+[flake8]
+# Copied from dash-documentation-boilerplate (the network template).
+#
+# Line length is not policed: this repo's comments carry a lot of explanation
+# and reflowing them to 79 columns would make them harder to read, not easier.
+max-line-length = 120
+extend-ignore = E203, W503, E501
+exclude =
+    .git,
+    .venv,
+    __pycache__,
+    node_modules,
+    vendor,
+    dist,
+    build,
+    .idea,
+    dash_leaflet2,
+    docs/*/,
+per-file-ignores =
+    # run.py imports Dash and the lib modules after `load_dotenv()`, which has
+    # to run first — the CLERK_* keys and CROSS_APP_WEBHOOK_SECRET must be in
+    # the environment before Dash construction imports anything that reads
+    # them. The appshell import at the bottom needs the page registry to be
+    # populated, so it cannot move to the top either.
+    run.py: E402
+    # usage.py is the compiled-package harness, same import-order constraint.
+    usage.py: E402

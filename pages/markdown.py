@@ -10,7 +10,7 @@ from markdown2dash import Admonition, BlockExec, Divider, Image, create_parser
 from pydantic import BaseModel
 
 from lib.ad_client import inject_ad_into_aside
-from lib.constants import PAGE_TITLE_PREFIX, NAME_CONTENT_MAP
+from lib.constants import OG_IMAGE_URL, PAGE_TITLE_PREFIX, NAME_CONTENT_MAP
 from lib.directives.kwargs import Kwargs
 from lib.directives.llms_copy import LlmsCopy
 from lib.directives.source import SC
@@ -139,6 +139,12 @@ for file in files:
         name=metadata.name,
         title=PAGE_TITLE_PREFIX + metadata.name,
         description=metadata.description,
+        # The social card. Without this Dash emits `og:image content=""` and
+        # `twitter:image content=""` on every page — an empty image unfurls as
+        # a blank card, which is worse than declaring no image at all. An
+        # absolute `image_url` also beats Dash's assets-derived path, which
+        # would be relative and therefore useless to a scraper.
+        image_url=OG_IMAGE_URL,
         layout=gated_layout(metadata.endpoint, metadata.name, layout),
         category=metadata.category,
         icon=metadata.icon,

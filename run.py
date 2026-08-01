@@ -51,7 +51,13 @@ from dash_improve_my_llms import (
 
 from lib import auth, network_directory, satellite_analytics
 from lib.backend import get_backend_info, resolve_backend
-from lib.constants import APP_VERSION, BASE_URL, LEAFLET_VERSION, SITE_TITLE
+from lib.constants import (
+    APP_VERSION,
+    BASE_URL,
+    LEAFLET_VERSION,
+    SITE_BRAND,
+    SITE_DESCRIPTION,
+)
 
 # ----------------------------------------------------------------------------
 # Pluggable backend (Dash 4.1+). FastAPI default so WebSocket / background
@@ -110,7 +116,7 @@ _dash_kwargs = dict(
     suppress_callback_exceptions=True,
     prevent_initial_callbacks=True,
     update_title=None,
-    title=SITE_TITLE,
+    title=SITE_BRAND,
     index_string=open("templates/index.html").read(),
 )
 
@@ -162,13 +168,18 @@ app._robots_config = RobotsConfig(
     disallowed_paths=["/admin/"],
 )
 
+# The home page's registered `name` is this site's published identity, not a
+# nav label: dash-improve-my-llms 2.3.4 resolves it through `resolve_site_title`
+# into the /llms.txt H1, og:title and the llms viewer's brand chip. It must be
+# SITE_BRAND and nothing else — docs/home/home.md registers the page as "Home",
+# which `resolve_site_title` SKIPS as generic, so without this call the site
+# would fall through to `app.title` and, on a pre-2.3.4 artifact, to a bare
+# "Dash". `register_page_metadata` MERGES (2.2.0+), so this refines the entry
+# the markdown loader created without touching the prose it registered.
 register_page_metadata(
     path="/",
-    name="dash-leaflet2",
-    description=(
-        "Leaflet 2 (alpha) on Dash 4 — a generation-ahead mapping component "
-        "library that wraps Leaflet 2 core directly, without react-leaflet."
-    ),
+    name=SITE_BRAND,
+    description=SITE_DESCRIPTION,
 )
 
 # ----------------------------------------------------------------------------
@@ -217,6 +228,19 @@ add_llms_routes(app, LLMSConfig(warn_missing_llms_doc=True))
 # https://2plot.ai/api/satellite/traffic. Dormant without
 # CROSS_APP_WEBHOOK_SECRET — /healthz is served either way, which is what
 # render.yaml's healthCheckPath points at.
+#
+# THIS STAYS AFTER add_llms_routes, and the reason is worth keeping: on the
+# FastAPI backend the tracker is a Starlette http middleware, and Starlette
+# makes the LAST-added middleware the outermost one. Registered first, it
+# would sit inside `_bot_middleware` — which answers every crawler with
+# prerendered HTML — and no crawler request would ever be counted.
+#
+# Flask and Quart have the opposite rule (`before_request` handlers run in
+# registration order, and the first to return a response wins), so no single
+# ordering can be correct for all three. They are therefore wrapped at the
+# WSGI/ASGI boundary instead and do not depend on this line's position at all
+# — see `_wsgi_tracker` in lib/satellite_analytics.py, which is what fixed the
+# structural `bot_hits: 0` this satellite had been reporting.
 # ----------------------------------------------------------------------------
 satellite_analytics.register(app, BACKEND)
 

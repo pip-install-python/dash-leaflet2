@@ -28,13 +28,34 @@ dash[fastapi]==4.4.1  # COMPAT-MATRIX: dash
 # site needs Python >= 3.10. The dash_leaflet2 PACKAGE needs only >= 3.9.
 dash_mantine_components==2.7.0
 dash-iconify==0.1.2
-markdown2dash
+# markdown2dash 0.1.2 declares `gunicorn>=21.2.0,<22.0.0` — a markdown parser
+# pinning a WSGI server, and directly against the CVE-driven gunicorn>=23 floor
+# below. pip cannot resolve both, so markdown2dash is NOT on this list and is
+# installed on its own line WITHOUT its dependency graph:
+#
+#     pip install -r requirements.txt
+#     pip install --no-deps markdown2dash==0.1.2
+#
+# The Dockerfile and CI both do exactly that pair. Its real runtime
+# dependencies are listed here instead (dash, dash-iconify and
+# dash-mantine-components are already pinned above), carrying markdown2dash's
+# OWN declared ranges rather than bare names — with --no-deps there is no
+# resolver left to catch an incompatible upgrade, so a future `mistune` 4.0
+# would otherwise install silently and break the parser at import time.
+docutils!=0.21
+jsonpath>=0.82,<0.83
+mistune>=3.0.1,<4.0.0
 python-frontmatter
-# 2.3.3, not 2.0: the upgrade alone fixes the assign-vs-merge home-page stub
-# (2.2.0 merge semantics), directive leakage into agent markdown (2.3.3), and
-# the OAI/Anthropic robots taxonomy (2.3.2/2.3.3). The [flask] extra is just
+# 2.3.4 is the 2plot network standard floor, not a nice-to-have: it adds
+# `resolve_site_title`, which is what stops a generic home-page name ("Home")
+# or the Dash default becoming this site's published identity in the /llms.txt
+# H1 and the llms viewer's brand chip. Below it, both fall back silently.
+#
+# Earlier steps on the same line: 2.2.0's merge semantics fixed the assign-vs-
+# merge home-page stub, 2.3.3 stopped directive leakage into agent markdown and
+# settled the OAI/Anthropic robots taxonomy. The [flask] extra is just
 # flask>=2.0, already present via Dash.
-dash-improve-my-llms[flask]>=2.3.3
+dash-improve-my-llms[flask]>=2.3.4
 python-dotenv>=1.0
 pydantic>=2.0
 requests>=2.31
@@ -83,7 +104,14 @@ clerk-backend-api>=5.0.0,<6
 # --- Deployment ------------------------------------------------------------
 # gunicorn serves the Flask (WSGI) backend in the Dockerfile. The FastAPI
 # backend is ASGI and needs uvicorn instead — already pulled in by dash[fastapi].
-gunicorn>=21.2,<22
+#
+# gunicorn fronts every Flask deployment in this network, so the floor is the
+# network's security baseline rather than a convenience: 21.x carried two HTTP
+# request-smuggling CVEs (CVE-2024-6827, CVE-2024-1135), both fixed in 23.0.
+# This is why markdown2dash is installed with --no-deps above — CI asserts the
+# resolved version inside the built image, so a transitive pin can never drag
+# the production server back under the floor without failing the build.
+gunicorn>=23.0.0
 
 # --- Development / testing (optional, not installed by default) -------------
 # build       — `python -m build --wheel` to produce the PyPI artifact

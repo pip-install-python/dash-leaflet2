@@ -42,18 +42,71 @@
          og:site_name and og:url are genuinely missing from Dash's set, so they
          belong here. og:url is kept current by the canonical script below.
 
-         No og:image is declared: shipping a URL that 404s is worse than having
-         none, and no brand image exists yet. Dash emits an EMPTY og:image and
-         twitter:image for the same reason — to fix those properly, add
-         assets/og-image.png (1200x630) and pass image_url= to register_page in
-         pages/markdown.py.
+         THE IMAGE, and why there is still no static og:image tag here.
+         Every page used to ship `og:image content=""` — Dash emits the tag
+         unconditionally and leaves it empty when it can find no image, which
+         unfurls as a BLANK card and is worse than declaring nothing at all.
+         That is fixed at the source: pages/markdown.py and
+         pages/control_board.py now pass `image_url=OG_IMAGE_URL` to
+         register_page, so Dash's own og:image and twitter:image carry the real
+         absolute URL on every page.
+
+         Adding a second, static og:image here would recreate exactly the
+         duplicate-tag problem rule 1 above describes. So only the AUXILIARY
+         tags appear below — dimensions, type, alt, secure_url — none of which
+         Dash emits, and all of which a scraper wants: og:image:width/height
+         let Facebook and LinkedIn reserve the layout before the image
+         downloads, and og:image:alt is the preview's accessible description.
          ======================================================================== -->
 
     <meta property="og:site_name" content="dash-leaflet2">
     <meta property="og:url" content="https://leaflet.2plot.dev/">
 
+    <!-- Auxiliary image metadata. The URL itself comes from Dash — see above.
+         Keep these in step with lib/constants.py OG_IMAGE_*; the values are
+         asserted by tests/test_social_card.py. -->
+    <meta property="og:image:secure_url" content="https://cdn.2plot.ai/github_assets/leaflet.2plot.dev.png">
+    <meta property="og:image:type" content="image/png">
+    <meta property="og:image:width" content="1280">
+    <meta property="og:image:height" content="515">
+    <meta property="og:image:alt" content="dash-leaflet2 — Leaflet 2 maps for Dash, at leaflet.2plot.dev">
+    <meta name="twitter:image:alt" content="dash-leaflet2 — Leaflet 2 maps for Dash, at leaflet.2plot.dev">
+
     <!-- Mantine green, matching the brand. -->
     <meta name="theme-color" content="#2f9e44">
+
+    <!-- ========================================================================
+         APP ICONS AND INSTALLABILITY
+         ========================================================================
+         The favicon placeholder further down emits ONE rel="icon" link
+         pointing at assets/favicon_io/favicon.ico (Dash walks the assets tree
+         recursively, so the subfolder is found). It emits nothing else, so
+         everything an installable web app needs is declared here.
+
+         Tag syntax is written without angle brackets in these comments on
+         purpose: a literal element inside a comment is invisible to a browser
+         but not to a regex, and it shows up as a phantom tag in anything that
+         scrapes this document.
+
+         The manifest is what turns this into an "Add to Home Screen" / install
+         offer rather than just a bookmarkable page. It shipped with EMPTY name
+         and short_name fields and icon paths pointing at /android-chrome-*.png
+         at the site root, where nothing is served — so no browser could ever
+         have offered the install. Fixed in assets/favicon_io/site.webmanifest.
+
+         Note there is no service worker: browsers show the install prompt for
+         a manifest with a start_url, name and a 192px+ icon, which is what is
+         wanted here. Offline caching a docs site whose content is the point
+         would mean serving stale documentation, so it is deliberately absent.
+         ======================================================================== -->
+
+    <link rel="icon" type="image/png" sizes="32x32" href="/assets/favicon_io/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/assets/favicon_io/favicon-16x16.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="/assets/favicon_io/apple-touch-icon.png">
+    <link rel="manifest" href="/assets/favicon_io/site.webmanifest">
+    <meta name="apple-mobile-web-app-title" content="dash-leaflet2">
+    <meta name="msapplication-TileColor" content="#2f9e44">
+    <meta name="msapplication-TileImage" content="/assets/favicon_io/android-chrome-192x192.png">
 
     <!-- ========================================================================
          CANONICAL URL
@@ -123,17 +176,13 @@
         "@type": "Organization",
         "name": "Pip Install Python LLC",
         "description": "Open-source components and documentation for the Python and Plotly Dash ecosystem.",
-        "url": "https://pip-install-python.com",
+        "url": "https://github.com/2plotai",
         "sameAs": [
+            "https://github.com/2plotai",
             "https://github.com/pip-install-python",
             "https://www.youtube.com/@pipinstallpython",
             "https://www.linkedin.com/in/austin-k-274140161/"
-        ],
-        "contactPoint": {
-            "@type": "ContactPoint",
-            "email": "austin@pip-install-python.com",
-            "contactType": "customer support"
-        }
+        ]
     }
     </script>
 
@@ -151,8 +200,9 @@
         "author": {
             "@type": "Organization",
             "name": "Pip Install Python LLC",
-            "url": "https://pip-install-python.com"
+            "url": "https://github.com/2plotai"
         },
+        "image": "https://cdn.2plot.ai/github_assets/leaflet.2plot.dev.png",
         "isAccessibleForFree": true,
         "keywords": "dash, leaflet, leaflet2, maps, gis, geospatial, plotly, python"
     }
@@ -179,10 +229,10 @@
     <link rel="dns-prefetch" href="https://server.arcgisonline.com">
     <link rel="dns-prefetch" href="https://tile.openstreetmap.org">
 
-    <!-- Required by Dash. The favicon placeholder below serves assets/favicon.ico
-         when present and Dash's own default otherwise. There is deliberately no
-         hard-coded <link rel="icon">: the inherited one pointed at a file this
-         project never shipped and 404'd on every page load. -->
+    <!-- Required by Dash. The favicon placeholder below serves the favicon.ico
+         it finds under assets/ when present, and Dash's own default otherwise.
+         The explicit icon links live in the APP ICONS block above, alongside
+         the manifest they belong with. -->
     {%metas%}
     {%favicon%}
     {%css%}
@@ -241,7 +291,8 @@
                 <li><a href="https://pypi.org/project/dash-leaflet2/" style="color: #2f9e44;">PyPI</a></li>
                 <li><a href="https://github.com/pip-install-python/dash-leaflet2" style="color: #2f9e44;">GitHub</a></li>
                 <li><a href="https://discord.gg/WEnZR35mrK" style="color: #2f9e44;">Discord</a></li>
-                <li><a href="https://pip-install-python.com" style="color: #2f9e44;">Pip Install Python</a></li>
+                <li><a href="https://leaflet.2plot.dev" style="color: #2f9e44;">Documentation</a></li>
+                <li><a href="https://github.com/2plotai" style="color: #2f9e44;">Pip Install Python</a></li>
             </ul>
         </div>
     </noscript>

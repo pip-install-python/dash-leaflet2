@@ -44,6 +44,9 @@ import time
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(PROJECT_ROOT))
+
+from lib.constants import internal_ua  # noqa: E402  (needs PROJECT_ROOT on the path)
 WORK_DIR = PROJECT_ROOT / ".compat"
 
 # The support claim is `dash>=4.1`. These are the rungs we actually test:
@@ -220,7 +223,7 @@ def smoke(py: Path, version: str, backend: str) -> dict:
 def browser_leg(py: Path, version: str, backend: str, port: int) -> dict:
     """Optional: boot run.py for real and collect browser console errors."""
     try:
-        from playwright.sync_api import sync_playwright  # noqa: F401
+        from playwright.sync_api import sync_playwright
     except ImportError:
         return {"skipped": "playwright not installed in the driving interpreter"}
 
@@ -233,16 +236,20 @@ def browser_leg(py: Path, version: str, backend: str, port: int) -> dict:
         import urllib.request
 
         base = f"http://127.0.0.1:{port}"
+        # The readiness probe carries the internal-traffic token like every
+        # other 2plot battery: the app under test boots with
+        # SATELLITE_ANALYTICS_DRY_RUN=1, so without it this poll would append
+        # up to sixty phantom visits to its ledger before a page is measured.
+        probe = urllib.request.Request(
+            base, headers={"User-Agent": internal_ua("compat-matrix")})
         for _ in range(60):  # wait for the server to answer
             try:
-                urllib.request.urlopen(base, timeout=1)
+                urllib.request.urlopen(probe, timeout=1)
                 break
             except Exception:
                 time.sleep(1)
         else:
             return {"error": "server never came up"}
-
-        from playwright.sync_api import sync_playwright
 
         pages_json = json.loads(
             subprocess.run(

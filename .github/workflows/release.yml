@@ -22,10 +22,23 @@ on:
         type: boolean
         default: true
 
+# Read-only by default; the two jobs that need more ask for it themselves
+# (`id-token: write` to publish, `contents: write` to cut the GitHub Release).
+permissions:
+  contents: read
+
+# Never let two releases race. NOT cancel-in-progress: a half-cancelled
+# publish is the one state worth avoiding here, because a version can be
+# uploaded to PyPI exactly once and is not replaceable afterwards.
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   verify:
     name: Verify the tag
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -52,6 +65,7 @@ jobs:
     name: Build distributions
     needs: verify
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -66,6 +80,12 @@ jobs:
           python -m pip install --upgrade pip
           grep -v 'COMPAT-MATRIX: dash' requirements.txt > /tmp/reqs.txt
           python -m pip install "dash[fastapi]" -r /tmp/reqs.txt
+          # markdown2dash is NOT in requirements.txt: it declares gunicorn<22
+          # against the CVE-driven gunicorn>=23 floor, so it installs without
+          # its dependency graph. pages/markdown.py imports it, so the smoke
+          # test below cannot even reach a page without this line. Same pair as
+          # the Dockerfile and ci.yml.
+          python -m pip install --no-deps markdown2dash==0.1.2
           python scripts/smoke_test.py
 
       - name: Build
@@ -83,6 +103,7 @@ jobs:
     name: Publish to PyPI
     needs: build
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     # The environment name must match the pending publisher configured on PyPI.
     # Add a required reviewer on this environment in repo settings if you want
     # a human approval gate between the tag and the upload.
@@ -114,6 +135,7 @@ jobs:
     needs: publish
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     permissions:
       contents: write
     steps:

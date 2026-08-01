@@ -91,16 +91,16 @@ PEERS: List[Dict[str, str]] = [
         "url": "https://flows.2plot.dev",
         "description": "Node-graph editors built on React Flow.",
     },
-#    {
-#        "name": "dash-pannellum",
-#        "url": "https://pannellum.2plot.dev",
-#        "description": "360° panorama and virtual-tour viewer.",
-#    },
-#    {
-#        "name": "dash-emoji-mart",
-#        "url": "https://emojimart.2plot.dev",
-#        "description": "Emoji picker component.",
-#    },
+    # {
+    #     "name": "dash-pannellum",
+    #     "url": "https://pannellum.2plot.dev",
+    #     "description": "360° panorama and virtual-tour viewer.",
+    # },
+    # {
+    #     "name": "dash-emoji-mart",
+    #     "url": "https://emojimart.2plot.dev",
+    #     "description": "Emoji picker component.",
+    # },
     {
         "name": "dash-email",
         "url": "https://email.2plot.dev",
@@ -110,8 +110,8 @@ PEERS: List[Dict[str, str]] = [
 
 AFFILIATED: List[Dict[str, str]] = [
     {
-        "name": "Pip Install Python",
-        "url": "https://pip-install-python.com",
+        "name": "2plot.ai",
+        "url": "https://2plot.ai",
         "description": "The original component documentation site.",
     },
     {

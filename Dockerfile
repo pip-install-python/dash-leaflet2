@@ -28,6 +28,12 @@ WORKDIR /app
 COPY requirements.txt ./
 COPY vendor/ ./vendor/
 RUN pip install --no-cache-dir -r requirements.txt
+# markdown2dash pins gunicorn<22, against the CVE-driven gunicorn>=23 floor in
+# requirements.txt (CVE-2024-6827, CVE-2024-1135 — request smuggling). Its real
+# dependencies are all in requirements.txt already, so it installs without its
+# dependency graph. Same pair in .github/workflows/ci.yml; CI asserts the
+# resolved gunicorn version inside this image.
+RUN pip install --no-cache-dir --no-deps markdown2dash==0.1.2
 
 # Copy the application. run.py resolves templates/, dash_leaflet2/, docs/,
 # assets/, components/, lib/ and pages/ relative to the working directory, so it

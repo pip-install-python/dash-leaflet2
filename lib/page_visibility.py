@@ -176,6 +176,28 @@ def register_llms_doc(path: str, name: str, description: str, doc: str) -> None:
     apply_llms_state(path)
 
 
+def published_name(path: str, name: str) -> str:
+    """The name this path publishes to agents — SITE_BRAND at the root.
+
+    The home page's registered `name` is not a nav label to
+    dash-improve-my-llms: 2.3.4 resolves it through `resolve_site_title` into
+    the /llms.txt H1, og:title and the viewer's brand chip. This site's home
+    page is registered as "Home", which `resolve_site_title` SKIPS as generic,
+    so publishing it would drop the site's identity to whatever candidate is
+    left.
+
+    This function is why the substitution lives here rather than only in
+    run.py. `apply_llms_state` re-registers the entry EVERY time a
+    control-board toggle changes a verdict — so a single flip of "/" would
+    otherwise overwrite run.py's SITE_BRAND with "Home" at runtime, with
+    nothing logged and nothing visibly broken. The nav keeps "Home"; only the
+    published identity changes.
+    """
+    from lib.constants import SITE_BRAND
+
+    return SITE_BRAND if path == "/" else name
+
+
 def apply_llms_state(path: str) -> None:
     """Re-register this page's llms.txt body to match the current verdict."""
     entry = _llms_docs.get(path)
@@ -186,6 +208,7 @@ def apply_llms_state(path: str) -> None:
         from dash_improve_my_llms import register_page_metadata
     except Exception:  # optional dependency — nothing to sync
         return
+    name = published_name(path, name)
     body = doc if llms_accessible(path) else (
         f"# {name}\n\n> This page is not publicly available.\n"
     )

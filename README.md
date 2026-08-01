@@ -1,8 +1,19 @@
 <div align="center">
 
+<a href="https://2plot.ai">
+  <img src="https://cdn.2plot.ai/github_assets/dark_mode_2plot.png" alt="2plot.ai" width="300">
+</a>
+
+<br/>
+<br/>
+
+<img src="https://cdn.2plot.ai/github_assets/android-chrome-512x512.png" alt="dash-leaflet2" width="120">
+
 # dash-leaflet2
 
-**Leaflet 2-native mapping components for [Plotly Dash](https://dash.plotly.com) 4.**
+**dash-leaflet2 — Leaflet 2 maps for Dash**
+
+Leaflet 2-native mapping components for [Plotly Dash](https://dash.plotly.com) 4.
 
 No react-leaflet · unified Pointer Events · `BlanketOverlay` canvas/WebGL layers · ES6-class subclassing · `ResizeObserver` sizing · map rotation · liquid-glass theme · full Dash callback interoperability.
 
@@ -18,7 +29,15 @@ No react-leaflet · unified Pointer Events · `BlanketOverlay` canvas/WebGL laye
 
 <br/>
 
-_Maintained by **[Pip Install Python LLC](https://pip-install-python.com)**._
+<a href="https://leaflet.2plot.dev">
+  <img src="https://cdn.2plot.ai/github_assets/leaflet2plotdevtakeflight.gif" alt="dash-leaflet2 running live at leaflet.2plot.dev" width="880">
+</a>
+
+_Live at **[leaflet.2plot.dev](https://leaflet.2plot.dev)** — every map on the docs site is a running Dash app._
+
+<br/>
+
+_Maintained by **[Pip Install Python LLC](https://github.com/2plotai)**._
 
 </div>
 
@@ -304,15 +323,15 @@ Come build with us:
 
 dash-leaflet2 is one of several tools built and maintained by **Pip Install Python LLC**:
 
-| Project                                                                  | What it is                                                      |
-|--------------------------------------------------------------------------|-----------------------------------------------------------------|
-| 📚 **[Pip Install Python](https://pip-install-python.com)**               | Open-source documentation index for the Python & Dash ecosystem |
-| 🎞️ **[dash-nle-timeline](https://pypi.org/project/dash-nle-timeline/)** | Frame-accurate NLE timeline & scene compositor for Dash          |
-| 🔀 **[PiratesBargain.com](https://piratesbargain.com)**                   | E-commerce / digital commerce                                   |
-| 🧠 **[ai-agent.buzz](https://ai-agent.buzz)**                             | Infinite AI canvas                                              |
-| 🎬 **[2plot.media](https://2plot.media)**                                 | Videography application                                         |
+| Project                                                       | What it is                                                      |
+|---------------------------------------------------------------|-----------------------------------------------------------------|
+| 📚 **[Pip Install Python](https://2plot.dev)**                | Open-source documentation index for the Python & Dash ecosystem |
+| 🔀 **[2plot.ai](https://2plot.ai)**                           | Frame-accurate NLE timeline & scene compositor for Dash          |
+| 🛍️ **[PiratesBargain.com](https://piratesbargain.com/shop)** | E-commerce / digital commerce                                   |
+| 🧠 **[ai-agent.buzz](https://ai-agent.buzz)**                 | Infinite AI canvas                                              |
+| 🎬 **[2plot.media](https://2plot.media)**                     | Videography application                                         |
 
 ## License
 
-MIT — see [LICENSE](LICENSE). Built by **[Pip Install Python LLC](https://pip-install-python.com)**
+MIT — see [LICENSE](LICENSE). Built by **[Pip Install Python LLC](https://github.com/2plotai)**
 to bring a generation-ahead mapping stack into the Dash framework.

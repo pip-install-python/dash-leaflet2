@@ -185,10 +185,37 @@ def visitor_key(ip: str | None, user_agent: str | None) -> str:
 # Ledger
 # --------------------------------------------------------------------------
 
+def is_internal(user_agent: str | None) -> bool:
+    """Whether this request is 2plot machinery talking to itself.
+
+    The network's internal-traffic contract, matched case-insensitively:
+    https://2plot.ai/docs/satellite-analytics ("Internal traffic").
+    """
+    from lib.constants import INTERNAL_UA_TOKEN
+
+    return INTERNAL_UA_TOKEN in (user_agent or "").lower()
+
+
 def track(path: str | None, user_agent: str | None, ip: str | None = None,
           country: str | None = None) -> None:
     """Append one page view. Never raises."""
     try:
+        # --- The network's internal-traffic contract, applied at WRITE time --
+        # Anything carrying INTERNAL_UA_TOKEN is the hub's health sweep, a CI
+        # smoke battery, the 4x-daily heartbeat or a sibling app — counted
+        # NOWHERE. This has to run BEFORE `is_bot` below, not after: the
+        # battery's crawler-shaped probes deliberately send a Googlebot token
+        # so the target exercises its bot path, and a drop made after
+        # classification would file every one of them under `bot_hits`.
+        #
+        # It also has to run at write time rather than at rollup time — the
+        # ledger is what the hub's numbers are built from, and a hit that
+        # reaches disk is a hit somebody eventually counts.
+        if is_internal(user_agent):
+            return
+        # `should_skip` covers `/healthz` (the hub sweeps it hourly and
+        # Render's own probe hits it constantly), `/api/`, static assets and
+        # Dash plumbing — see `_SKIP`.
         if not enabled() or should_skip(path):
             return
         path = path.split('?', 1)[0][:_MAX_PATH]
@@ -359,6 +386,8 @@ def post_signed(route: str, payload: dict):
     """
     import requests
 
+    from lib.constants import internal_ua
+
     secret = _secret()
     body = json.dumps(payload, separators=(",", ":")).encode()
     ts = str(int(time.time()))
@@ -368,7 +397,13 @@ def post_signed(route: str, payload: dict):
         f"{HUB_URL}{route}", data=body,
         headers={"Content-Type": "application/json",
                  "X-AI-Canvas-Timestamp": ts,
-                 "X-AI-Canvas-Signature": sig},
+                 "X-AI-Canvas-Signature": sig,
+                 # The outbound half of the internal-traffic contract. Without
+                 # it this rollup reaches 2plot.ai as `python-requests/2.x`,
+                 # which the hub's own tracker classifies as a bot — so the act
+                 # of reporting this satellite's traffic would inflate the
+                 # hub's. See lib/constants.INTERNAL_UA.
+                 "User-Agent": internal_ua("satellite-analytics")},
         timeout=POST_TIMEOUT_S,
     )
 
@@ -621,6 +656,70 @@ def _pageview_path(raw: bytes) -> str | None:
     return path if isinstance(path, str) and path.startswith("/") else None
 
 
+# ---------------------------------------------------------------------------
+# Per-request tracking, installed OUTSIDE the framework's handler chain
+# ---------------------------------------------------------------------------
+# These wrap the WSGI/ASGI callable rather than registering a `before_request`
+# handler, and that is the whole point.
+#
+# Flask (and Quart) stop running `before_request` handlers the moment one
+# returns a response. dash-improve-my-llms installs `_bot_middleware`, which
+# does exactly that for every crawler — it answers with prerendered HTML. As a
+# `before_request`, this tracker therefore never saw a single crawler request,
+# and this satellite reported `bot_hits: 0` to 2plot.ai structurally, for every
+# day it was live, with nothing visibly broken anywhere.
+#
+# Registration order looked like the fix and is not: it cannot be right on all
+# three backends at once. Flask runs `before_request` handlers in registration
+# order (tracker must go FIRST), while Starlette's `add_middleware` makes the
+# LAST-added middleware outermost (tracker must go LAST). One call site cannot
+# satisfy both, and any rule written down here is one refactor from silently
+# inverting.
+#
+# A WSGI/ASGI wrapper sits outside the entire application, so it observes every
+# request whatever any handler does and in whatever order anything was
+# registered. tests/test_internal_traffic.py pins the resulting counts on every
+# backend CI runs.
+
+def _wsgi_tracker(wsgi_app):
+    """Wrap a WSGI app (Flask) so every request is counted."""
+
+    def middleware(environ, start_response):
+        try:
+            headers = {
+                key[5:].replace("_", "-").lower(): value
+                for key, value in environ.items()
+                if key.startswith("HTTP_")
+            }
+            _track_from(headers, environ.get("PATH_INFO", ""),
+                        environ.get("REMOTE_ADDR"))
+        except Exception:  # noqa: BLE001 — analytics never breaks a request
+            logger.debug("wsgi track failed", exc_info=True)
+        return wsgi_app(environ, start_response)
+
+    return middleware
+
+
+def _asgi_tracker(asgi_app):
+    """Wrap an ASGI app (Quart) so every request is counted."""
+
+    async def middleware(scope, receive, send):
+        if scope.get("type") == "http":
+            try:
+                headers = {
+                    key.decode("latin-1").lower(): value.decode("latin-1")
+                    for key, value in scope.get("headers") or []
+                }
+                client = scope.get("client")
+                _track_from(headers, scope.get("path", ""),
+                            client[0] if client else None)
+            except Exception:  # noqa: BLE001
+                logger.debug("asgi track failed", exc_info=True)
+        return await asgi_app(scope, receive, send)
+
+    return middleware
+
+
 def register_routes(app, backend: str) -> None:
     """Install per-request tracking, ``/healthz`` and ``/api/pageview``.
 
@@ -633,6 +732,14 @@ def register_routes(app, backend: str) -> None:
     if backend == "fastapi":
         from starlette.responses import JSONResponse
 
+        # Starlette builds its middleware stack at startup and makes the
+        # last-added middleware outermost, so `@server.middleware("http")` is
+        # the one branch whose visibility depends on when `register()` is
+        # called relative to add_llms_routes. Wrapping `build_middleware_stack`
+        # is not public API; instead this stays a plain http middleware and
+        # run.py keeps the analytics call AFTER add_llms_routes — the order
+        # that makes it outermost here. Flask and Quart below are wrapped at
+        # the WSGI/ASGI boundary and do not care about order at all.
         @server.middleware("http")
         async def _satellite_track(request: Request, call_next):  # pragma: no cover
             try:
@@ -659,9 +766,8 @@ def register_routes(app, backend: str) -> None:
     elif backend == "quart":
         from quart import jsonify, request
 
-        @server.before_request
-        async def _satellite_track():  # pragma: no cover
-            _track_from(dict(request.headers), request.path, request.remote_addr)
+        # ASGI-level, NOT `before_request` — see `_asgi_tracker`.
+        server.asgi_app = _asgi_tracker(server.asgi_app)
 
         @server.get("/healthz")
         async def _healthz():  # pragma: no cover
@@ -677,9 +783,9 @@ def register_routes(app, backend: str) -> None:
     else:
         from flask import jsonify, request
 
-        @server.before_request
-        def _satellite_track():
-            _track_from(dict(request.headers), request.path, request.remote_addr)
+        # WSGI-level, NOT `before_request` — see `_wsgi_tracker`. This is the
+        # branch production runs (the Dockerfile sets DASH_BACKEND=flask).
+        server.wsgi_app = _wsgi_tracker(server.wsgi_app)
 
         @server.get("/healthz")
         def _healthz():

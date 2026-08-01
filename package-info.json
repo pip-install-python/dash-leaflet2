@@ -1,6 +1,6 @@
 {
   "name": "dash-leaflet2",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Leaflet 2-native Dash components. A from-scratch wrapper around Leaflet 2 core (no react-leaflet), built for Dash 4.",
   "main": "src/ts/index.ts",
   "repository": {

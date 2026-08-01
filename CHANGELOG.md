@@ -15,6 +15,116 @@ Nothing yet.
 
 ---
 
+## [0.2.1] — 2026-07-31
+
+Brings this satellite onto the **2plot network standard** that 2plot.ai (root),
+2plot.dev (hub) and `dash-documentation-boilerplate` (the template) now ship.
+No `dl2.*` component changed; everything here is the documentation site, its
+analytics and its CI.
+
+### Fixed
+
+- **Every page shipped an empty `og:image`.** Dash emits `og:image` and
+  `twitter:image` for each page and leaves them `content=""` when it can find
+  no image, which unfurls as a *blank* preview card on Facebook, Twitter/X,
+  Slack, Discord and LinkedIn — strictly worse than declaring no image at all.
+  `register_page(image_url=...)` now supplies the real absolute URL, served
+  from the 2plot CDN so a sleeping free-tier container never costs a preview.
+  `templates/index.html` deliberately declares only the auxiliaries Dash omits
+  (`og:image:width` / `height` / `alt` / `type` / `secure_url`,
+  `twitter:image:alt`), so it cannot duplicate the URL.
+- **The web app manifest could never have offered an install.** Its `name` and
+  `short_name` were empty strings — which disqualifies a manifest outright —
+  and its icon `src` paths pointed at `/android-chrome-192x192.png` at the site
+  root, where nothing is served; the files live under `/assets/favicon_io/`.
+  Nothing linked to it either. Fixed, linked, and joined by
+  `apple-touch-icon` (iOS ignores the manifest and uses that for Add to Home
+  Screen) and the `msapplication-*` tiles.
+- **Crawler traffic was never counted.** The per-request tracker was a Flask
+  `before_request` handler registered *after* `add_llms_routes`, and
+  dash-improve-my-llms' bot middleware answers every crawler with prerendered
+  HTML — which short-circuits the remaining `before_request` handlers. No
+  crawler request ever reached the ledger, so this site reported
+  `bot_hits: 0` to 2plot.ai structurally, for every day it has been live,
+  with nothing visibly broken. The tracker now wraps the WSGI/ASGI callable
+  instead (`_wsgi_tracker` / `_asgi_tracker`), which sits outside the whole
+  application and cannot be short-circuited. Registration order was not a
+  usable fix: Flask runs `before_request` handlers first-registered-first,
+  while Starlette makes the last-added middleware outermost, so no single
+  ordering is correct on all three backends.
+- **The ad fetch and the traffic rollup polluted the hub's ledgers.** Both
+  server-to-server calls left as `python-requests/2.x`, which 2plot.dev and
+  2plot.ai classify as a bot — so every docs page view here inflated the
+  hub's `bot_hits`. Both now send the network's internal-traffic User-Agent.
+- **A control-board toggle could rename the site.** `apply_llms_state`
+  re-registers a page's metadata whenever a visibility verdict changes, using
+  the name the markdown loader recorded — `"Home"` for this site's root. One
+  flip of the home page's llms.txt switch would have overwritten the site
+  brand at runtime, silently degrading the published identity to a generic
+  word. `lib.page_visibility.published_name` now pins the root to
+  `SITE_BRAND`.
+- **gunicorn was pinned under a security floor.** `gunicorn>=21.2,<22` was
+  holding the production server on a line carrying two HTTP request-smuggling
+  CVEs (CVE-2024-6827, CVE-2024-1135), because `markdown2dash` 0.1.2 declares
+  `gunicorn<22`. markdown2dash is now installed with `--no-deps` (its real
+  dependencies moved into `requirements.txt`, carrying its own version ranges)
+  and the floor is `gunicorn>=23.0.0`, asserted inside the built image by CI.
+
+### Added
+
+- **Explicit site identity.** `lib.constants.SITE_BRAND` —
+  *"dash-leaflet2 — Leaflet 2 maps for Dash"* — is now the one string on every
+  surface: `Dash(title=)`, `register_page_metadata(path="/")`, the home
+  markdown's H1 and the README. This matters because the home page is
+  registered as `"Home"`, which `resolve_site_title` skips as generic; without
+  the explicit registration the site published a framework fallback.
+- **`scripts/network_smoke.py`** — the network's named-check battery, run
+  against the CI container and against production with identical check names.
+  Proves identity, the agent-facing document surfaces, the robots fingerprint,
+  hidden-page 404s and content negotiation.
+- **`scripts/smoke_live.py`** — post-deploy checks: every canonical, every
+  crawler body, and every peer `llms.txt` in the directory. Peer failures warn
+  rather than fail, because gating a deploy on somebody else's certificate is
+  shared fate.
+- **`tests/`** — a secretless in-process suite (80 tests) covering site
+  identity, the internal-traffic contract in both directions, the agent and
+  crawler surfaces, the social card and manifest, and *the smoke scripts
+  themselves*, so a battery that has rotted into a silent pass fails here
+  first.
+- Two live battery checks for the surfaces above — `social_card_is_shareable`
+  (the image is declared once, is not empty, and actually resolves) and
+  `installable_as_an_app` (the manifest is linked, named, and its icons
+  resolve). Both fail invisibly in production otherwise: nobody sees their own
+  link previews, and no browser explains why it declined to offer an install.
+- **`.github/workflows/cd.yml`** — deploy plus live verification, waiting for
+  five consecutive healthy responses after a 120s settle rather than a single
+  200 (Render swaps instances, so the old build answers throughout).
+- **`.github/dependabot.yml`** — weekly pip with a `dash-network` group,
+  weekly npm, monthly actions and Docker.
+
+### Changed
+
+- **`dash-improve-my-llms>=2.3.4`** (from 2.3.3), the network floor: 2.3.4 adds
+  `resolve_site_title`, without which the `/llms.txt` H1 and the llms viewer's
+  brand chip fall back to `app.title`.
+- **CI on the network baseline**: `permissions: contents: read`,
+  `timeout-minutes` on every job, an `actionlint` step (an invalid workflow
+  file is the one defect CI structurally cannot report), a real Docker
+  build → boot → battery job with buildx GHA caching, version fingerprints
+  asserted inside the image, and an advisory `pip-audit`. CI now runs on
+  pull requests and `workflow_call` only — `main` belongs to CD, which calls
+  it. The existing wheel and Dash-compatibility jobs are unchanged.
+- **The home page** is no longer the generated scaffold: it opens with the site
+  brand and describes what the library actually is.
+- `templates/index.html` no longer publishes `pip-install-python.com` as this
+  site's Organization URL, author URL or footer link — it is not a 2plot
+  network host. Those now point at https://github.com/2plotai.
+- The README's assets are served from `cdn.2plot.ai` rather than
+  `raw.githubusercontent.com`, so they render on PyPI (where the README is the
+  long description) as well as on GitHub.
+
+---
+
 ## [0.2.0] — 2026-07-28
 
 First public release: the project splits into a private R&D checkout and this

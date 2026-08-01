@@ -25,7 +25,7 @@ from dash.exceptions import PreventUpdate
 from dash_iconify import DashIconify
 
 from lib.auth import admin_access_open, clerk_enabled, current_user, is_admin_user
-from lib.constants import PAGE_TITLE_PREFIX
+from lib.constants import OG_IMAGE_URL, PAGE_TITLE_PREFIX
 from lib.page_visibility import (
     TIERS,
     controllable_pages,
@@ -42,6 +42,10 @@ dash.register_page(
     name="Control Board",
     title=PAGE_TITLE_PREFIX + "Control Board",
     description="Admin control board for page visibility and llms.txt exposure.",
+    # Not for sharing — this page is marked hidden and Disallowed — but Dash
+    # emits an empty og:image without it, and "every page" should mean every
+    # page. See lib.constants.OG_IMAGE_URL.
+    image_url=OG_IMAGE_URL,
 )
 
 _TIER_COLORS = {"public": "teal", "auth": "blue", "admin": "grape", "hidden": "gray"}

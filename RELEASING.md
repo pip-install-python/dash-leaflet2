@@ -10,7 +10,7 @@ them in any order, but this is the order that fails cheapest:
 | 3 | Docs | `https://leaflet.2plot.dev` (Render) | redeploy the previous commit |
 
 The one irreversible step is PyPI. A filename can never be reused, even after
-deletion, so a bad `0.2.0` costs you `0.2.1` forever. Everything below is
+deletion, so a bad `0.2.1` costs you `0.2.2` forever. Everything below is
 arranged so the irreversible step happens last, after the reversible ones have
 already proven the artifact.
 
@@ -25,7 +25,7 @@ These are the checks nobody can do for you later.
 python scripts/smoke_test.py                 # expect 70/70
 
 # 2. Version consistency, packaging leaks, stale bundle
-python scripts/check_release.py --version 0.2.0
+python scripts/check_release.py --version 0.2.1
 
 # 3. The support claim, actually measured (needs network, ~15 min)
 python scripts/compat_matrix.py              # writes COMPATIBILITY.md
@@ -170,8 +170,8 @@ TestPyPI needs its own pending publisher (same form, on test.pypi.org).
 ### 2.4 Tag and publish
 
 ```bash
-git tag -a v0.2.0 -m "dash-leaflet2 0.2.0 — first public release"
-git push origin v0.2.0
+git tag -a v0.2.1 -m "dash-leaflet2 0.2.1 — first public release"
+git push origin v0.2.1
 ```
 
 `release.yml` then: asserts the tag matches `pyproject.toml`, re-runs
@@ -246,7 +246,7 @@ of a bare slug. The ad network's `/admin/ad-board` keys off `AD_APP_ID`
 
 ### 3.5 Post-deploy checklist
 
-1. `GET /healthz` → `{"ok": true, "app": "leaflet", "version": "0.2.0", "reporting": true}`.
+1. `GET /healthz` → `{"ok": true, "app": "leaflet", "version": "0.2.1", "reporting": true}`.
    `reporting: false` means `CROSS_APP_WEBHOOK_SECRET` is missing.
 2. `/llms.txt`, `/robots.txt`, `/sitemap.xml` all 200, and sitemap URLs use
    `leaflet.2plot.dev` (i.e. `DASH_LEAFLET2_BASE_URL` took effect).

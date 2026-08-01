@@ -111,7 +111,7 @@ clerk-backend-api>=5.0.0,<6
 # This is why markdown2dash is installed with --no-deps above — CI asserts the
 # resolved version inside the built image, so a transitive pin can never drag
 # the production server back under the floor without failing the build.
-gunicorn>=23.0.0
+gunicorn>=26.0.0
 
 # --- Development / testing (optional, not installed by default) -------------
 # build       — `python -m build --wheel` to produce the PyPI artifact

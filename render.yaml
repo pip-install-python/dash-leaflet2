@@ -40,6 +40,16 @@ services:
       - key: WEB_CONCURRENCY
         value: "2"
       # Public origin for canonical URLs, sitemap.xml and llms.txt.
+      #
+      # BOTH spellings, deliberately. APP_BASE_URL is the network-standard name
+      # that the shared scripts/ and tests/ expect; DASH_LEAFLET2_BASE_URL is
+      # what this service has been running with. lib/constants reads the
+      # standard one first and falls back to the legacy one, so either alone
+      # works — but dropping the old name from a LIVE service is how a host
+      # starts advertising the wrong canonical origin, which deindexes it
+      # quietly. Keep both until the service is confirmed on the new name.
+      - key: APP_BASE_URL
+        value: https://leaflet.2plot.dev
       - key: DASH_LEAFLET2_BASE_URL
         value: https://leaflet.2plot.dev
 
@@ -49,8 +59,13 @@ services:
       - key: AD_SERVER_URL
         value: https://2plot.dev
       # This app's identity in the ad network's /admin/ad-board tables.
+      # The hub's directory key, NOT the package name. `canonical_app_id()` on
+      # 2plot.dev folds the legacy `dash-leaflet2` in at ingest, so the change
+      # is safe mid-flight — but the hub's directory entry lists `dash-leaflet2`
+      # under `legacy_ids` precisely "until leaflet's own network-standard pass
+      # sets AD_APP_ID=leaflet". This is that pass.
       - key: AD_APP_ID
-        value: dash-leaflet2
+        value: leaflet
 
       # --- 2plot.ai satellite analytics (lib/satellite_analytics.py) ----
       # The shared HMAC secret every satellite holds. Set it in the Render
@@ -70,6 +85,24 @@ services:
       # only POSTs when the day's numbers actually changed.
       - key: SATELLITE_REPORT_INTERVAL_S
         value: "1800"
+      # The same key under the network-standard spelling. lib/satellite_analytics
+      # reads SATELLITE_APP_ID; the shared tooling and the rest of the fleet say
+      # SATELLITE_APP_KEY. Both are set because removing one of two env names on
+      # a live service is how a host starts reporting under the wrong id.
+      - key: SATELLITE_APP_KEY
+        value: leaflet
+
+      # --- 2plot.dev network bulletin (lib/bulletin.py) -----------------
+      # The hub's announcement feed, rendered in the header of this site's
+      # llms.txt viewer. Opt-in — unset means the feature is simply off.
+      #
+      # NOTE: Render applies blueprint envVars on a BLUEPRINT SYNC, not on an
+      # autoDeploy from a git push. Adding this line alone leaves the variable
+      # absent on the service and the panel empty, which is exactly how
+      # email.2plot.dev shipped wired code and an unwired deployment. Sync the
+      # blueprint or add it in the dashboard.
+      - key: NETWORK_BULLETIN_URL
+        value: https://2plot.dev/api/network/bulletin
 
       # --- Clerk satellite auth (lib/auth.py) --------------------------
       # All of these are OPTIONAL: with them absent the site runs fully public

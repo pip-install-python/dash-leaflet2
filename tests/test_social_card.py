@@ -34,6 +34,7 @@ from conftest import REPO_ROOT, SAMPLE_PAGE
 from lib.constants import (
     OG_IMAGE_ALT,
     OG_IMAGE_HEIGHT,
+    OG_IMAGE_TYPE,
     OG_IMAGE_URL,
     OG_IMAGE_WIDTH,
     SITE_BRAND,
@@ -118,7 +119,34 @@ def test_the_auxiliary_image_tags_match_the_constants(client):
     assert _meta(html, "property", "og:image:width") == [str(OG_IMAGE_WIDTH)]
     assert _meta(html, "property", "og:image:height") == [str(OG_IMAGE_HEIGHT)]
     assert _meta(html, "property", "og:image:alt") == [OG_IMAGE_ALT]
-    assert _meta(html, "property", "og:image:secure_url") == [OG_IMAGE_URL]
+    assert _meta(html, "property", "og:image:type") == [OG_IMAGE_TYPE]
+    assert _meta(html, "property", "og:image:secure_url") == [OG_IMAGE_URL], (
+        "secure_url must be the same file as og:image, not a stale copy"
+    )
+
+
+def test_the_declared_ratio_suits_a_large_image_card():
+    """`summary_large_image` wants roughly 1.91:1.
+
+    The card this replaced was 1280x515 = 2.49:1 — wider than both the Open
+    Graph ideal and Twitter's 2:1 slot, so every platform cropped roughly
+    100px off the top and bottom. It was also the 2plot wordmark rather than a
+    per-site card at all.
+    """
+    ratio = OG_IMAGE_WIDTH / OG_IMAGE_HEIGHT
+    assert 1.7 <= ratio <= 2.05, f"{OG_IMAGE_WIDTH}x{OG_IMAGE_HEIGHT} is {ratio:.2f}:1"
+
+
+def test_the_card_is_hosted_off_the_app():
+    """The card must be on the CDN, not served by this app.
+
+    Not a style rule. A card the app serves is fetched by the scraper at
+    unfurl time; on a cold free-tier container that request lands mid-wake and
+    times out, the preview renders blank ONCE, and the platform caches the
+    miss — so the first person to share the link poisons it for everyone.
+    """
+    assert OG_IMAGE_URL.startswith("https://cdn.2plot.ai/github_assets/")
+    assert "/assets/" not in OG_IMAGE_URL, "the app is serving its own card again"
 
 
 def test_the_twitter_card_is_a_large_image(client):

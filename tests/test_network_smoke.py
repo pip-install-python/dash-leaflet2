@@ -52,25 +52,41 @@ def wired(battery, client, monkeypatch):
     """
     seen_agents = []
 
-    def fetch(url, ua=battery.UA, method="GET", body=None, headers=None,
-              timeout=None, retries=1):
+    def _png_header(width: int, height: int) -> bytes:
+        """The 24 bytes the card check actually reads.
+
+        PNG signature (8) + length/type of the IHDR chunk (8) + width and
+        height as big-endian uint32 (8). The battery reads bytes 16..24 and
+        nothing else, so a synthetic header is a faithful stand-in for a real
+        image — and it keeps the suite off the network.
+        """
+        return (b"\x89PNG\r\n\x1a\n" + b"\x00\x00\x00\rIHDR"
+                + width.to_bytes(4, "big") + height.to_bytes(4, "big"))
+
+    def fetch_raw(url, ua=battery.UA, method="GET", body=None, headers=None,
+                  timeout=None, retries=1):
         assert method == "GET", f"the satellite battery issued a {method}"
         seen_agents.append(ua)
         accept = (headers or {}).get("Accept")
 
         # Off-host URLs — today just the CDN-hosted social card — resolve to a
-        # stub. Reaching the real CDN from a unit test would make the suite
-        # depend on another service being up; that the asset genuinely
-        # resolves is the DEPLOYED battery's job, which is where the check
-        # earns its keep.
+        # stub at the DECLARED size, so the check passes here and still has to
+        # be earned against the real CDN after a deploy. Reaching the real CDN
+        # from a unit test would make the suite depend on another service.
         if not url.startswith(BASE) and "://" in url:
-            return 200, {"content-type": "image/png"}, ""
+            return (200, {"content-type": "image/png"},
+                    _png_header(battery.OG_IMAGE_WIDTH, battery.OG_IMAGE_HEIGHT))
 
         path = url[len(BASE):] if url.startswith(BASE) else url
         response = client.get(path or "/", user_agent=ua, accept=accept)
-        return response.status, dict(response.headers), response.text
+        return response.status, dict(response.headers), response.text.encode()
 
-    monkeypatch.setattr(battery, "fetch", fetch)
+    # `fetch_raw`, NOT `fetch`. The card check reads PNG bytes, and `fetch` is
+    # a thin decoding delegate — patching it would leave `fetch_raw` reaching
+    # the real CDN from a unit test, and patching only `fetch` in a repo where
+    # they were separate implementations is how the boilerplate's copy of this
+    # test silently kept hitting the network.
+    monkeypatch.setattr(battery, "fetch_raw", fetch_raw)
     monkeypatch.setattr(battery, "_RESULTS", [])
     battery.seen_agents = seen_agents
     return battery

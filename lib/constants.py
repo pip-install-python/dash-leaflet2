@@ -1,10 +1,9 @@
 import os
 
-PAGE_TITLE_PREFIX = "dash-leaflet2 | "
 PRIMARY_COLOR = "green"
 
 # Keep in step with pyproject.toml and package.json when cutting a release.
-APP_VERSION = "0.2.1"
+APP_VERSION = "0.2.2"
 LEAFLET_VERSION = "2.0.0-alpha.1"
 
 # ---------------------------------------------------------------------------
@@ -34,6 +33,13 @@ LEAFLET_VERSION = "2.0.0-alpha.1"
 #   - "Pip Install Python" is the byline (who made it), never the site name.
 SITE_BRAND = "dash-leaflet2 — Leaflet 2 maps for Dash"
 
+# The short form, for places a full brand line does not fit: the installed
+# app's home-screen label and the per-page <title> prefix. Derived rather than
+# typed twice — PAGE_TITLE_PREFIX used to be its own literal, which is one
+# rename away from a site whose tab titles disagree with its brand.
+SITE_SHORT_NAME = "dash-leaflet2"
+PAGE_TITLE_PREFIX = f"{SITE_SHORT_NAME} | "
+
 SITE_DESCRIPTION = (
     "dash-leaflet2 — Leaflet 2 (alpha) mapping components for Plotly Dash 4. "
     "Wraps Leaflet 2 core directly instead of react-leaflet, exposing unified "
@@ -44,7 +50,18 @@ SITE_DESCRIPTION = (
 
 # Public origin, used for canonical URLs, the sitemap and llms.txt. Override per
 # deployment; the default is the 2plot network subdomain this site ships to.
-BASE_URL = os.environ.get("DASH_LEAFLET2_BASE_URL", "https://leaflet.2plot.dev").rstrip("/")
+# APP_BASE_URL first, this repo's own spelling second. `BASE_URL` is a REQUIRED
+# NAME, not a preference: the shared scripts/ and tests/ import it on every
+# host in the network. The env var behind it is where hosts differ, and the
+# rule from the email pass is an ALIAS, never a rename — render.yaml sets the
+# legacy name on a live service, and removing one of two env names from a
+# running host is how it starts advertising the wrong canonical origin, which
+# deindexes it silently.
+BASE_URL = (
+    os.environ.get("APP_BASE_URL")
+    or os.environ.get("DASH_LEAFLET2_BASE_URL")
+    or "https://leaflet.2plot.dev"
+).rstrip("/")
 
 # ---------------------------------------------------------------------------
 # The social card
@@ -63,12 +80,19 @@ BASE_URL = os.environ.get("DASH_LEAFLET2_BASE_URL", "https://leaflet.2plot.dev")
 # assets-derived one, so passing it at `register_page` time fixes every page at
 # the source instead of fighting tag order inside templates/index.html.
 #
-# 1280x515 (2.49:1) rather than the 1.91:1 the card specs ask for, so previews
-# centre-crop roughly 100px off the top and bottom. The wordmark sits in the
-# middle band and survives the crop.
+# 1200x630 = exactly 1.91:1, the Open Graph documented ideal, which also
+# degrades cleanly into Twitter's 2:1 `summary_large_image` slot. The file that
+# lived at this URL until 0.2.2 was 1280x515 (2.49:1) — wider than both, so
+# every platform cropped roughly 100px off the top and bottom — and it was the
+# 2plot network wordmark rather than a card for this site at all. Regenerate
+# with `python scripts/make_social_card.py`, then upload BY HAND; the values
+# below must match the file's real IHDR, and
+# `scripts/network_smoke.py::social_card_real_pixels` reads those bytes after
+# every deploy precisely so a re-upload at a different size cannot pass.
 OG_IMAGE_URL = "https://cdn.2plot.ai/github_assets/leaflet.2plot.dev.png"
-OG_IMAGE_WIDTH = 1280
-OG_IMAGE_HEIGHT = 515
+OG_IMAGE_WIDTH = 1200
+OG_IMAGE_HEIGHT = 630
+OG_IMAGE_TYPE = "image/png"
 OG_IMAGE_ALT = "dash-leaflet2 — Leaflet 2 maps for Dash, at leaflet.2plot.dev"
 
 # ---------------------------------------------------------------------------

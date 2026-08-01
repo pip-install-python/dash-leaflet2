@@ -95,10 +95,13 @@ dash-mui-charts>=1.2.3
 # and redeploy; /admin/control-board fails CLOSED without Clerk, so nothing is
 # left exposed by doing so.
 #
-# 0.9.0 carries the two satellite fixes lib/auth.py depends on; it is not on
-# PyPI, and is vendored the same way across 2plotai, 2plotxyz and HoneyComb.
+# 0.9.1, not 0.9.0. Both carry the two satellite fixes lib/auth.py depends on,
+# but 0.9.0 renders a DEAD AVATAR on a satellite — the header control appears
+# and never resolves the signed-in user. This host is a satellite of the
+# 2plot.ai primary, so it is exactly the affected shape. Not on PyPI; vendored
+# the same way across the network (0.9.1 is what the boilerplate ships).
 #   Used by: lib/auth.py, /admin/control-board
-./vendor/dash_clerk_auth-0.9.0.tar.gz
+./vendor/dash_clerk_auth-0.9.1.tar.gz
 clerk-backend-api>=5.0.0,<6
 
 # --- Deployment ------------------------------------------------------------

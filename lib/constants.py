@@ -63,6 +63,49 @@ BASE_URL = (
     or "https://leaflet.2plot.dev"
 ).rstrip("/")
 
+_LOOPBACK = ("localhost", "127.0.0.1", "0.0.0.0", "[::1]")
+
+
+def base_url_misconfigured() -> str | None:
+    """A message when a HOSTED deploy is advertising a loopback origin, else None.
+
+    This is the failure the BASE_URL comment above warns about, caught in the
+    act: `app._base_url` feeds every canonical link, `og:url`, `/sitemap.xml`
+    and `/llms.txt` URL, so a hosted service resolving BASE_URL to
+    `http://localhost:8050` publishes a whole site of unreachable addresses and
+    nothing looks broken from inside the container.
+
+    The default above is already the right origin, so a loopback value here can
+    only come from `APP_BASE_URL` or `DASH_LEAFLET2_BASE_URL` being *explicitly*
+    set to one — most likely `.env.example`'s local values reaching a dashboard.
+    `APP_BASE_URL` is read first, so it is the one that wins.
+
+    Why this cannot be a test: `tests/test_network_surfaces.py` asserts sitemap
+    URLs start with `BASE_URL`, comparing the deployed value against itself. It
+    passes just as happily when both sides are localhost. The check has to be
+    against the *environment*, at boot, on the host that got it wrong.
+
+    Deliberately does NOT self-heal from `RENDER_EXTERNAL_URL`: that is the
+    `*.onrender.com` hostname, not the custom domain, so auto-filling it would
+    swap one wrong canonical origin for another — quietly, which is worse.
+    """
+    host = BASE_URL.split("://", 1)[-1].split("/", 1)[0].split(":", 1)[0]
+    if host not in _LOOPBACK:
+        return None
+    # Render sets this on every service; its presence means we are hosted.
+    if not os.environ.get("RENDER_EXTERNAL_HOSTNAME"):
+        return None
+    which = "APP_BASE_URL" if os.environ.get("APP_BASE_URL") else "DASH_LEAFLET2_BASE_URL"
+    return (
+        f"BASE_URL is {BASE_URL!r} on a HOSTED deploy — every canonical URL, "
+        f"og:url, /sitemap.xml entry and /llms.txt link points at localhost. "
+        f"{which} is set to a loopback origin in this service's environment; "
+        f"set BOTH it and its alias to https://leaflet.2plot.dev and redeploy. "
+        f"(render.yaml already declares the correct values — a blueprint does "
+        f"not overwrite a variable edited in the dashboard.)"
+    )
+
+
 # ---------------------------------------------------------------------------
 # The social card
 # ---------------------------------------------------------------------------

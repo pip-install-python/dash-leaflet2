@@ -15,7 +15,7 @@ Nothing yet.
 
 ---
 
-## [0.2.2] — 2026-08-01
+## [0.2.2] — 2026-08-05
 
 The rest of the 2plot network standard, from the checklist's "found on the
 email pass" — the items that each bit a satellite which already looked
@@ -71,11 +71,56 @@ changed.
 
 ### Changed
 
+- **A hosted deploy advertising `http://localhost` now says so, loudly.**
+  Production was serving `/llms.txt`, `/sitemap.xml` and every canonical link
+  pointing at `http://localhost:8050`, and nothing looked wrong: the site
+  rendered, `/healthz` returned 200, and `tests/test_network_surfaces.py`
+  passed because it asserts sitemap URLs start with `BASE_URL` — comparing the
+  deployed value against itself, which is just as true when both sides are
+  localhost. The code default was never the problem (it is already
+  `https://leaflet.2plot.dev`); a loopback value can only come from
+  `APP_BASE_URL` or `DASH_LEAFLET2_BASE_URL` being *explicitly* set to one, and
+  `.env.example` ships exactly those values uncommented for local use.
+  Three changes, none of which self-heal — auto-filling Render's
+  `RENDER_EXTERNAL_URL` would just swap one wrong canonical origin
+  (`*.onrender.com`) for another: `lib.constants.base_url_misconfigured()`
+  returns an actionable message when a hosted service resolves BASE_URL to a
+  loopback origin, naming which of the two variables is at fault; `run.py`
+  prints the resolved base URL at boot and that warning after it; and
+  `/healthz` now reports `base_url`, so the origin a satellite *advertises* is
+  checkable from outside it with one curl. `.env.example` says plainly that its
+  values are local-only.
 - **`BASE_URL` accepts `APP_BASE_URL` first**, falling back to this repo's
   `DASH_LEAFLET2_BASE_URL`. An alias, never a rename — both are set in
   `render.yaml`, because removing one of two env names from a live service is
   how a host starts advertising the wrong canonical origin and deindexes
   itself quietly.
+- **`dash-emoji-mart` and `flexlayout-dash` install from PyPI**, replacing the
+  vendored tarballs now that their working builds are published. Both keep a
+  load-bearing floor — `dash-emoji-mart>=0.0.5` (0.0.3 errors on init) and
+  `flexlayout-dash>=1.1.0` (1.1.0 renamed the import to `flexlayout_dash`, which
+  `docs/walking-sim/example.py` imports directly) — so a too-old resolve fails
+  at install rather than at page render. They also re-enter CI's `pip-audit`
+  job, which skips `./vendor/` lines because pip-audit can only assess PyPI
+  dists. `vendor/` is down to the single Clerk tarball.
+- **`dash-clerk-auth` 0.9.1 → 1.0.0**, and `lib/auth.py` stops hand-patching the
+  satellite. Both fixes it used to inject are upstream: 0.9.1 stamps
+  `data-clerk-domain` onto the ClerkJS script tag, and 0.9.2 replaced the
+  `Clerk.openSignIn()` modal — which ClerkJS forbids on a satellite — with a
+  navigation to the primary. What stays is one *delegated* capture-phase
+  listener on `#clerk-login-button`: the package binds that id inside its
+  `DOMContentLoaded` handler, so the header control is covered but the sign-in
+  card in `lib/page_visibility.py`, which a page callback renders later, would
+  otherwise have no listener at all. It now defers to the package's own
+  `window.dashClerkAuth.buildSatelliteRedirect()` (0.9.2's page-JS surface,
+  opt-in via `CLERK_SATELLITE_SIGN_IN_REDIRECT`) and falls back to the same
+  `redirectToSignIn()` call upstream makes.
+
+  1.0.0 raises `requires-python` to `>=3.10` — `clerk-backend-api` 5.x
+  publishes no 3.9 build, so the old `>=3.9` claim was never installable. That
+  binds the **docs site** only: Docker is 3.12 and the CI docs matrix is
+  3.10/3.12/3.13. The `dash_leaflet2` package keeps `requires-python >=3.9`,
+  which the `package-python-range` CI job proves against the built wheel.
 
 ---
 

@@ -246,10 +246,20 @@ of a bare slug. The ad network's `/admin/ad-board` keys off `AD_APP_ID`
 
 ### 3.5 Post-deploy checklist
 
-1. `GET /healthz` → `{"ok": true, "app": "leaflet", "version": "0.2.1", "reporting": true}`.
+1. `GET /healthz` → `{"ok": true, "app": "leaflet", "version": "0.2.2",
+   "base_url": "https://leaflet.2plot.dev", "reporting": true}`.
    `reporting: false` means `CROSS_APP_WEBHOOK_SECRET` is missing.
+   **`base_url` is the check that matters most here** — if it comes back
+   `http://localhost:8050`, the service has `APP_BASE_URL` or
+   `DASH_LEAFLET2_BASE_URL` set to a loopback origin in its dashboard
+   environment, and every canonical link, `og:url`, sitemap entry and llms.txt
+   URL the site publishes is dead. This has happened on a live deploy. Fix it
+   in the Render dashboard (a blueprint does not overwrite a dashboard-edited
+   variable) and redeploy; the boot log warns about it too.
 2. `/llms.txt`, `/robots.txt`, `/sitemap.xml` all 200, and sitemap URLs use
-   `leaflet.2plot.dev` (i.e. `DASH_LEAFLET2_BASE_URL` took effect).
+   `leaflet.2plot.dev` (i.e. `APP_BASE_URL` took effect). Note the test suite
+   cannot catch this for you — it compares sitemap URLs against the deployed
+   `BASE_URL`, so it passes when both are wrong in the same way.
 3. **Flip the theme toggle on three pages and confirm the basemap changes.**
    This is the one thing no automated check covers end to end — the smoke test
    proves the JS parses, not that the tiles swap in a browser.

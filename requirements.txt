@@ -66,19 +66,27 @@ requests>=2.31
 # renders with a watermark, and the rest of the page is unaffected.
 dash-mui-charts>=1.2.3
 
-# --- Vendored, docs-only ---------------------------------------------------
-# Two showcase pages depend on builds that are not (yet) on PyPI, so the
-# tarballs are committed under vendor/ and installed from there. Neither is
-# needed by the dash_leaflet2 package — only by the pages named below.
+# --- Docs-only showcase deps -----------------------------------------------
+# Neither is needed by the dash_leaflet2 package — only by the pages named
+# below. Both were vendored as tarballs under vendor/ until their working
+# builds reached PyPI; they now install from the index like anything else,
+# which also puts them back under CI's pip-audit (that job skips `./vendor/`
+# lines, because pip-audit can only assess PyPI dists).
 #
-# dash-emoji-mart: PyPI's 0.0.3 errors on init; 0.0.5 is the working build.
+# dash-emoji-mart: the floor is 0.0.5 because PyPI's 0.0.3 errors on init.
+# A floor rather than a pin, so a future fix arrives without an edit; if the
+# index ever lacks it, pip fails loudly at install rather than importing a
+# broken build at runtime.
 #   Used by: /emoji-iconify, /easy-button
-./vendor/dash_emoji_mart-0.0.5.tar.gz
-# flexlayout-dash: 1.1.0 renamed the import `dash_flex_layout` -> `flexlayout_dash`
-# and fixed a re-mount storm. That build is not on PyPI yet — switch this back to
-# `flexlayout-dash>=1.1.0` once it is published.
+dash-emoji-mart>=0.0.5
+# flexlayout-dash: 1.1.0 renamed the import `dash_flex_layout` ->
+# `flexlayout_dash` and fixed a re-mount storm. The floor is load-bearing —
+# docs/walking-sim/example.py does `import flexlayout_dash as dfl`, which
+# does not resolve below 1.1.0.
 #   Used by: /walking-sim
-./vendor/flexlayout_dash-1.1.0.tar.gz
+flexlayout-dash>=1.1.0
+
+# --- Vendored, docs-only ---------------------------------------------------
 # dash-clerk-auth: authentication for the HOSTED documentation site only.
 #
 # It is deliberately NOT a package dependency and never can be: pyproject.toml
@@ -95,13 +103,26 @@ dash-mui-charts>=1.2.3
 # and redeploy; /admin/control-board fails CLOSED without Clerk, so nothing is
 # left exposed by doing so.
 #
-# 0.9.1, not 0.9.0. Both carry the two satellite fixes lib/auth.py depends on,
-# but 0.9.0 renders a DEAD AVATAR on a satellite — the header control appears
-# and never resolves the signed-in user. This host is a satellite of the
-# 2plot.ai primary, so it is exactly the affected shape. Not on PyPI; vendored
-# the same way across the network (0.9.1 is what the boilerplate ships).
+# 1.0.0 — the first stable release, and the first build where this satellite
+# needs NO local patching. Both satellite fixes that lib/auth.py used to inject
+# by hand are upstream now: 0.9.1 stamps `data-clerk-domain` onto the ClerkJS
+# script tag, and 0.9.2 replaced the forbidden `Clerk.openSignIn()` modal with
+# a navigation to the primary (`satellite_sign_in_redirect`, which lib/auth.py
+# now passes). 1.0.0 itself is an API-stability declaration plus a Python floor
+# raise — see below. Anything older than 0.9.2 needs those patches back.
+#
+# PYTHON FLOOR: 1.0.0 requires >=3.10 (clerk-backend-api 5.x publishes no 3.9
+# build, so the old >=3.9 claim was never installable). That binds the DOCS
+# SITE only — Dockerfile is 3.12 and ci.yml's docs matrix is 3.10/3.12/3.13,
+# all clear. The dash_leaflet2 PACKAGE keeps requires-python >=3.9: it does
+# not depend on this file, and ci.yml's package-python-range job proves 3.9
+# installs and imports the wheel with nothing but dash present.
+#
+# Still not on PyPI — vendored the same way across every 2plot satellite, so
+# the tarball is the distribution channel and 1.0.0 is what the boilerplate
+# ships.
 #   Used by: lib/auth.py, /admin/control-board
-./vendor/dash_clerk_auth-0.9.1.tar.gz
+./vendor/dash_clerk_auth-1.0.0.tar.gz
 clerk-backend-api>=5.0.0,<6
 
 # --- Deployment ------------------------------------------------------------

@@ -12,9 +12,9 @@ email (see ``lib.auth.is_admin_user``).
 **This page fails CLOSED.** Everything else degrades to public when Clerk is
 unavailable — docs must stay readable — but this board can hide any page on the
 site, so without Clerk it returns a 404-style response instead. That is the
-DEFAULT state: ``dash-clerk-auth`` is not on PyPI and is not a dependency here,
-so a stock deploy has no Clerk. Set ``ALLOW_UNGATED_ADMIN=1`` to work on it
-locally.
+DEFAULT state: ``dash-clerk-auth`` is vendored, not resolved from PyPI, and is
+not a dependency here, so a stock deploy has no Clerk. Set
+``ALLOW_UNGATED_ADMIN=1`` to work on it locally.
 """
 from datetime import datetime
 
@@ -242,8 +242,8 @@ def layout(**kwargs):
         # Fail CLOSED. Everything else in this app degrades to public without
         # Clerk, because docs must stay readable — but this board can hide any
         # page on the site, so an ungated deploy would hand that to anyone who
-        # guesses the URL. `dash-clerk-auth` is not a dependency (not on PyPI),
-        # so this is the DEFAULT state, not an edge case.
+        # guesses the URL. `dash-clerk-auth` is not a dependency (it is
+        # vendored, not on PyPI), so this is the DEFAULT state, not an edge case.
         # ALLOW_UNGATED_ADMIN=1 to work on the board locally.
         return hidden_layout()
     return _build_board()

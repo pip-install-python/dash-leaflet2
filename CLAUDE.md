@@ -61,11 +61,17 @@ python scripts/sync_from_rnd.py       # dry-run the pull from ../dash-leaflet2
 python -m build --wheel     # PyPI-installable wheel in dist/
 ```
 
-Two docs-only deps are NOT on PyPI and are vendored in `vendor/` (installed by
-`requirements.txt`): `dash_emoji_mart` 0.0.5 (PyPI's 0.0.3 errors on init) for
-`/emoji-iconify` + `/easy-button`, and `flexlayout_dash` 1.1.0 for `/walking-sim`.
-Neither is needed by the `dash_leaflet2` package itself — that needs only
-`dash>=4.1`.
+Two docs-only deps come from PyPI with load-bearing version floors:
+`dash-emoji-mart>=0.0.5` (0.0.3 errors on init) for `/emoji-iconify` +
+`/easy-button`, and `flexlayout-dash>=1.1.0` (1.1.0 renamed the import to
+`flexlayout_dash`) for `/walking-sim`. Both were vendored tarballs until their
+working builds reached PyPI. Neither is needed by the `dash_leaflet2` package
+itself — that needs only `dash>=4.1`.
+
+`vendor/` now holds exactly one tarball: `dash_clerk_auth-1.0.0.tar.gz`, which
+is vendored across every 2plot satellite rather than published to PyPI. It
+requires Python >=3.10, which binds the docs site only (Docker is 3.12); the
+package keeps `requires-python >=3.9`.
 
 ## Critical Leaflet 2.0.0-alpha.1 facts (these cost real debugging time)
 

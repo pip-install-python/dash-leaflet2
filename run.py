@@ -57,6 +57,7 @@ from lib.constants import (
     LEAFLET_VERSION,
     SITE_BRAND,
     SITE_DESCRIPTION,
+    base_url_misconfigured,
 )
 
 # ----------------------------------------------------------------------------
@@ -237,6 +238,14 @@ print(
     + (f"wired -> {bulletin.url()}" if bulletin.configure()
        else "off (NETWORK_BULLETIN_URL unset)")
 )
+
+# A hosted deploy advertising http://localhost is invisible from inside the
+# container — the site renders perfectly and every published URL is dead. Say
+# so at boot, where the deploy log will carry it. See lib.constants.
+_base_url_problem = base_url_misconfigured()
+print(f"[dash-leaflet2] base url: {BASE_URL}")
+if _base_url_problem:
+    print(f"[dash-leaflet2] ⚠️  {_base_url_problem}")
 
 # ----------------------------------------------------------------------------
 # 2plot.ai satellite analytics: /healthz for the hub's hourly health sweep,

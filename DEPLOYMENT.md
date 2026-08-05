@@ -33,7 +33,19 @@ marked `sync: false` so you fill them in the dashboard.
 | `DASH_BACKEND` | `flask` | `flask` \| `fastapi` \| `quart`. Keep `flask` under gunicorn — the ASGI backends need uvicorn. |
 | `PORT` / `HOST` | `8050` / `0.0.0.0` | Bind address. Render injects `PORT`. |
 | `WEB_CONCURRENCY` | `2` | gunicorn workers. Drop to 1 on a 512 MB free instance. |
-| `DASH_LEAFLET2_BASE_URL` | `https://leaflet.2plot.dev` | Canonical origin for `sitemap.xml` and `llms.txt`. |
+| `APP_BASE_URL` | `https://leaflet.2plot.dev` | Canonical origin for `sitemap.xml`, `llms.txt` and every `<link rel="canonical">` / `og:url`. Network-standard name, **read first**. |
+| `DASH_LEAFLET2_BASE_URL` | `https://leaflet.2plot.dev` | This repo's own spelling of the same thing, read second. An alias, never a rename — keep both set on a live service. |
+
+> **Never carry `.env.example`'s values for those two into a hosted service.**
+> They are `http://localhost:8050` for local development. `lib/constants.py`
+> already defaults to `https://leaflet.2plot.dev`, so a hosted deploy with
+> **neither** variable set is correct — one set to localhost is not, and that is
+> the only way this site can end up publishing localhost URLs. It renders fine
+> in that state and `/healthz` returns 200, so the symptom is invisible from
+> inside; `/healthz`'s `base_url` field and the boot-log warning from
+> `lib.constants.base_url_misconfigured()` are what surface it. Render's
+> blueprint declares the right values but does **not** overwrite a variable
+> already edited in the dashboard, so fix it there.
 | `MUI_PRO_API_KEY` | — | MUI X Pro licence for the TreeViewPro tile browser on `/tile-layers-pro`. Absent → that one control is watermarked. |
 
 ### Ad network → 2plot.dev
@@ -271,10 +283,16 @@ is meant to be gated.
 
 ## Post-deploy checklist
 
-1. `GET /healthz` → `{"ok": true, "app": "leaflet", "version": "…", "reporting": true}`.
+1. `GET /healthz` → `{"ok": true, "app": "leaflet", "version": "…",
+   "base_url": "https://leaflet.2plot.dev", "reporting": true}`.
    `reporting: false` means `CROSS_APP_WEBHOOK_SECRET` is missing.
+   **`base_url` coming back `http://localhost:8050` is a live incident**: the
+   service has `APP_BASE_URL` or `DASH_LEAFLET2_BASE_URL` set to a loopback
+   origin, so every canonical link, `og:url`, sitemap entry and llms.txt URL is
+   unreachable — while the site itself renders perfectly. See the note under
+   the environment table.
 2. `GET /llms.txt`, `/robots.txt`, `/sitemap.xml` all 200, and the sitemap URLs
-   use `leaflet.2plot.dev` (i.e. `DASH_LEAFLET2_BASE_URL` is set).
+   use `leaflet.2plot.dev` (i.e. `APP_BASE_URL` is set correctly).
 3. Sign in from the site — you should bounce to 2plot.ai and land **back here**,
    not on the primary's home page.
 4. `/admin/control-board` shows the page table with **no** dev-mode banner.

@@ -71,6 +71,25 @@ changed.
 
 ### Changed
 
+- **A hosted deploy advertising `http://localhost` now says so, loudly.**
+  Production was serving `/llms.txt`, `/sitemap.xml` and every canonical link
+  pointing at `http://localhost:8050`, and nothing looked wrong: the site
+  rendered, `/healthz` returned 200, and `tests/test_network_surfaces.py`
+  passed because it asserts sitemap URLs start with `BASE_URL` — comparing the
+  deployed value against itself, which is just as true when both sides are
+  localhost. The code default was never the problem (it is already
+  `https://leaflet.2plot.dev`); a loopback value can only come from
+  `APP_BASE_URL` or `DASH_LEAFLET2_BASE_URL` being *explicitly* set to one, and
+  `.env.example` ships exactly those values uncommented for local use.
+  Three changes, none of which self-heal — auto-filling Render's
+  `RENDER_EXTERNAL_URL` would just swap one wrong canonical origin
+  (`*.onrender.com`) for another: `lib.constants.base_url_misconfigured()`
+  returns an actionable message when a hosted service resolves BASE_URL to a
+  loopback origin, naming which of the two variables is at fault; `run.py`
+  prints the resolved base URL at boot and that warning after it; and
+  `/healthz` now reports `base_url`, so the origin a satellite *advertises* is
+  checkable from outside it with one curl. `.env.example` says plainly that its
+  values are local-only.
 - **`BASE_URL` accepts `APP_BASE_URL` first**, falling back to this repo's
   `DASH_LEAFLET2_BASE_URL`. An alias, never a rename — both are set in
   `render.yaml`, because removing one of two env names from a live service is

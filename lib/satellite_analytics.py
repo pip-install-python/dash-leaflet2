@@ -870,9 +870,16 @@ def beacon_component():
 
 
 def _health_body() -> dict:
-    from lib.constants import APP_VERSION
+    # `base_url` is here so the origin this satellite ADVERTISES is checkable
+    # from outside it. Everything else about a host that resolved BASE_URL to
+    # localhost looks healthy — pages render, /healthz is 200 — while every
+    # canonical link, sitemap entry and llms.txt URL it publishes is dead. One
+    # curl now shows the mismatch, and the hub's hourly sweep can flag any
+    # satellite whose advertised origin is not the one it was polled at.
+    from lib.constants import APP_VERSION, BASE_URL
 
     return {"ok": True, "app": APP_ID, "version": APP_VERSION,
+            "base_url": BASE_URL,
             "reporting": bool(_secret()) and not DRY_RUN}
 
 

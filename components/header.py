@@ -28,11 +28,14 @@ def create_clerk_avatar():
     deploy without the keys renders the header exactly as before rather than
     erroring on a missing component.
 
-    The package renders `#clerk-login-button` inside this widget, which is the
-    id `lib.auth._install_satellite_fixups` intercepts in the capture phase to
-    call `Clerk.redirectToSignIn()`. That indirection is required on a satellite
-    domain: the package's own handler calls `openSignIn()`, a modal that POSTs
-    to the satellite FAPI and 403s with "not allowed on a satellite domain".
+    The package renders `#clerk-login-button` inside this widget. Since
+    dash-clerk-auth 0.9.2 the package's own handler is already satellite-safe
+    (it navigates to the primary rather than opening `openSignIn()`, a modal
+    that POSTs to the satellite FAPI and 403s), so this button needs nothing
+    from us. `lib.auth._install_satellite_signin_delegation` still intercepts
+    the id in the capture phase — not for this button, but for the sign-in card
+    in `lib.page_visibility`, which Dash renders after the package has already
+    bound its listeners.
     """
     if not clerk_enabled():
         return None

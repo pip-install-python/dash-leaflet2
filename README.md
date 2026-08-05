@@ -1,13 +1,10 @@
 <div align="center">
 
 <a href="https://2plot.ai">
+  <img src="https://cdn.2plot.ai/github_assets/android-chrome-512x512.png" alt="dash-leaflet2" width="120">
   <img src="https://cdn.2plot.ai/github_assets/dark_mode_2plot.png" alt="2plot.ai" width="300">
 </a>
 
-<br/>
-<br/>
-
-<img src="https://cdn.2plot.ai/github_assets/android-chrome-512x512.png" alt="dash-leaflet2" width="120">
 
 # dash-leaflet2
 

@@ -121,22 +121,23 @@ is logged.
 | `CLERK_FRONTEND_API` | `https://<app>.clerk.accounts.dev` | **Required in satellite mode.** A production custom-domain instance cannot derive this from the sign-in URL. |
 | `CLERK_SATELLITE_DOMAIN` | `2plot.dev` — the registered satellite, **not** the served host | Host only, no scheme. Must match the deployed domain exactly. |
 | `CLERK_IS_SATELLITE` | `true` | Leave false locally — Clerk rejects satellites on `localhost`. |
+| `CLERK_SATELLITE_SIGN_IN_REDIRECT` | (unset) | Optional, dash-clerk-auth ≥ 0.9.2. Absolute URL on the **primary** that Sign In navigates to, with this page in `?returnTo=`. Read by the package itself. Unset, sign-in falls back to `Clerk.redirectToSignIn()` forcing this page as the return — what this site ships today. Only set it once `2plot.ai` honours `?returnTo=`. |
 | `SESSION_SECRET` | (generated) | Signs the session + `__dca_identity` cookies. Without it dash-clerk-auth uses a **public dev default**. |
 | `ADMIN_EMAILS` | `a@b.com,c@d.com` | Allowlist for `/admin/control-board`. `OWNER_EMAIL` always counts. |
 | `DISABLE_CLERK` | `1` | Dev kill switch — reads as "intentionally off" without touching the keys. Never set in production. |
 | `ALLOW_UNGATED_ADMIN` | `1` | Lets `/admin/control-board` render without Clerk. **Never set in production.** |
 
-> **`dash-clerk-auth` is not a dependency of this project.** The 0.9.0 build
-> carrying the satellite fixes is not on PyPI — it is vendored across the 2plot
-> network — so a stock deploy has **no Clerk at all** and `clerk_enabled()` is
-> `False` however many `CLERK_*` variables you set.
+> **`dash-clerk-auth` is not a dependency of this project.** The 1.0.0 build is
+> not resolved from PyPI — it is vendored across the 2plot network — so a stock
+> deploy has **no Clerk at all** and `clerk_enabled()` is `False` however many
+> `CLERK_*` variables you set.
 >
 > That is safe for the documentation itself, which is public anyway. It is not
 > safe for `/admin/control-board`, so that page fails **closed**: without Clerk
 > it returns a 404-style response and its save callback refuses writes, rather
 > than handing an open admin panel to anyone who guesses the URL.
 >
-> **Clerk is enabled** — `vendor/dash_clerk_auth-0.9.0.tar.gz` is committed and
+> **Clerk is enabled** — `vendor/dash_clerk_auth-1.0.0.tar.gz` is committed and
 > active in `requirements.txt`. One operational risk to know before debugging a
 > dead site: the package registers a `[dash_hooks]` entry point that Dash
 > auto-imports at **every** `Dash()` construction, so it sits in the boot path
@@ -202,18 +203,29 @@ primary refuses to redirect back here after sign-in.
 > `2plotai/lib/auth.py` and a redeploy, which is less error-prone if you are not
 > already overriding the list.
 
-**Two satellite fixes** are applied in `lib/auth.py` for dash-clerk-auth 0.9.0.
-They are the difference between a working satellite and a broken one:
+**Satellite fixes: now upstream.** `lib/auth.py` used to hand-apply two of them
+against dash-clerk-auth 0.9.0. Both ship in the package as of 1.0.0 and the
+local copies are gone:
 
 1. clerk-js@5 reads `domain` as a **constructor** option, from the script tag's
    `data-clerk-domain` — not as a `load()` option. Without stamping it,
    `load({isSatellite: true})` throws *"a satellite application needs to specify
-   a domain or a proxyUrl"*.
-2. The package binds sign-in to `Clerk.openSignIn()`, a modal on the current
-   domain. On a satellite that POSTs to the satellite FAPI and 403s. We intercept
-   the click in the capture phase and call `redirectToSignIn()` with
-   `signInForceRedirectUrl` set to this page, so the primary sends the user back
-   here rather than to its own home.
+   a domain or a proxyUrl"*. **Fixed upstream in 0.9.1.**
+2. The package bound sign-in to `Clerk.openSignIn()`, a modal on the current
+   domain. On a satellite that POSTs to the satellite FAPI and 403s. **Fixed
+   upstream in 0.9.2**, which navigates to the primary instead.
+
+What `lib/auth.py` still installs is one **delegated** capture-phase listener on
+`#clerk-login-button`. The package binds that id inside its `DOMContentLoaded`
+handler, once — fine for the header control, which is part of the app shell, but
+the sign-in card in `lib/page_visibility.py` is rendered by a page callback when
+a visitor reaches an `auth`-tier page, well after that handler ran. Without
+delegation its button has no listener and the click does nothing. The listener
+defers to the package's own `window.dashClerkAuth.buildSatelliteRedirect()` when
+`CLERK_SATELLITE_SIGN_IN_REDIRECT` is set, and otherwise makes the same
+`redirectToSignIn()` call upstream does.
+
+> Downgrading below 0.9.2 means restoring both fixes in `lib/auth.py`.
 
 **Satellite registration is not automatic.** `leaflet.2plot.dev` must also appear
 in the primary's `CLERK_ALLOWED_REDIRECT_ORIGINS` (see `lib/auth.py` in the

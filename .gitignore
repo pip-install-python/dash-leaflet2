@@ -27,13 +27,17 @@ dash_leaflet2/metadata.json
 
 # Runtime state written by the app.
 # page_visibility.json — control-board overrides, per-deployment
-# satellite_traffic.jsonl — the 2plot.ai analytics ledger, plus its
-#   per-interval O_EXCL claim files. Committing it would publish visitor
-#   IP/user-agent hashes.
+# visitor_analytics.json — the 2plot.ai analytics ledger (plus its .lock/.tmp
+#   siblings and the reporter's lease file). Committing it would publish
+#   visitor IPs and user agents.
+# satellite_traffic.jsonl — the RETIRED Gen-1 ledger; kept ignored so a stale
+#   local copy can never be committed.
 page_visibility.json
+visitor_analytics.json
+visitor_analytics.json.*
+.satellite_report.lease
 satellite_traffic.jsonl
 .satellite_traffic.jsonl.*
-visitor_analytics.json
 
 # Test harness scratch — scripts/compat_matrix.py venvs and raw results
 .compat/

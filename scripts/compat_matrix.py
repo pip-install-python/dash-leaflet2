@@ -101,7 +101,7 @@ def smoke_local(python: Path, version: str, backend: str, donor_site: Path) -> d
     env = dict(
         os.environ,
         DASH_BACKEND=backend,
-        SATELLITE_ANALYTICS_DRY_RUN="1",
+        TRAFFIC_ANALYTICS_FILE=str(WORK_DIR / "smoke_visits.json"),
         DL2_EXTRA_SITE=str(donor_site),
         DL2_SMOKE_ARGS="\n".join(["--quiet", "--json", str(out)]),
         PYTHONPATH="",  # must NOT leak a second dash onto the path
@@ -207,7 +207,8 @@ def make_venv(version: str) -> tuple[Path, Path] | None:
 def smoke(py: Path, version: str, backend: str) -> dict:
     """Run scripts/smoke_test.py in this venv and return its JSON result."""
     out = WORK_DIR / f"{version}-{backend}.json"
-    env = dict(os.environ, DASH_BACKEND=backend, SATELLITE_ANALYTICS_DRY_RUN="1")
+    env = dict(os.environ, DASH_BACKEND=backend,
+               TRAFFIC_ANALYTICS_FILE=str(WORK_DIR / "smoke_visits.json"))
     env.pop("CROSS_APP_WEBHOOK_SECRET", None)
 
     t0 = time.time()
@@ -244,7 +245,7 @@ def browser_leg(py: Path, version: str, backend: str, port: int) -> dict:
 
     env = dict(os.environ, DASH_BACKEND=backend, PORT=str(port),
                HOST="127.0.0.1", DASH_DEBUG="false",
-               SATELLITE_ANALYTICS_DRY_RUN="1")
+               TRAFFIC_ANALYTICS_FILE=str(WORK_DIR / "smoke_visits.json"))
     proc = subprocess.Popen([str(py), "run.py"], cwd=PROJECT_ROOT, env=env,
                             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     try:
@@ -252,9 +253,10 @@ def browser_leg(py: Path, version: str, backend: str, port: int) -> dict:
 
         base = f"http://127.0.0.1:{port}"
         # The readiness probe carries the internal-traffic token like every
-        # other 2plot battery: the app under test boots with
-        # SATELLITE_ANALYTICS_DRY_RUN=1, so without it this poll would append
-        # up to sixty phantom visits to its ledger before a page is measured.
+        # other 2plot battery: the app under test tracks into a scratch
+        # ledger (TRAFFIC_ANALYTICS_FILE above), and without the token this
+        # poll would still append up to sixty phantom visits to it before a
+        # page is measured.
         probe = urllib.request.Request(
             base, headers={"User-Agent": internal_ua("compat-matrix")})
         for _ in range(60):  # wait for the server to answer

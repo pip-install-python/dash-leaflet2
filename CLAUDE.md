@@ -31,12 +31,16 @@ The site de-risks; the package is the durable artifact. Keep both working.
 
 ## 2plot network wiring (all dormant without env keys)
 
-`lib/ad_client.py` → 2plot.dev ads · `lib/satellite_analytics.py` → 2plot.ai
-traffic · `lib/auth.py` → Clerk satellite of 2plot.ai · `lib/page_visibility.py` +
-`pages/control_board.py` → `/admin/control-board`, four tiers re-checked every
-render. Full reference in `DEPLOYMENT.md`. These are shared drop-in modules — when
-fixing a bug in `ad_client.py` or `satellite_analytics.py`, the fix probably
-belongs in the other satellites too.
+`lib/ad_client.py` → 2plot.dev ads · `lib/analytics_tracker.py` +
+`lib/traffic_rollup.py` + `lib/satellite_reporter.py` → 2plot.ai traffic (the
+boilerplate's trio; it replaced the Gen-1 single-module tracker in the
+1.3.x instrumentation sync — `traffic_rollup._SKIP` must stay byte-identical
+to the boilerplate's) · `lib/auth.py` → Clerk satellite of 2plot.ai ·
+`lib/page_visibility.py` + `pages/control_board.py` → `/admin/control-board`,
+four tiers re-checked every render. Full reference in `DEPLOYMENT.md`. These
+are shared drop-in modules — when fixing a bug in `ad_client.py` or the
+analytics trio, the fix probably belongs in the other satellites too
+(canonical source: `../dash-documentation-boilerplate`).
 
 ## Commands
 

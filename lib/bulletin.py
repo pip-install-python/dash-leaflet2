@@ -59,26 +59,23 @@ def _ttl() -> float:
 def app_id() -> str:
     """This app's key in the hub's network directory — "leaflet".
 
-    Derived from ``lib.satellite_analytics`` rather than hard-coded, so the key
-    this app announces itself with and the key it reports traffic under cannot
-    drift apart. A satellite left announcing itself as "boilerplate" would
-    receive the template's announcements, and the hub's "who is rendering the
-    bulletin" view would count it as that repo.
+    Reused from ``lib.satellite_reporter`` rather than hard-coded — the
+    boilerplate's rule, adoptable here since the Gen-1 analytics module was
+    retired for the tracker/reporter/rollup trio — so the key this app
+    announces itself with and the key it reports traffic under cannot drift
+    apart (both read ``SATELLITE_APP_KEY``). A satellite left announcing
+    itself as "boilerplate" would receive the template's announcements, and
+    the hub's "who is rendering the bulletin" view would count it as that
+    repo.
 
-    TWO IMPORTS THAT LOOK RIGHT AND ARE NOT, both specific to this repo:
-
-    * ``lib.satellite_reporter`` is what every other satellite uses, and it
-      does not exist here — a verbatim copy of the sibling file raises
-      ModuleNotFoundError on the first bulletin fetch. This app keeps the same
-      value in ``lib.satellite_analytics.APP_ID`` (env ``SATELLITE_APP_ID``).
-    * ``AD_APP_ID`` is the obvious one and the wrong one. It is the ad
-      network's identifier, historically the long ``dash-leaflet2``, whereas
-      the directory key is ``leaflet``. Announcing the long form would file
-      this host under a name the hub's directory does not use.
+    ONE IMPORT THAT LOOKS RIGHT AND IS NOT: ``AD_APP_ID`` is the ad network's
+    identifier, historically the long ``dash-leaflet2``, whereas the directory
+    key is ``leaflet``. Announcing the long form would file this host under a
+    name the hub's directory does not use.
     """
-    from lib.satellite_analytics import APP_ID
+    from lib.satellite_reporter import app_key
 
-    return APP_ID
+    return app_key()
 
 
 def configure() -> bool:

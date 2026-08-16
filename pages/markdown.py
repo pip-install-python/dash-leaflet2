@@ -11,11 +11,13 @@ from pydantic import BaseModel
 
 from lib.ad_client import inject_ad_into_aside
 from lib.constants import OG_IMAGE_URL, PAGE_TITLE_PREFIX, NAME_CONTENT_MAP
+from lib import page_tiers
 from lib.directives.kwargs import Kwargs
 from lib.directives.llms_copy import LlmsCopy
 from lib.directives.source import SC
 from lib.directives.toc import TOC
 from lib.page_visibility import gated_layout, register_default, register_llms_doc
+from lib.versions import substitute_versions
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
@@ -38,6 +40,11 @@ class Meta(BaseModel):
     # Baseline access tier for this page. Omitted → lib.page_visibility's
     # DEFAULT_TIER ("public"). The admin control board's overrides always win.
     visibility: Optional[str] = None
+    # The NETWORK's tier vocabulary (public | auth | admin | hidden), recorded
+    # in lib/page_tiers.py — the ledger the hub's page-tier ceilings compare
+    # against. Distinct from `visibility` above, which is this repo's own
+    # control-board gate; the two coexist until the fleet unifies them.
+    tier: Optional[str] = None
     # Whether this page's prose may be served at /<page>/llms.txt to anonymous
     # and AI traffic. Also live-toggleable from the control board.
     llms_public: bool = True
@@ -105,6 +112,14 @@ for file in files:
     metadata, content = frontmatter.parse(file.read_text())
     metadata = Meta(**metadata)
 
+    # Substitute derived facts BEFORE any consumer sees the text, so the
+    # browser page, the copy button, and /<page>/llms.txt all publish the
+    # same truth. A doc writes {{VERSION:<distribution>}} instead of a
+    # version number — any installed package, so this site can document
+    # dash-leaflet2's own version the same way the boilerplate documents
+    # dash-improve-my-llms's. See lib/versions.py for why.
+    content = substitute_versions(content, source=str(file))
+
     # Store raw markdown content in NAME_CONTENT_MAP for the LLM copy button.
     NAME_CONTENT_MAP[metadata.name] = content
 
@@ -149,6 +164,10 @@ for file in files:
         category=metadata.category,
         icon=metadata.icon,
     )
+
+    # Record the declared network tier before the prose is registered, so a
+    # gate can never be applied later than the content it is meant to gate.
+    page_tiers.register(metadata.endpoint, metadata.tier)
 
     # Feed the expanded markdown into dash-improve-my-llms so /<page>/llms.txt
     # serves the directive-expanded prose. Routed through page_visibility so

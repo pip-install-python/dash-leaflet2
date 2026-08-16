@@ -12,9 +12,9 @@ behind `.get(path, user_agent=...) -> Response`.
 
 SECRETLESS, AND ORDER MATTERS. The suite runs against the app exactly as CI's
 zero-secret container does: no Clerk keys (auth falls open, non-public tiers
-still deny), no `CROSS_APP_WEBHOOK_SECRET` (nothing is ever POSTed to the
-hub), and the analytics ledger in a temp dir. The zero-secret boot is itself
-the first invariant.
+still deny), no `CROSS_APP_WEBHOOK_SECRET` (the traffic reporter never starts
+a thread and nothing is ever POSTed to the hub), and the analytics ledger in
+a temp dir. The zero-secret boot is itself the first invariant.
 
 The env block below therefore has to run BEFORE anything imports `run.py`,
 because run.py calls `load_dotenv()` at import time and a developer's local
@@ -51,20 +51,15 @@ for _key in SECRET_ENV_KEYS:
 
 # --- 2. Keep app state out of the repo --------------------------------------
 # Without this the suite appends its own hits to the checked-out
-# satellite_traffic.jsonl, which then shows up in `git status` and, worse, in
-# the next rollup a developer's local run happens to send.
+# visitor_analytics.json, which then shows up in `git status` and, worse, in
+# the next hourly rollup a developer's local run happens to send.
 _TMP_STATE = tempfile.mkdtemp(prefix="leaflet-tests-")
-os.environ["SATELLITE_ANALYTICS_FILE"] = os.path.join(_TMP_STATE, "satellite_traffic.jsonl")
+os.environ["TRAFFIC_ANALYTICS_FILE"] = os.path.join(_TMP_STATE, "visitor_analytics.json")
 os.environ["PAGE_VISIBILITY_FILE"] = os.path.join(_TMP_STATE, "page_visibility.json")
-
-# DRY RUN, NOT "dormant". `lib.satellite_analytics.enabled()` is
-# `bool(secret) or DRY_RUN`, and with no secret (above) the tracker would
-# short-circuit on the very first line of `track()` — every internal-traffic
-# assertion would then pass vacuously, proving nothing. Dry-run keeps the whole
-# write path live while guaranteeing the reporter never POSTs anywhere.
-os.environ["SATELLITE_ANALYTICS_DRY_RUN"] = "1"
-# The reporter thread would otherwise start on import and wake up mid-suite.
-os.environ["SATELLITE_REPORT_INTERVAL_S"] = "86400"
+# Behind Cloudflare in production; in tests an outbound ip-api.com lookup per
+# hit would make the suite depend on a third party being up.
+os.environ["ANALYTICS_GEO_LOOKUP"] = "0"
+# The base-URL guard and the reporter both key off these; keep them inert.
 os.environ.setdefault("APP_ENV", "test")
 
 BROWSER_UA = (

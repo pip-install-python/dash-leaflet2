@@ -4,7 +4,6 @@ from dash import Output, Input, clientside_callback, dcc, page_container, State
 from components.header import create_header
 from components.navbar import create_navbar, create_navbar_drawer
 from lib.constants import PRIMARY_COLOR
-from lib.satellite_analytics import beacon_component
 
 
 def create_appshell(data):
@@ -174,10 +173,6 @@ def create_appshell(data):
             # Persists the desktop-navbar collapse state across reloads.
             # null/false = visible (default), true = collapsed.
             dcc.Store(id="desktop-navbar-collapsed", storage_type="local"),
-            # Hidden sink for the 2plot.ai page-view beacon. A Dash SPA serves
-            # one HTML request per visit and routes every later page client-side,
-            # so without this every session would report as single-page.
-            beacon_component(),
             dmc.NotificationContainer(),
             dmc.AppShell(
                 [

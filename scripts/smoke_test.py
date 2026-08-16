@@ -37,6 +37,7 @@ import os
 import shutil
 import subprocess
 import sys
+import tempfile
 import time
 import traceback
 from pathlib import Path
@@ -48,9 +49,14 @@ os.chdir(PROJECT_ROOT)
 # Flask's test client is the only backend whose in-process client needs no
 # extra dependency, and the page/layout checks are backend-independent.
 os.environ.setdefault("DASH_BACKEND", "flask")
-# Never let a smoke run beacon traffic at the live 2plot.ai hub, and keep the
-# ad client from adding a network timeout to every page.
-os.environ.setdefault("SATELLITE_ANALYTICS_DRY_RUN", "1")
+# Never let a smoke run beacon traffic at the live 2plot.ai hub (no secret →
+# the reporter never starts), keep its hits out of the repo's own ledger, and
+# keep the ad client from adding a network timeout to every page.
+os.environ.setdefault(
+    "TRAFFIC_ANALYTICS_FILE",
+    os.path.join(tempfile.mkdtemp(prefix="leaflet-smoke-"), "visitor_analytics.json"),
+)
+os.environ.setdefault("ANALYTICS_GEO_LOOKUP", "0")
 os.environ.pop("CROSS_APP_WEBHOOK_SECRET", None)
 os.environ.setdefault("AD_SERVER_URL", "http://127.0.0.1:1")  # unreachable → slot hides
 

@@ -19,13 +19,13 @@ services:
     runtime: docker
     dockerfilePath: ./Dockerfile
     dockerContext: .
-    # Free tier works for a docs site, but it sleeps after ~15 min idle and
-    # cold-starts on the next request. Use "starter" or higher for always-on —
-    # note the satellite analytics ledger also lives on the container
-    # filesystem, so evictions cost unreported traffic on free.
-    plan: free
-    # /healthz is the 2plot network convention (lib/satellite_analytics.py) and
-    # is excluded from traffic counts, so it makes a cleaner check than /.
+    # Starter (always-on): the free tier sleeps after ~15 min idle, cold-starts
+    # on the next request, and its evictions swallow unreported analytics. The
+    # dashboard plan was upgraded 2026-08-16; this file matching it is what
+    # keeps a future blueprint sync from silently downgrading the service.
+    plan: starter
+    # /healthz is the 2plot network convention (lib/health.py) and is excluded
+    # from traffic counts, so it makes a cleaner check than /.
     healthCheckPath: /healthz
     autoDeploy: true
     envVars:
@@ -67,7 +67,11 @@ services:
       - key: AD_APP_ID
         value: leaflet
 
-      # --- 2plot.ai satellite analytics (lib/satellite_analytics.py) ----
+      # --- 2plot.ai satellite analytics ---------------------------------
+      # (lib/analytics_tracker.py + lib/traffic_rollup.py +
+      # lib/satellite_reporter.py — the trio that replaced the Gen-1
+      # single-module tracker in the fleet's 1.3.x instrumentation sync.)
+      #
       # The shared HMAC secret every satellite holds. Set it in the Render
       # dashboard (same value as on 2plot.ai) — never in this file.
       # Without it the app still serves /healthz but reports nothing.
@@ -77,20 +81,32 @@ services:
         sync: false
       # The series name this app reports under on 2plot.ai/traffic. "leaflet"
       # is this app's 2plot network-directory key — the hub labels and colours
-      # the series from that directory.
-      - key: SATELLITE_APP_ID
-        value: leaflet
-      # Minimum seconds between rollup POSTs (the contract asks for hourly).
-      # 1800 halves what a free-tier eviction can swallow, and the reporter
-      # only POSTs when the day's numbers actually changed.
-      - key: SATELLITE_REPORT_INTERVAL_S
-        value: "1800"
-      # The same key under the network-standard spelling. lib/satellite_analytics
-      # reads SATELLITE_APP_ID; the shared tooling and the rest of the fleet say
-      # SATELLITE_APP_KEY. Both are set because removing one of two env names on
-      # a live service is how a host starts reporting under the wrong id.
+      # the series from that directory. (The Gen-1 spelling SATELLITE_APP_ID
+      # is retired with the module that read it; the trio reads only this
+      # name. The dashboard may still carry the old variable — harmlessly,
+      # nothing reads it now.)
       - key: SATELLITE_APP_KEY
         value: leaflet
+      # The hub takes the LAST report for a given (app, date). On an ephemeral
+      # filesystem a mid-day deploy wipes the ledger and the next hourly report
+      # overwrites the day's real total with whatever accrued since the
+      # restart. The disk below is what stops that.
+      - key: TRAFFIC_ANALYTICS_FILE
+        value: /var/data/visitor_analytics.json
+      # Behind Cloudflare the country header is already present, so the
+      # ip-api.com lookup is redundant latency.
+      - key: ANALYTICS_GEO_LOOKUP
+        value: "0"
+
+      # --- Corpus document tiers (lib/page_tiers.py; registered in run.py) --
+      # Access tiers for /llms-small.txt and /llms-full.txt
+      # (dash-improve-my-llms >= 2.4.0). Deliberately set to the default so
+      # the knob is visible here: the 402 experiment tightens the full corpus
+      # by flipping this to `auth`, per satellite, with no code change.
+      - key: LLMS_SMALL_TIER
+        value: public
+      - key: LLMS_FULL_TIER
+        value: public
 
       # --- 2plot.dev network bulletin (lib/bulletin.py) -----------------
       # The hub's announcement feed, rendered in the header of this site's
@@ -154,11 +170,11 @@ services:
       # control board can still flip any individual page live.
       - key: PAGE_DEFAULT_VISIBILITY
         value: public
-      # Overrides are written here. On the free tier the container filesystem
-      # is ephemeral, so control-board changes survive until the next deploy.
-      # Point this at a persistent disk if they must outlive one.
+      # Overrides are written here — on the analytics disk, so control-board
+      # changes now OUTLIVE a deploy (they used to live on the ephemeral
+      # container filesystem and reset with every one).
       - key: PAGE_VISIBILITY_FILE
-        value: /app/page_visibility.json
+        value: /var/data/page_visibility.json
 
       # --- Optional ----------------------------------------------------
       # MUI X Pro licence for the TreeViewPro tile browser on
@@ -166,3 +182,12 @@ services:
       # rest of the page is unaffected.
       - key: MUI_PRO_API_KEY
         sync: false
+
+    # Persistent storage for the analytics ledger (and the control board's
+    # visibility overrides). The hub keeps only the LAST report per
+    # (app, date), so a ledger that dies with the container silently
+    # under-reports every deploy day.
+    disk:
+      name: analytics
+      mountPath: /var/data
+      sizeGB: 1

@@ -57,17 +57,17 @@ def test_configure_reports_that_it_wired(monkeypatch):
 def test_the_app_id_is_the_directory_key_not_a_second_opinion():
     """One id on every hub surface.
 
-    Two imports look right here and are not, both specific to this repo:
-    `lib.satellite_reporter` is what every sibling satellite uses and does not
-    exist in this one, and `AD_APP_ID` is the ad network's identifier —
-    historically the long `dash-leaflet2`, where the hub's directory key is
-    `leaflet`. Announcing the long form would file this host under a name the
-    directory does not use.
+    `bulletin.app_id()` must be the traffic reporter's key — the two are the
+    same identity on the hub, and deriving one from the other is what stops
+    them drifting. The wrong import that still looks right: `AD_APP_ID`, the
+    ad network's identifier — historically the long `dash-leaflet2`, where
+    the hub's directory key is `leaflet`. Announcing the long form would file
+    this host under a name the directory does not use.
     """
     from lib import bulletin
-    from lib.satellite_analytics import APP_ID
+    from lib.satellite_reporter import app_key
 
-    assert bulletin.app_id() == APP_ID == "leaflet"
+    assert bulletin.app_id() == app_key() == "leaflet"
 
 
 def test_a_bad_ttl_falls_back_rather_than_crashing_the_boot(monkeypatch):

@@ -8,7 +8,7 @@ keys** — a plain `python run.py` is just the docs.
 | Integration | Module | Talks to | Dormant unless |
 |---|---|---|---|
 | Ad network | `lib/ad_client.py` | `2plot.dev/api/ad-network/serve` | ad server reachable |
-| Traffic analytics | `lib/satellite_analytics.py` | `2plot.ai/api/satellite/traffic` | `CROSS_APP_WEBHOOK_SECRET` |
+| Traffic analytics | `lib/analytics_tracker.py` + `lib/traffic_rollup.py` + `lib/satellite_reporter.py` | `2plot.ai/api/satellite/traffic` | `CROSS_APP_WEBHOOK_SECRET` |
 | Authentication | `lib/auth.py` | Clerk, satellite of 2plot.ai | all three `CLERK_*` keys |
 | Page control board | `lib/page_visibility.py`, `pages/control_board.py` | local JSON | always on; gate needs Clerk |
 
@@ -37,15 +37,16 @@ marked `sync: false` so you fill them in the dashboard.
 | `DASH_LEAFLET2_BASE_URL` | `https://leaflet.2plot.dev` | This repo's own spelling of the same thing, read second. An alias, never a rename — keep both set on a live service. |
 
 > **Never carry `.env.example`'s values for those two into a hosted service.**
-> They are `http://localhost:8050` for local development. `lib/constants.py`
-> already defaults to `https://leaflet.2plot.dev`, so a hosted deploy with
-> **neither** variable set is correct — one set to localhost is not, and that is
-> the only way this site can end up publishing localhost URLs. It renders fine
-> in that state and `/healthz` returns 200, so the symptom is invisible from
-> inside; `/healthz`'s `base_url` field and the boot-log warning from
-> `lib.constants.base_url_misconfigured()` are what surface it. Render's
-> blueprint declares the right values but does **not** overwrite a variable
-> already edited in the dashboard, so fix it there.
+> They are `http://localhost:8050` for local development. On a hosted deploy
+> `lib.constants.require_owned_base_url()` — the network's hard boot guard,
+> which replaced the old warn-only check in the 1.3.x sync — REFUSES to boot
+> when neither variable is set, when one is set to a loopback origin, or when
+> the value is a platform-generated hostname (`*.onrender.com`). A site
+> publishing the wrong origin renders fine and `/healthz` returns 200, so the
+> symptom used to be invisible from inside; now the deploy log carries the
+> refusal, and `/healthz`'s `base_url` field still shows the origin actually
+> advertised. Render's blueprint declares the right values but does **not**
+> overwrite a variable already edited in the dashboard, so fix it there.
 | `MUI_PRO_API_KEY` | — | MUI X Pro licence for the TreeViewPro tile browser on `/tile-layers-pro`. Absent → that one control is watermarked. |
 
 ### Ad network → 2plot.dev
@@ -62,43 +63,38 @@ circuit breaker stops retrying — an outage never adds latency to a page view.
 
 ### Traffic analytics → 2plot.ai
 
+The boilerplate's tracker/reporter/rollup trio, adopted in the fleet's 1.3.x
+instrumentation sync (it replaced the Gen-1 single-module tracker):
+`lib/analytics_tracker.py` records every request into a JSON ledger,
+`lib/traffic_rollup.py` computes the daily v2+v3 payload with the hub's own
+definitions (its `_SKIP` tuple stays byte-identical to the boilerplate's — the
+fleet's one-measurement rule), and `lib/satellite_reporter.py` POSTs it
+hourly, HMAC-signed. `/healthz` itself now lives in `lib/health.py`.
+
 | Variable | Default | What it does |
 |---|---|---|
-| `CROSS_APP_WEBHOOK_SECRET` | — | Shared HMAC secret. **Without it nothing is reported**, though `/healthz` is still served. |
-| `SATELLITE_APP_ID` | `leaflet` | Series name on 2plot.ai's `/traffic`. This is the network-directory key. |
-| `SATELLITE_HUB_URL` | `https://2plot.ai` | Hub origin. |
-| `SATELLITE_ANALYTICS_FILE` | `satellite_traffic.jsonl` | Hit ledger. Put it on a persistent disk to survive evictions. |
-| `SATELLITE_REPORT_INTERVAL_S` | `1800` | Minimum seconds between rollup POSTs. |
-| `SATELLITE_ANALYTICS_DRY_RUN` | — | `1` → track and log rollups, never POST. The smoke test sets this. |
+| `CROSS_APP_WEBHOOK_SECRET` | — | Shared HMAC secret. **Without it nothing is reported** (the boot log says so), though `/healthz` is still served. |
+| `SATELLITE_APP_KEY` | `leaflet` | Series name on 2plot.ai's `/traffic`. This is the network-directory key. (The Gen-1 spelling `SATELLITE_APP_ID` is retired.) |
+| `SATELLITE_TRAFFIC_URL` | `https://2plot.ai/api/satellite/traffic` | Hub endpoint override. |
+| `TRAFFIC_ANALYTICS_FILE` | `visitor_analytics.json` (repo root) | Visit ledger. Production points it at the persistent disk (`/var/data/visitor_analytics.json` in render.yaml) — the hub keeps the LAST report per (app, date), so a ledger that dies with the container under-reports every deploy day. |
+| `SATELLITE_REPORT_INTERVAL_S` | `3600` | Seconds between rollup POSTs. |
+| `SATELLITE_REPORT_DELAY_S` | `90` | Delay before the first report after boot. |
+| `ANALYTICS_GEO_LOOKUP` | `1` | `0` disables the ip-api.com fallback — behind Cloudflare the `CF-IPCountry` header already answers it. |
 
-### Sign-in attribution → `POST /api/satellite/auth`
+To exercise the payload without a secret: `python -m lib.satellite_reporter --dry-run`.
 
-2plot.ai is the Clerk primary, so every account is created there — but on a
-satellite domain the correct call is `Clerk.redirectToSignIn()`, which routes
-the visitor through Clerk's hosted pages and back **without ever touching a hub
-URL**. The hub therefore cannot tell that the sign-in happened here. This beacon
-is the only signal that attributes it to this app, and `/traffic` → *Where
-sign-ins happen* is what it feeds.
+### Sign-in attribution → `POST /api/satellite/auth` (retired with Gen-1)
 
-One beacon per session observed becoming authenticated — deduped on the Clerk
-`session_id`, with an `O_EXCL` claim file so several gunicorn workers don't each
-send one. Same HMAC headers as the traffic rollup, and best-effort throughout: a
-failed beacon must never break a sign-in.
-
-**Nothing identifying is ever transmitted.** `who` is
-`sha256(lowercased email)[:12]` — the network convention, matching the wallet
-provisioner. The email is hashed the moment it is read, and the `session_id` is
-used only as a local dedupe key. Verified end-to-end against the hub's own
-`verify_and_record_auth` (HTTP 200), with an explicit assertion that the email,
-the Clerk user id and the session id appear nowhere in the request body:
-
-```json
-{"app":"leaflet","event":"sign_in","who":"85f85c0071e4",
- "path":"/tile-selector","domain":"leaflet.2plot.dev"}
-```
-
-It rides `clerk-auth-store`, so it is registered only when Clerk is actually
-enabled — without Clerk that store never exists and the callback could not fire.
+> **Retired in the 1.3.x instrumentation sync.** The Gen-1 analytics module
+> carried a per-session sign-in beacon (deduped on the Clerk `session_id`,
+> transmitting only `sha256(lowercased email)[:12]` — never an email or a
+> Clerk id) that fed `/traffic` → *Where sign-ins happen*. The boilerplate's
+> trio has no counterpart, so the retrofit dropped it rather than fork the
+> measurement standard; the hub loses this satellite's sign-in signal until
+> the trio grows one fleet-wide. The Gen-1 SPA page-view beacon
+> (`/api/pageview`) went the same way — the trio counts server requests only,
+> which is what makes this app's numbers comparable to every other
+> satellite's.
 
 To have the hub health-sweep this app hourly, add to **2plot.ai**:
 

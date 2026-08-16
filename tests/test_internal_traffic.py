@@ -4,14 +4,15 @@ The rule (https://2plot.ai/docs/satellite-analytics, "Internal traffic"): a
 request whose User-Agent contains `2plot-internal` is 2plot machinery talking
 to itself — the hub's hourly health sweep, CI smoke batteries, the 4x-daily
 heartbeat, cross-app calls — and is counted NOWHERE. Dropped at write time,
-before bot classification. `/healthz` is never a visit either.
+before device detection and before bot classification. `/healthz` is never a
+visit either.
 
 Both halves are tested here, because a contract kept on only one side is not
 kept at all:
 
 *inbound*   token-carrying requests never reach the ledger, and therefore
-            never reach `human_hits` / `bot_hits` in the rollup this app POSTs
-            to 2plot.ai;
+            never reach `human_hits` / `bot_hits` in the hourly rollup this
+            app POSTs to 2plot.ai;
 *outbound*  every call this host makes to another network host sends
             `INTERNAL_UA`, so the far side can apply the same rule. That half
             was missing: the ad client fetched a campaign from 2plot.dev on
@@ -22,44 +23,38 @@ kept at all:
 from __future__ import annotations
 
 import json
-from datetime import datetime, timezone
+from datetime import datetime
 
 import pytest
 
 from conftest import BROWSER_UA, CRAWLER_UA, SAMPLE_PAGE
-from lib import satellite_analytics
+from lib.analytics_tracker import analytics_path, tracker
 from lib.constants import INTERNAL_UA, INTERNAL_UA_TOKEN, internal_ua
 
-# A real page. `should_skip` drops infrastructure paths (`/llms.txt`,
-# `/robots.txt`, `/healthz`, `/api/`, ...), so an assertion made against one of
-# those would pass no matter what the tracker did.
+# A real page. `lib/traffic_rollup` drops infrastructure paths (`/llms.txt`,
+# `/robots.txt`, `/healthz`, ...) at read time, so a rollup assertion made
+# against one of those would pass no matter what the tracker did.
 PAGE = SAMPLE_PAGE
 
 
-def _ledger_visits() -> list[dict]:
-    """Every hit on disk."""
+def _ledger_visits():
+    """Every hit on disk, flushing the write buffer first."""
+    tracker.flush()
     try:
-        with open(satellite_analytics.LEDGER) as fh:
-            return [json.loads(ln) for ln in fh if ln.strip()]
+        with open(analytics_path()) as f:
+            return json.load(f).get("visits", [])
     except FileNotFoundError:
         return []
 
 
-def _rollup() -> dict:
+def _rollup():
     """Today's rollup as the hub would receive it, or an all-zero stand-in."""
-    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-    return satellite_analytics.rollup(today) or {"human_hits": 0, "bot_hits": 0}
+    from lib.traffic_rollup import daily_rollup
 
-
-def _distinct_ua(label: str, base: str = BROWSER_UA) -> str:
-    """A UA that is unique per call site.
-
-    `track()` dedupes the same (visitor, path) inside DEDUPE_S, and the visitor
-    key is `ip | md5(user-agent)[:8]` — so two hits from the test client with
-    the same UA collapse into one and a delta assertion silently measures
-    nothing. Varying the UA gives each assertion its own visitor.
-    """
-    return f"{base} {label}"
+    tracker.flush()
+    return daily_rollup("leaflet", datetime.now().date()) or {
+        "human_hits": 0, "bot_hits": 0,
+    }
 
 
 # --------------------------------------------------------------- the token --
@@ -73,9 +68,9 @@ def test_token_is_the_network_wide_string():
 
 
 def test_caller_suffix_never_breaks_the_token():
-    ua = internal_ua("ad-client")
+    ua = internal_ua("traffic-reporter")
     assert INTERNAL_UA_TOKEN in ua
-    assert ua.endswith("ad-client")
+    assert ua.endswith("traffic-reporter")
     assert internal_ua() == INTERNAL_UA
     assert internal_ua("  ") == INTERNAL_UA
 
@@ -87,18 +82,12 @@ def test_the_tests_can_see_the_ledger_at_all(client, tmp_state_dir):
     """Guard for every delta assertion below.
 
     If the ledger path were wrong (or the suite were writing into the repo's
-    own satellite_traffic.jsonl), every "count did not change" test would pass
-    vacuously. Prove a write lands first — and that tracking is enabled at all,
-    which for this app means SATELLITE_ANALYTICS_DRY_RUN rather than a secret.
+    own visitor_analytics.json), every "count did not change" test would pass
+    vacuously. Prove a write lands first.
     """
-    assert satellite_analytics.enabled(), (
-        "tracking is dormant — every exclusion test below would pass vacuously"
-    )
-    assert str(satellite_analytics.LEDGER).startswith(tmp_state_dir), (
-        satellite_analytics.LEDGER
-    )
+    assert str(analytics_path()).startswith(tmp_state_dir), analytics_path()
     before = len(_ledger_visits())
-    client.get(PAGE, user_agent=_distinct_ua("ledger-guard"))
+    client.get(PAGE, user_agent=BROWSER_UA)
     assert len(_ledger_visits()) == before + 1
 
 
@@ -113,7 +102,7 @@ def test_a_crawler_shaped_probe_carrying_the_token_stays_internal(client):
     """The battery's crawler probe exercises the bot path deliberately.
 
     It must still not be counted. This is precisely why the drop happens
-    before `is_bot` — classification would file it under `bot`.
+    before `detect_device_type` — classification would file it under `bot`.
     """
     before = len(_ledger_visits())
     client.get(PAGE, user_agent=f"{CRAWLER_UA} {INTERNAL_UA}")
@@ -129,21 +118,8 @@ def test_the_token_is_matched_case_insensitively(client):
 def test_healthz_is_never_a_visit(client):
     before = len(_ledger_visits())
     client.get("/healthz", user_agent="Render/1.0 health-check")
-    client.get("/healthz", user_agent=_distinct_ua("healthz-browser"))
+    client.get("/healthz", user_agent=BROWSER_UA)
     assert len(_ledger_visits()) == before
-
-
-def test_the_pageview_beacon_also_drops_internal_traffic(client):
-    """The SPA beacon is a second write path into the same ledger.
-
-    `/api/pageview` is how every client-side route change is counted, so a
-    drop applied only to the request middleware would leak everything after
-    the entry page. Both go through `track()`, and this is what pins that.
-    """
-    assert satellite_analytics.is_internal(internal_ua("network-smoke"))
-    assert satellite_analytics.is_internal(f"{CRAWLER_UA} {INTERNAL_UA}")
-    assert not satellite_analytics.is_internal(BROWSER_UA)
-    assert not satellite_analytics.is_internal(None)
 
 
 # ----------------------------------------------- the reported numbers -------
@@ -157,9 +133,9 @@ def test_internal_traffic_is_absent_from_human_hits_and_bot_hits(client):
 
     # Four calls that are all machinery, in the two shapes the network sends:
     # a plain internal UA, and a crawler-shaped probe carrying the token.
-    for n in range(2):
-        client.get(PAGE, user_agent=internal_ua(f"network-smoke-{n}"))
-        client.get(PAGE, user_agent=f"{CRAWLER_UA} {INTERNAL_UA} {n}")
+    for _ in range(2):
+        client.get(PAGE, user_agent=internal_ua("network-smoke"))
+        client.get(PAGE, user_agent=f"{CRAWLER_UA} {INTERNAL_UA}")
 
     after = _rollup()
     assert after["human_hits"] == before["human_hits"], (
@@ -172,40 +148,6 @@ def test_internal_traffic_is_absent_from_human_hits_and_bot_hits(client):
     )
 
 
-def test_the_tracker_sits_outside_the_handler_chain(app):
-    """The structural fix behind `test_real_traffic_is_still_counted`.
-
-    On Flask, `before_request` handlers stop running the moment one returns a
-    response — and `add_llms_routes` installs `_bot_middleware`, which returns
-    prerendered HTML for every crawler. While the tracker was a
-    `before_request`, not one crawler request ever reached it, and this
-    satellite reported `bot_hits: 0` to 2plot.ai every day it was live.
-
-    Registration order cannot fix that: Flask wants the tracker registered
-    FIRST, Starlette's `add_middleware` wants it LAST, and one call site
-    cannot be both. So the WSGI app is wrapped instead. That is what this
-    pins — the behavioural test catches the symptom, this names the cause.
-    """
-    if backend_name() != "flask":
-        pytest.skip("WSGI wrapping is a Flask-backend concern")
-
-    handlers = [
-        f"{fn.__module__}.{fn.__qualname__}"
-        for fn in app.server.before_request_funcs.get(None, [])
-    ]
-    assert not any("_satellite_track" in name for name in handlers), (
-        "the tracker is back to being a before_request handler — the llms bot "
-        f"middleware will short-circuit every crawler past it. Handlers: {handlers}"
-    )
-    assert "_wsgi_tracker" in repr(app.server.wsgi_app) or callable(app.server.wsgi_app)
-
-
-def backend_name() -> str:
-    from conftest import backend
-
-    return backend()
-
-
 def test_real_traffic_is_still_counted(client):
     """The exclusions must not have lobotomised the tracker.
 
@@ -214,8 +156,8 @@ def test_real_traffic_is_still_counted(client):
     hit is one bot.
     """
     before = _rollup()
-    client.get(PAGE, user_agent=_distinct_ua("real-human"))
-    client.get(PAGE, user_agent=_distinct_ua("real-bot", CRAWLER_UA))
+    client.get(PAGE, user_agent=BROWSER_UA)
+    client.get(PAGE, user_agent=CRAWLER_UA)
     after = _rollup()
 
     assert after["human_hits"] == before["human_hits"] + 1
@@ -229,7 +171,7 @@ class _Captured(Exception):
     """Abort the request once the headers have been seen."""
 
 
-def _capture_headers(monkeypatch, module, attr):
+def _capture_headers(monkeypatch, module, attr="post"):
     """Record the headers of the next outbound call, then abort it."""
     seen = {}
 
@@ -242,15 +184,15 @@ def _capture_headers(monkeypatch, module, attr):
 
 
 def test_the_traffic_rollup_post_sends_the_token(monkeypatch):
-    """The signed hourly rollup to 2plot.ai."""
     import requests
 
-    monkeypatch.setenv("CROSS_APP_WEBHOOK_SECRET", "test-secret")
+    from lib import satellite_reporter
+
     seen = _capture_headers(monkeypatch, requests, "post")
-    with pytest.raises(_Captured):
-        satellite_analytics.post_signed(
-            "/api/satellite/traffic", {"app": "leaflet", "date": "2026-07-31"}
-        )
+    ok, _detail = satellite_reporter.post_rollup(
+        {"app": "leaflet", "date": "2026-07-31"}, secret="test-secret"
+    )
+    assert ok is False  # the fake raised; we only wanted the headers
     assert INTERNAL_UA_TOKEN in seen.get("User-Agent", "")
 
 

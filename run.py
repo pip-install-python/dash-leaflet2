@@ -15,7 +15,9 @@ This is the PUBLIC mirror of the dash-leaflet2 project, deployed at
 https://leaflet.2plot.dev as a 2plot network satellite:
 
   * ads      — lib/ad_client.py         → 2plot.dev/api/ad-network/serve
-  * traffic  — lib/satellite_analytics.py → 2plot.ai/api/satellite/traffic
+  * traffic  — lib/analytics_tracker.py (per-request ledger) +
+               lib/traffic_rollup.py (the hub's own daily definitions) +
+               lib/satellite_reporter.py → 2plot.ai/api/satellite/traffic
   * auth     — lib/auth.py              → Clerk satellite of the 2plot.ai primary
   * control  — pages/control_board.py   → /admin/control-board
 
@@ -49,7 +51,8 @@ from dash_improve_my_llms import (
     register_page_metadata,
 )
 
-from lib import auth, bulletin, network_directory, satellite_analytics
+from lib import auth, bulletin, network_directory
+from lib.analytics_tracker import tracker
 from lib.backend import get_backend_info, resolve_backend
 from lib.constants import (
     APP_VERSION,
@@ -57,7 +60,7 @@ from lib.constants import (
     LEAFLET_VERSION,
     SITE_BRAND,
     SITE_DESCRIPTION,
-    base_url_misconfigured,
+    require_owned_base_url,
 )
 
 # ----------------------------------------------------------------------------
@@ -209,6 +212,78 @@ network_directory.apply(BASE_URL)
 # out of /llms.txt, which matches the robots `disallowed_paths` above.
 mark_hidden("/admin/control-board")
 
+# /healthz for the hub's hourly health sweep and render.yaml's
+# healthCheckPath. Registered BEFORE add_llms_routes so the package's
+# catch-all routing can never shadow it on the ASGI backends; served with or
+# without a webhook secret, which is what makes it a valid liveness probe.
+from lib.health import register_health_route  # noqa: E402
+
+register_health_route(app, BACKEND)
+
+# ============================================================================
+# Analytics tracking (Flask / Quart) — MUST be registered BEFORE
+# add_llms_routes. (Mirrors the boilerplate's run.py.)
+#
+# `before_request` hooks run in registration order, and the package's
+# `_bot_middleware` short-circuits AI-search crawlers (ClaudeBot, ChatGPT-User,
+# PerplexityBot, ...) with its own response. Registered after it, this hook
+# never runs for exactly the bot traffic a docs site most wants counted, and
+# the `bot_hits` we report to 2plot.ai would be quietly too low — the
+# structural `bot_hits: 0` this satellite once shipped.
+#
+# FastAPI is the mirror image and is wired further down: Starlette runs the
+# LAST-added middleware outermost, so ours goes on after add_llms_routes.
+# ============================================================================
+
+if BACKEND == "flask":
+    from flask import request as _flask_request
+
+    @app.server.before_request
+    def track_visitor():
+        """Track visitor analytics before each request."""
+        try:
+            # Headers are passed so the tracker can read the REAL client IP
+            # and country from the proxy/CDN (behind Render or Cloudflare,
+            # remote_addr is the proxy — every visitor would look like one).
+            tracker.track_visit(
+                _flask_request.path,
+                _flask_request.headers.get('User-Agent', ''),
+                _flask_request.remote_addr,
+                headers=dict(_flask_request.headers),
+            )
+        except Exception:
+            pass
+
+elif BACKEND == "quart":
+    from quart import request as _quart_request
+
+    @app.server.before_request
+    async def track_visitor():
+        """Track visitor analytics before each request (Quart)."""
+        try:
+            tracker.track_visit(
+                _quart_request.path,
+                _quart_request.headers.get('User-Agent', ''),
+                _quart_request.remote_addr,
+                headers=dict(_quart_request.headers),
+            )
+        except Exception:
+            pass
+
+# Tiered corpus documents (dash-improve-my-llms >= 2.4.0). Pseudo-paths:
+# they never enter dash.page_registry, so they cannot leak into listings —
+# registering them here lets this satellite tier its compact briefing and
+# full corpus via env (LLMS_SMALL_TIER / LLMS_FULL_TIER; unset = the
+# default tier, i.e. public), and the hub can tighten either network-wide
+# through its page-tier ceilings with no redeploy here. Inert on older
+# package versions. (The boilerplate pairs this with lib/access.py
+# enforcement, which has no counterpart in this repo yet — the registrations
+# are the contract the hub reads either way.)
+from lib import page_tiers as _page_tiers  # noqa: E402
+
+_page_tiers.register("/llms-small.txt", os.environ.get("LLMS_SMALL_TIER"))
+_page_tiers.register("/llms-full.txt", os.environ.get("LLMS_FULL_TIER"))
+
 # Wire up /llms.txt, /<page>/llms.txt, /robots.txt, /sitemap.xml + bot
 # middleware. dash-improve-my-llms auto-detects the active backend
 # (flask / fastapi / quart) and dispatches to the matching adapter, so we
@@ -239,35 +314,13 @@ print(
        else "off (NETWORK_BULLETIN_URL unset)")
 )
 
-# A hosted deploy advertising http://localhost is invisible from inside the
-# container — the site renders perfectly and every published URL is dead. Say
-# so at boot, where the deploy log will carry it. See lib.constants.
-_base_url_problem = base_url_misconfigured()
+# A hosted deploy advertising the wrong origin is invisible from inside the
+# container — the site renders perfectly and every published URL is dead or
+# points at another host. The old check here only WARNED, one line into a wall
+# of boot output; the fleet standard is the boilerplate's hard guard, which
+# refuses to boot on Render without an owned APP_BASE_URL. See lib.constants.
+require_owned_base_url()
 print(f"[dash-leaflet2] base url: {BASE_URL}")
-if _base_url_problem:
-    print(f"[dash-leaflet2] ⚠️  {_base_url_problem}")
-
-# ----------------------------------------------------------------------------
-# 2plot.ai satellite analytics: /healthz for the hub's hourly health sweep,
-# per-request + SPA page-view tracking, and the signed traffic rollup POSTed to
-# https://2plot.ai/api/satellite/traffic. Dormant without
-# CROSS_APP_WEBHOOK_SECRET — /healthz is served either way, which is what
-# render.yaml's healthCheckPath points at.
-#
-# THIS STAYS AFTER add_llms_routes, and the reason is worth keeping: on the
-# FastAPI backend the tracker is a Starlette http middleware, and Starlette
-# makes the LAST-added middleware the outermost one. Registered first, it
-# would sit inside `_bot_middleware` — which answers every crawler with
-# prerendered HTML — and no crawler request would ever be counted.
-#
-# Flask and Quart have the opposite rule (`before_request` handlers run in
-# registration order, and the first to return a response wins), so no single
-# ordering can be correct for all three. They are therefore wrapped at the
-# WSGI/ASGI boundary instead and do not depend on this line's position at all
-# — see `_wsgi_tracker` in lib/satellite_analytics.py, which is what fixed the
-# structural `bot_hits: 0` this satellite had been reporting.
-# ----------------------------------------------------------------------------
-satellite_analytics.register(app, BACKEND)
 
 # ----------------------------------------------------------------------------
 # Layout
@@ -276,6 +329,34 @@ from components.appshell import create_appshell  # noqa: E402  (needs the regist
 
 app.layout = create_appshell(dash.page_registry.values())
 server = app.server
+
+# ============================================================================
+# Analytics tracking (FastAPI) — added LAST on purpose.
+# Starlette runs the most recently added middleware outermost, so registering
+# here (after add_llms_routes) puts the tracker in front of the package's bot
+# middleware and every request gets counted — including the crawler traffic
+# `_bot_middleware` answers itself, which is exactly the traffic a docs site
+# most wants counted (the structural `bot_hits: 0` this satellite once
+# reported). The Flask/Quart hooks are the mirror image and live above,
+# BEFORE add_llms_routes.
+# ============================================================================
+
+if BACKEND == "fastapi":
+    from lib.asgi_middleware import register_asgi_middleware  # noqa: E402
+
+    register_asgi_middleware(app)
+
+# ============================================================================
+# Network analytics — hourly signed rollup POSTed to 2plot.ai so the hub's
+# owner-only /traffic dashboard can chart this app alongside the network.
+# Contract: 2plotai/docs/network/satellite-analytics.md.
+# No-op unless CROSS_APP_WEBHOOK_SECRET is set — and it SAYS so at boot,
+# which is the line the fleet's acceptance check reads.
+# ============================================================================
+
+from lib.satellite_reporter import start_reporter  # noqa: E402
+
+start_reporter()
 
 
 if __name__ == "__main__":

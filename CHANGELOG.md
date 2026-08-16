@@ -11,7 +11,47 @@ will move until v2 leaves alpha upstream.
 
 ## [Unreleased]
 
-Nothing yet.
+The fleet's x402 instrumentation sync (1.3.x) — measurement only, no payment
+or gating code, per the network's "instrument first, price later" rule.
+Documentation site and network wiring only; no `dl2.*` component changed.
+
+### Changed
+
+- **Analytics: Gen-1 single-module tracker retired for the boilerplate's
+  trio.** `lib/analytics_tracker.py` (per-request JSON ledger),
+  `lib/traffic_rollup.py` (the hub's own daily v2+v3 definitions — its
+  `_SKIP` tuple stays byte-identical to the boilerplate's, the fleet's
+  one-measurement rule) and `lib/satellite_reporter.py` (hourly signed POST
+  to 2plot.ai). The ledger moves from a JSONL file to
+  `TRAFFIC_ANALYTICS_FILE` (JSON, `visitor_analytics.json`); the old ledger
+  is left on disk untouched — the data window starts fresh. The Gen-1 SPA
+  page-view beacon (`/api/pageview`) and per-session sign-in beacon
+  (`POST /api/satellite/auth`) had no trio counterpart and were dropped:
+  request-only counting is what makes this app's numbers comparable
+  fleet-wide. `/healthz` now lives in `lib/health.py` (all three backends)
+  and keeps its deployed payload shape. `SATELLITE_APP_ID` is retired;
+  the trio reads `SATELLITE_APP_KEY` only.
+- **Hard boot guard.** `lib.constants.require_owned_base_url()` replaces the
+  warn-only `base_url_misconfigured()`: on Render (or `APP_ENV=production`)
+  the app now REFUSES to boot without an owned base URL — unset, a
+  platform-generated hostname, or a loopback origin all raise instead of
+  logging one line into a wall of boot output.
+- **dash-improve-my-llms floor 2.3.4 → 2.5.1** (the Tier-B SEO standard +
+  tiered corpus documents), and `run.py` now registers `/llms-small.txt` /
+  `/llms-full.txt` tiers from `LLMS_SMALL_TIER` / `LLMS_FULL_TIER` via the
+  ported `lib/page_tiers.py`.
+- **Version claims are derived, never written**: `lib/versions.py` ported and
+  wired into `pages/markdown.py`, so docs prose can state
+  `{{VERSION:dash-leaflet2}}` and always publish the installed version.
+- **render.yaml matches the dashboard**: `plan: starter` (upgraded
+  2026-08-16), a 1 GB disk at `/var/data` holding the analytics ledger and
+  the control board's visibility overrides (both now survive deploys), and
+  the corpus-tier knobs.
+
+### Added
+
+- `tests/test_traffic_rollup.py` — the boilerplate's 15-test suite over the
+  v3 rollup semantics, copied verbatim.
 
 ---
 
@@ -270,8 +310,10 @@ is what ships to PyPI and to https://leaflet.2plot.dev.
   explicit denylist. Pull, not push: a new R&D docs page surfaces as NEW for approval
   rather than leaking by being forgotten upstream.
 - **2plot network integration**, all dormant without environment keys:
-  `lib/ad_client.py` (2plot.dev ad slots in the docs aside), `lib/satellite_analytics.py`
-  (signed traffic rollups to 2plot.ai, `/healthz`, SPA page-view beacon),
+  `lib/ad_client.py` (2plot.dev ad slots in the docs aside), the Gen-1
+  satellite traffic module — since retired for the analytics trio, see the
+  Unreleased entry — (signed traffic rollups to 2plot.ai, `/healthz`, SPA
+  page-view beacon),
   `lib/auth.py` (Clerk satellite of the 2plot.ai primary, including the two
   dash-clerk-auth 0.9.0 satellite fixes), and `lib/page_visibility.py` +
   `pages/control_board.py` (four-tier page visibility re-checked on every render,

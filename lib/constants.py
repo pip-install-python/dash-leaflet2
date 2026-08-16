@@ -66,44 +66,74 @@ BASE_URL = (
 _LOOPBACK = ("localhost", "127.0.0.1", "0.0.0.0", "[::1]")
 
 
-def base_url_misconfigured() -> str | None:
-    """A message when a HOSTED deploy is advertising a loopback origin, else None.
+def require_owned_base_url(base_url: str = None) -> None:
+    """Fail fast in production when BASE_URL isn't this app's real origin.
 
-    This is the failure the BASE_URL comment above warns about, caught in the
-    act: `app._base_url` feeds every canonical link, `og:url`, `/sitemap.xml`
-    and `/llms.txt` URL, so a hosted service resolving BASE_URL to
-    `http://localhost:8050` publishes a whole site of unreachable addresses and
-    nothing looks broken from inside the container.
+    The boilerplate's hard boot guard (its ``lib/constants.py``), replacing the
+    warn-only ``base_url_misconfigured()`` this repo used to ship: a hosted
+    deploy advertising the wrong origin logged one line into a wall of boot
+    output and then served a whole site of wrong canonical URLs. Now it
+    refuses to boot, where the deploy log carries the reason.
 
-    The default above is already the right origin, so a loopback value here can
-    only come from `APP_BASE_URL` or `DASH_LEAFLET2_BASE_URL` being *explicitly*
-    set to one — most likely `.env.example`'s local values reaching a dashboard.
-    `APP_BASE_URL` is read first, so it is the one that wins.
+    Only enforced when a hosting platform is detected (Render sets ``RENDER``;
+    ``APP_ENV=production`` works anywhere else), so local development and the
+    test suite are unaffected.
 
-    Why this cannot be a test: `tests/test_network_surfaces.py` asserts sitemap
-    URLs start with `BASE_URL`, comparing the deployed value against itself. It
-    passes just as happily when both sides are localhost. The check has to be
-    against the *environment*, at boot, on the host that got it wrong.
+    Three failures are caught:
 
-    Deliberately does NOT self-heal from `RENDER_EXTERNAL_URL`: that is the
-    `*.onrender.com` hostname, not the custom domain, so auto-filling it would
-    swap one wrong canonical origin for another — quietly, which is worse.
+    1. **No base-URL variable set in production.** The default above happens
+       to be the right origin for THIS deployment, but an explicit value is
+       the contract the fleet's guard enforces — a fork of this mirror that
+       relies on the default deindexes itself, and a dashboard wipe should be
+       loud, not silently absorbed. Either spelling satisfies the guard:
+       ``APP_BASE_URL`` (network-standard, read first) or
+       ``DASH_LEAFLET2_BASE_URL`` (this repo's legacy alias — an alias, never
+       a rename; render.yaml sets both on the live service).
+    2. **A platform-generated hostname.** ``*.onrender.com`` /
+       ``*.herokuapp.com`` still resolve after a custom domain is attached, so
+       canonicals pointing there split link equity across two hostnames for as
+       long as nobody notices.
+    3. **A loopback origin.** `.env.example`'s local values reaching a
+       dashboard is how a hosted service ends up publishing
+       ``http://localhost:8050`` in every canonical link, og:url,
+       /sitemap.xml entry and /llms.txt URL — while looking perfectly healthy
+       from inside the container. (This was the warn-only check's whole job;
+       /healthz still advertises ``base_url`` so the sweep can see it too.)
     """
-    host = BASE_URL.split("://", 1)[-1].split("/", 1)[0].split(":", 1)[0]
-    if host not in _LOOPBACK:
-        return None
-    # Render sets this on every service; its presence means we are hosted.
-    if not os.environ.get("RENDER_EXTERNAL_HOSTNAME"):
-        return None
-    which = "APP_BASE_URL" if os.environ.get("APP_BASE_URL") else "DASH_LEAFLET2_BASE_URL"
-    return (
-        f"BASE_URL is {BASE_URL!r} on a HOSTED deploy — every canonical URL, "
-        f"og:url, /sitemap.xml entry and /llms.txt link points at localhost. "
-        f"{which} is set to a loopback origin in this service's environment; "
-        f"set BOTH it and its alias to https://leaflet.2plot.dev and redeploy. "
-        f"(render.yaml already declares the correct values — a blueprint does "
-        f"not overwrite a variable edited in the dashboard.)"
-    )
+    base_url = base_url if base_url is not None else BASE_URL
+    in_production = bool(os.environ.get("RENDER") or os.environ.get("APP_ENV") == "production")
+    if not in_production:
+        return
+
+    if not (os.environ.get("APP_BASE_URL") or os.environ.get("DASH_LEAFLET2_BASE_URL")):
+        raise RuntimeError(
+            "APP_BASE_URL is not set. Canonical links, sitemap.xml and "
+            "llms.txt all derive from it, and a production host must state "
+            "its origin explicitly rather than lean on a code default. Set "
+            "APP_BASE_URL to this deployment's real origin "
+            "(https://leaflet.2plot.dev — render.yaml declares it; a "
+            "blueprint sync restores a variable wiped in the dashboard)."
+        )
+
+    for platform_host in ("onrender.com", "herokuapp.com", "railway.app", "fly.dev"):
+        if platform_host in base_url:
+            raise RuntimeError(
+                f"APP_BASE_URL={base_url!r} is a platform-generated hostname. "
+                "Canonical tags, sitemap.xml and llms.txt would all point at it "
+                "instead of the custom domain, splitting link equity across two "
+                "hosts. Set APP_BASE_URL to the public domain."
+            )
+
+    host = base_url.split("://", 1)[-1].split("/", 1)[0].split(":", 1)[0]
+    if host in _LOOPBACK:
+        which = "APP_BASE_URL" if os.environ.get("APP_BASE_URL") else "DASH_LEAFLET2_BASE_URL"
+        raise RuntimeError(
+            f"BASE_URL is {base_url!r} on a HOSTED deploy — every canonical "
+            f"URL, og:url, /sitemap.xml entry and /llms.txt link would point "
+            f"at localhost. {which} is set to a loopback origin in this "
+            f"service's environment; set BOTH it and its alias to "
+            f"https://leaflet.2plot.dev and redeploy."
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -159,7 +189,7 @@ OG_IMAGE_ALT = "dash-leaflet2 — Leaflet 2 maps for Dash, at leaflet.2plot.dev"
 # a campaign from 2plot.dev on EVERY docs page view, arriving as
 # `python-requests/2.x` — which the hub's own tracker classifies as a bot, so
 # this satellite's readers were inflating 2plot.dev's bot_hits. The signed
-# rollup POST in lib/satellite_analytics.py had the same shape.
+# rollup POST (now lib/satellite_reporter.py) had the same shape.
 #
 # The token string must stay byte-identical across the network; it mirrors
 # 2plotai/lib/constants.py, pip-docs+/lib/constants.py and the boilerplate's.

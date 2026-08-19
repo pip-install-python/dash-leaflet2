@@ -72,10 +72,13 @@ Two docs-only deps come from PyPI with load-bearing version floors:
 working builds reached PyPI. Neither is needed by the `dash_leaflet2` package
 itself — that needs only `dash>=4.1`.
 
-`vendor/` now holds exactly one tarball: `dash_clerk_auth-1.0.0.tar.gz`, which
+`vendor/` now holds exactly one tarball: `dash_clerk_auth-1.0.2.tar.gz`, which
 is vendored across every 2plot satellite rather than published to PyPI. It
 requires Python >=3.10, which binds the docs site only (Docker is 3.12); the
-package keeps `requires-python >=3.9`.
+package keeps `requires-python >=3.9`. 1.0.2 is a floor: this site renders the
+Clerk menu (`components/header.py`), so it was exposed to the avatar/session
+race fixed there. Its `clerk-backend-api<8` cap (widened in 1.0.1) is what lets
+`requirements.txt` hold the `cryptography>=50.0.0` security floor.
 
 ## Critical Leaflet 2.0.0-alpha.1 facts (these cost real debugging time)
 

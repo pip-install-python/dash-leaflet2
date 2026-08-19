@@ -145,7 +145,7 @@ is logged.
 > it returns a 404-style response and its save callback refuses writes, rather
 > than handing an open admin panel to anyone who guesses the URL.
 >
-> **Clerk is enabled** — `vendor/dash_clerk_auth-1.0.0.tar.gz` is committed and
+> **Clerk is enabled** — `vendor/dash_clerk_auth-1.0.2.tar.gz` is committed and
 > active in `requirements.txt`. One operational risk to know before debugging a
 > dead site: the package registers a `[dash_hooks]` entry point that Dash
 > auto-imports at **every** `Dash()` construction, so it sits in the boot path

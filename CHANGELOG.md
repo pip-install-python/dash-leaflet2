@@ -40,6 +40,20 @@ Documentation site and network wiring only; no `dl2.*` component changed.
   tiered corpus documents), and `run.py` now registers `/llms-small.txt` /
   `/llms-full.txt` tiers from `LLMS_SMALL_TIER` / `LLMS_FULL_TIER` via the
   ported `lib/page_tiers.py`.
+- **dash-clerk-auth 1.0.0 → 1.0.2, and a cryptography security floor.** This
+  site renders the Clerk menu (`components/header.py`), so it was directly
+  exposed to the avatar race 1.0.2 fixes: the injected script resolved the menu
+  with `getElementById` the moment `Clerk.load()` resolved, but Dash mounts that
+  menu from a separate `/_dash-layout` fetch — so whenever Clerk won the race a
+  signed-in user sat behind a placeholder avatar and a "Sign In" menu for the
+  life of the page, while `current_user()` and `clerk-auth-store` were both
+  correct. Separately, `clerk-backend-api` moves `>=5.0.0,<6` → `>=7.0.0,<8`
+  with a new `cryptography>=50.0.0` floor: SDK 5.x caps `cryptography` at
+  `<47.0.0`, holding it on 46.0.7, below the fix for GHSA-537c-gmf6-5ccf,
+  PYSEC-2026-3552, PYSEC-2026-3553 and PYSEC-2026-3554. Pinning `cryptography`
+  alone returns `ResolutionImpossible`, which is why dash-clerk-auth 1.0.1 had
+  to widen its own cap to `<8` first — the library carries the compatibility
+  range, `requirements.txt` carries the security floor.
 - **Version claims are derived, never written**: `lib/versions.py` ported and
   wired into `pages/markdown.py`, so docs prose can state
   `{{VERSION:dash-leaflet2}}` and always publish the installed version.

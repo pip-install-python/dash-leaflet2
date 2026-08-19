@@ -107,27 +107,48 @@ flexlayout-dash>=1.1.0
 # and redeploy; /admin/control-board fails CLOSED without Clerk, so nothing is
 # left exposed by doing so.
 #
-# 1.0.0 — the first stable release, and the first build where this satellite
-# needs NO local patching. Both satellite fixes that lib/auth.py used to inject
-# by hand are upstream now: 0.9.1 stamps `data-clerk-domain` onto the ClerkJS
-# script tag, and 0.9.2 replaced the forbidden `Clerk.openSignIn()` modal with
-# a navigation to the primary (`satellite_sign_in_redirect`, which lib/auth.py
-# now passes). 1.0.0 itself is an API-stability declaration plus a Python floor
-# raise — see below. Anything older than 0.9.2 needs those patches back.
+# 1.0.2 — a floor, not a preference. This host RENDERS the Clerk menu
+# (components/header.py calls `create_clerk_menu`), so it was directly exposed
+# to the avatar race 1.0.2 fixes: the injected script resolved the menu with
+# `getElementById` at the moment `Clerk.load()` resolved, but Dash mounts that
+# menu from a separate /_dash-layout fetch. Whenever Clerk won the race — warm
+# CDN, valid session cookie — the lookup returned null, the update no-opped,
+# and `addListener` never fired again because the session never CHANGED. A
+# signed-in user then sat behind a placeholder avatar and a "Sign In" menu for
+# the life of the page, while `current_user()` and `clerk-auth-store` were both
+# correct the whole time. Anything older than 1.0.2 has that race.
 #
-# PYTHON FLOOR: 1.0.0 requires >=3.10 (clerk-backend-api 5.x publishes no 3.9
-# build, so the old >=3.9 claim was never installable). That binds the DOCS
-# SITE only — Dockerfile is 3.12 and ci.yml's docs matrix is 3.10/3.12/3.13,
-# all clear. The dash_leaflet2 PACKAGE keeps requires-python >=3.9: it does
-# not depend on this file, and ci.yml's package-python-range job proves 3.9
-# installs and imports the wheel with nothing but dash present.
+# 1.0.1 widened `clerk-backend-api` to `<8` — see the cryptography floor below.
+# 1.0.0 was the first stable release and the first build needing NO local
+# patching: 0.9.1 stamps `data-clerk-domain` onto the ClerkJS script tag, and
+# 0.9.2 replaced the forbidden `Clerk.openSignIn()` modal with a navigation to
+# the primary (`satellite_sign_in_redirect`, which lib/auth.py now passes).
+# Anything older than 0.9.2 needs those patches back.
+#
+# PYTHON FLOOR: >=3.10 (clerk-backend-api publishes no 3.9 build, so the old
+# >=3.9 claim was never installable). That binds the DOCS SITE only —
+# Dockerfile is 3.12 and ci.yml's docs matrix is 3.10/3.12/3.13, all clear.
+# The dash_leaflet2 PACKAGE keeps requires-python >=3.9: it does not depend on
+# this file, and ci.yml's package-python-range job proves 3.9 installs and
+# imports the wheel with nothing but dash present.
 #
 # Still not on PyPI — vendored the same way across every 2plot satellite, so
-# the tarball is the distribution channel and 1.0.0 is what the boilerplate
-# ships.
-#   Used by: lib/auth.py, /admin/control-board
-./vendor/dash_clerk_auth-1.0.0.tar.gz
-clerk-backend-api>=5.0.0,<6
+# the tarball is the distribution channel.
+#   Used by: lib/auth.py, components/header.py, /admin/control-board
+./vendor/dash_clerk_auth-1.0.2.tar.gz
+# SECURITY FLOOR, and the reason dash-clerk-auth had to move first. This pin
+# is what `pip-audit` resolves; the vendored tarball's own cap is what gates
+# it. clerk-backend-api 5.x declares `cryptography>=45.0.0,<47.0.0`, holding
+# cryptography on 46.0.7 — below the fix for all four of GHSA-537c-gmf6-5ccf
+# (bundled-OpenSSL OOB read, 48.0.1), PYSEC-2026-3554 (DNS name-constraint
+# wildcard escape, 49.0.0), PYSEC-2026-3553 (X.509 chain-build DoS, 49.0.0)
+# and PYSEC-2026-3552 (PKCS#7 Bleichenbacher oracle, 50.0.0). Pinning
+# cryptography alone could not work: pip returns ResolutionImpossible against
+# the <47.0.0 cap. SDK 7.0.0 allows `cryptography<51.0.0`, which is why
+# dash-clerk-auth 1.0.1 widened its own declaration to `<8` — the library
+# carries the compatibility RANGE, this file carries the security FLOOR.
+clerk-backend-api>=7.0.0,<8
+cryptography>=50.0.0
 
 # --- Deployment ------------------------------------------------------------
 # gunicorn serves the Flask (WSGI) backend in the Dockerfile. The FastAPI

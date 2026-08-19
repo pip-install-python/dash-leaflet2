@@ -12,10 +12,60 @@ will move until v2 leaves alpha upstream.
 ## [Unreleased]
 
 The fleet's x402 instrumentation sync (1.3.x) — measurement only, no payment
-or gating code, per the network's "instrument first, price later" rule.
-Documentation site and network wiring only; no `dl2.*` component changed.
+code — followed by the **sign-in gate pilot**, which this site runs first for
+the network. Documentation site and network wiring only; no `dl2.*` component
+changed, and `pip install dash-leaflet2` is untouched by any of it.
+
+### Added
+
+- **A sign-in gate, shipped dark.** Documentation pages can now require an
+  account. Nothing is gated yet: the site deploys with the gate wired and
+  every verdict answering "allow", so the whole path runs in production
+  before the single environment variable (`PAGE_DEFAULT_TIER=auth`) that
+  turns it on — and setting that variable back is the entire rollback.
+
+  A signed-out visitor on a gated page gets a **sign-in card at HTTP 200**,
+  not a redirect and not a 404: the URL stays shareable, and "Create free
+  account" now carries the current page in its return trip, so a visitor
+  lands back where they started instead of on the primary's home page. That
+  return leak is the one user-visible bug this pass fixes today.
+
+  **Machine surfaces stay open.** `/<page>/llms.txt`, the crawler document
+  and the prerender keep serving prose to agents and crawlers while humans
+  meet the card — a deliberate 30-day posture, switched network-wide later
+  with `LLMS_PUBLIC_DEFAULT=0` rather than per-page edits.
+
+- **`GET /api/agent-key`** — the person-to-agent handoff. Copying a page's
+  `llms.txt` URL while signed in now carries a key, so the link still
+  resolves when it is pasted into an assistant, whose fetch arrives with no
+  session cookie. Signed out, the copy button behaves exactly as before.
+
+- **The network's page-tier ceiling.** 2plot.dev can now restrict a page
+  across the network; this site may lock a page down further but can never
+  open one the network gated. A hub outage changes nothing for a signed-in
+  reader — sessions resolve locally — and resolves to "gated" for anyone
+  else, never to publishing restricted prose and never to a dead site.
 
 ### Changed
+
+- **One access system instead of two.** `tier:` and `visibility:` in a page's
+  frontmatter were independent fields naming the same four values, so a page
+  could declare one tier and be enforced at another, with a control-board row
+  that quietly disagreed. `tier:` is now canonical, `visibility:` is an
+  accepted alias, and one declared value feeds both. `PAGE_DEFAULT_TIER` is
+  likewise the canonical spelling of `PAGE_DEFAULT_VISIBILITY`, which is
+  still read so the running service does not change posture underneath a
+  deploy.
+
+  The control board keeps everything it did — live toggles, four tiers, and
+  overrides that outlive a deploy — and its override is still the most
+  authoritative local word on a page. What moved out of it is the decision
+  itself, into `lib/access.py`.
+
+- **Admin surfaces now fail closed everywhere.** Documentation still falls
+  open when Clerk is unavailable — it must never brick over a missing
+  credential — but the retired resolver fell open for admin pages too. Only
+  `/admin/control-board`'s own double gate stopped that mattering.
 
 - **Analytics: Gen-1 single-module tracker retired for the boilerplate's
   trio.** `lib/analytics_tracker.py` (per-request JSON ledger),

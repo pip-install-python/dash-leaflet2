@@ -16,7 +16,8 @@ from lib.directives.kwargs import Kwargs
 from lib.directives.llms_copy import LlmsCopy
 from lib.directives.source import SC
 from lib.directives.toc import TOC
-from lib.page_visibility import gated_layout, register_default, register_llms_doc
+from lib.gate_layouts import gated_layout
+from lib.page_visibility import register_default, register_llms_doc
 from lib.versions import substitute_versions
 
 logger = logging.getLogger(__name__)
@@ -37,17 +38,45 @@ class Meta(BaseModel):
     package: str = "dash-leaflet2"
     category: Optional[str] = None
     icon: Optional[str] = None
-    # Baseline access tier for this page. Omitted → lib.page_visibility's
-    # DEFAULT_TIER ("public"). The admin control board's overrides always win.
-    visibility: Optional[str] = None
-    # The NETWORK's tier vocabulary (public | auth | admin | hidden), recorded
-    # in lib/page_tiers.py — the ledger the hub's page-tier ceilings compare
-    # against. Distinct from `visibility` above, which is this repo's own
-    # control-board gate; the two coexist until the fleet unifies them.
+    # Baseline access tier: public | auth | admin | hidden. Omitted → the
+    # deployment default (PAGE_DEFAULT_TIER / PAGE_DEFAULT_VISIBILITY). The
+    # control board's overrides always win over whatever is declared here.
+    #
+    # `tier` is canonical — it is the network's word, and the ledger the hub's
+    # ceilings compare against. `visibility` is this repo's older spelling of
+    # the SAME four values and is accepted as an alias; see `_declared_tier`.
     tier: Optional[str] = None
-    # Whether this page's prose may be served at /<page>/llms.txt to anonymous
-    # and AI traffic. Also live-toggleable from the control board.
-    llms_public: bool = True
+    visibility: Optional[str] = None
+    # Whether this page's prose may be served at /<page>/llms.txt (and in the
+    # crawler document and the prerender) to anonymous and AI traffic, even
+    # when `tier` gates the interactive page. Omitted → LLMS_PUBLIC_DEFAULT,
+    # so the fleet-wide agent flip is one env change rather than 28 edits.
+    # Also live-toggleable from the control board.
+    llms_public: Optional[bool] = None
+
+
+def _declared_tier(metadata: "Meta", source: str) -> Optional[str]:
+    """The one tier this page declares, from `tier:` or the `visibility:` alias.
+
+    ONE value feeds both ledgers — lib.page_tiers (what the hub's ceiling
+    compares against and what lib.access enforces) and lib.page_visibility
+    (the control board's row). They were two independent frontmatter keys
+    until this pass, which meant a page could declare `visibility: auth` and
+    be enforced as public, with nothing to show for it but a board row that
+    lied.
+
+    A page that sets both to the same value is fine and silent. A page that
+    sets them to DIFFERENT values is a bug in the document, so it warns and
+    `tier:` wins — the canonical key beats the alias, and a warning beats
+    guessing.
+    """
+    if metadata.tier and metadata.visibility and metadata.tier != metadata.visibility:
+        logger.warning(
+            "%s declares tier=%r and visibility=%r — they are the same field. "
+            "Using tier=%r; drop the `visibility:` line.",
+            source, metadata.tier, metadata.visibility, metadata.tier,
+        )
+    return metadata.tier or metadata.visibility
 
 
 _SOURCE_DIRECTIVE = re.compile(r'^\.\. source::(.+?)$', re.MULTILINE)
@@ -137,17 +166,31 @@ for file in files:
     # no ad, and the call is fail-silent — an ad must never break registration.
     inject_ad_into_aside(layout, metadata.endpoint)
 
-    # Baseline tier from frontmatter; the control board overrides it live.
+    # ONE declared value, TWO ledgers. `declared` is None for a page that
+    # says nothing, which both registries read as "use the deployment
+    # default" — so PAGE_DEFAULT_TIER moves every undeclared page at once,
+    # which is what makes the dark launch and its flip a single env change.
+    declared = _declared_tier(metadata, str(file))
+
+    # The control board's row. Overrides written here win at resolution time
+    # (lib.access.local_tier), which is what makes a toggle apply live.
     register_default(
         metadata.endpoint,
         metadata.name,
-        visibility=metadata.visibility,
+        visibility=declared,
         llms_public=metadata.llms_public,
     )
 
-    # register with dash. The layout goes through the visibility gate, which
-    # re-checks access on EVERY render — that is what makes a control-board
-    # toggle apply without a restart.
+    # The network ledger: what the hub's page-tier ceiling compares against
+    # and what lib.access enforces underneath any override. Registered BEFORE
+    # dash.register_page so no request can reach the layout ahead of the tier
+    # that is meant to gate it.
+    page_tiers.register(metadata.endpoint, declared, llms_public=metadata.llms_public)
+
+    # register with dash. The layout goes through lib.gate_layouts, which
+    # re-resolves access on EVERY render — that is what makes a control-board
+    # toggle, a hub ceiling change and an env flip all apply without a
+    # restart, and what puts the sign-in card in front of a gated page.
     dash.register_page(
         metadata.name,
         metadata.endpoint,
@@ -165,13 +208,11 @@ for file in files:
         icon=metadata.icon,
     )
 
-    # Record the declared network tier before the prose is registered, so a
-    # gate can never be applied later than the content it is meant to gate.
-    page_tiers.register(metadata.endpoint, metadata.tier)
-
     # Feed the expanded markdown into dash-improve-my-llms so /<page>/llms.txt
-    # serves the directive-expanded prose. Routed through page_visibility so
-    # the control board's llms.txt switch can swap the body for a stub.
+    # serves the directive-expanded prose. Still routed through
+    # page_visibility, which now registers the REAL prose and lets
+    # lib.access.check decide per request whether the fetch may have it — see
+    # that module's llms.txt-bridge comment for why the old stub swap went.
     expanded = _expand_source_directives(content)
     register_llms_doc(
         metadata.endpoint,

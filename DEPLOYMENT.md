@@ -135,7 +135,7 @@ is logged.
 | `DISABLE_CLERK` | `1` | Dev kill switch — reads as "intentionally off" without touching the keys. Never set in production. |
 | `ALLOW_UNGATED_ADMIN` | `1` | Lets `/admin/control-board` render without Clerk. **Never set in production.** |
 
-> **`dash-clerk-auth` is not a dependency of this project.** The 1.0.0 build is
+> **`dash-clerk-auth` is not a dependency of this project.** The 1.0.2 build is
 > not resolved from PyPI — it is vendored across the 2plot network — so a stock
 > deploy has **no Clerk at all** and `clerk_enabled()` is `False` however many
 > `CLERK_*` variables you set.
@@ -240,15 +240,18 @@ in the primary's `CLERK_ALLOWED_REDIRECT_ORIGINS` (see `lib/auth.py` in the
 2plotai repo) *with a scheme* — a missing scheme silently strands users on the
 primary's home page, which has bitten this network before.
 
-### Page visibility
+### The interactive gate
 
 | Variable | Default | What it does |
 |---|---|---|
-| `PAGE_DEFAULT_VISIBILITY` | `public` | Baseline tier for pages whose frontmatter sets none. |
+| `PAGE_DEFAULT_TIER` | `public` | Baseline tier for pages whose frontmatter sets none. **This is the flip.** |
+| `PAGE_DEFAULT_VISIBILITY` | — | This service's older name for the same knob, still read. Set one, not both; `PAGE_DEFAULT_TIER` wins. |
+| `LLMS_PUBLIC_DEFAULT` | unset (= open) | The second axis. `0` closes every gated page's machine twin — the phase-4 agent flip. |
+| `LLMS_SMALL_TIER` / `LLMS_FULL_TIER` | `public` | Tiers for the two corpus documents, independent of the default above. |
 | `PAGE_VISIBILITY_FILE` | `page_visibility.json` | Where control-board overrides persist. |
 
-Four tiers, re-checked on **every page render** so a toggle applies with no
-restart:
+Four tiers, re-resolved on **every render and every machine fetch**, so a
+toggle, a hub change or an env flip applies with no restart:
 
 | Tier | Who gets in |
 |---|---|
@@ -257,25 +260,104 @@ restart:
 | `admin` | Signed in *and* allowlisted. Its `llms.txt` is never served anonymously. |
 | `hidden` | Nobody. The page and its `llms.txt` return a 404-style response. |
 
-Per-page baselines come from the markdown frontmatter:
+#### Where a verdict comes from
+
+Three inputs, resolved in `lib/access.py`:
+
+1. **The control board's override** (`lib/page_visibility.py`, persisted to
+   `/var/data`). Most local, and it wins — that is the point of a live toggle.
+2. **The frontmatter registration** (`lib/page_tiers.py`), underneath it.
+3. **The hub's ceiling** (`lib/hub_client.py` → `POST 2plot.dev/api/page-tiers`).
+   Applied last and only ever *restricts*: this site may lock a page down
+   further, never open one the network gated. Needs
+   `CROSS_APP_WEBHOOK_SECRET`; without it the ceiling is simply absent.
+
+Then, per request: `public`/`hidden` short-circuit → a local Clerk session
+answers for a person in a browser → and only for a cookie-less fetch does a
+`?key=` go to the hub for verification. **A signed-in reader never needs the
+hub**, which is why a hub outage gates nobody who is signed in.
+
+Two lanes, and they answer different questions. `resolve_page_access` is what a
+BROWSER gets (`lib/gate_layouts.py` renders the card); `check` is what a MACHINE
+fetch gets (`/<page>/llms.txt`, the crawler document, the prerender). Keys
+unlock the machine lane only — a `?key=` that opened layouts would turn every
+copied URL into a shareable session.
+
+#### Fail postures — both deliberate
+
+- **Docs fall OPEN without Clerk.** Every tier except `hidden` degrades to
+  public. Documentation must never brick because a deploy forgot a credential.
+- **Admin fails CLOSED.** `/admin/control-board` returns a 404-style response
+  without Clerk, and its save callback refuses writes, rather than handing an
+  open admin panel to whoever guesses the URL. `ALLOW_UNGATED_ADMIN=1` opens it
+  for local work only.
+- **A hub failure is `gated`.** Never `allow` (an outage must not publish
+  restricted prose), never `deny` (an outage must not black-hole the site).
+
+#### Per-page baselines, from the markdown frontmatter
 
 ```yaml
 ---
 name: "Tile Selector"
 endpoint: "/tile-selector"
-visibility: public      # optional; defaults to PAGE_DEFAULT_VISIBILITY
-llms_public: true       # optional; defaults to true
+tier: public            # optional; defaults to PAGE_DEFAULT_TIER
+llms_public: true       # optional; defaults to LLMS_PUBLIC_DEFAULT
 ---
 ```
 
-The board lives at **`/admin/control-board`**. It is excluded from `robots.txt`
-and from the docs navbar. With Clerk off it renders ungated behind a dev-mode
-warning banner — so **do not deploy publicly without the Clerk keys** if any page
-is meant to be gated.
+`tier:` is canonical. `visibility:` is accepted as an alias for the same four
+values; setting both to different values logs a warning and `tier:` wins. One
+declared value feeds both the control board's row and the network ledger, so
+the board can never show a tier the site does not enforce.
 
-> **Persistence caveat.** Overrides are a JSON file on the container filesystem.
-> On Render's free tier that is ephemeral: changes survive until the next deploy.
-> Point `PAGE_VISIBILITY_FILE` at a persistent disk if they must outlive one.
+#### Shipping dark, then flipping
+
+The gate is wired unconditionally at boot (`run.py` calls
+`_access.configure(force=True)`), so the verdict path runs in production while
+every verdict still answers `allow`. Confirm the boot line:
+
+```
+[dash-leaflet2] interactive gate: default tier 'public', 0 non-public page(s),
+machine surfaces open by default (LLMS_PUBLIC_DEFAULT), access wiring ON, hub …
+```
+
+`access wiring ON` with `default tier 'public'` is the dark launch. To flip:
+set `PAGE_DEFAULT_TIER=auth` in the Render dashboard and restart. **Rollback is
+the same edit in reverse** — back to `public`, restart, fully public site, no
+code revert. Rehearse it once before relying on it.
+
+`/`, `/llms-small.txt` and `/llms-full.txt` are pinned public in `run.py` and
+do not move with the default: the funnel's front door and the corpus documents
+are deliberate settings, never an ambient default.
+
+#### The control board
+
+Lives at **`/admin/control-board`**, excluded from `robots.txt` and from the
+docs navbar, and gates itself twice — the layout re-checks on every render and
+the save callback re-checks before writing, because a pattern-matching callback
+stays callable by anyone who can POST a reconstructed component id. Without
+Clerk it is hidden, not merely unstyled.
+
+> **Persistence.** Overrides are a JSON file. `PAGE_VISIBILITY_FILE` points at
+> the `/var/data` disk in production, so a toggle outlives a deploy; on an
+> ephemeral filesystem it would reset with every one.
+
+### The person→agent handoff
+
+`GET /api/agent-key` (`lib/agent_key.py`) turns the browser's Clerk session
+into a portable `?key=` for copied `llms.txt` URLs, so a link pasted into an
+assistant still resolves a gated document — the assistant's fetch arrives with
+no cookie. `assets/llms_copy.js` calls it lazily, on the first copy click.
+
+- **204, no body** — anonymous, Clerk off, or the hub declined. The copy button
+  falls back to the plain URL, which is what an anonymous reader gets anyway.
+- **200 `{"key": "k2p_…"}`** with `Cache-Control: private, no-store`. The key is
+  never embedded in page HTML, so nothing can cache it and hand it to the next
+  visitor.
+
+This satellite holds **no key material**: it cannot mint and cannot verify
+offline. The hub verifies the Clerk token against Clerk's JWKS and pins
+`scope=auth`, so a satellite can never mint an admin key.
 
 ## Post-deploy checklist
 
@@ -292,6 +374,11 @@ is meant to be gated.
 3. Sign in from the site — you should bounce to 2plot.ai and land **back here**,
    not on the primary's home page.
 4. `/admin/control-board` shows the page table with **no** dev-mode banner.
+4b. The gate's boot line reads `access wiring ON` (see "Shipping dark, then
+   flipping"). With `PAGE_DEFAULT_TIER=public` that is the dark launch:
+   `GET /pointer-events` serves docs, `GET /pointer-events/llms.txt` serves
+   prose, `GET /api/agent-key` answers 204 signed out and 200 with
+   `Cache-Control: private, no-store` signed in.
 5. The 2plot.ai `/traffic` dashboard grows a `leaflet` series within one
    `SATELLITE_REPORT_INTERVAL_S`.
 6. An ad slot appears in the aside on a page with a table of contents.

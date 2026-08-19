@@ -164,17 +164,57 @@ services:
       - key: ADMIN_EMAILS
         sync: false
 
-      # --- Page visibility (lib/page_visibility.py) --------------------
-      # Baseline tier for pages whose frontmatter does not set one. "public"
-      # keeps the component documentation readable without an account; the
-      # control board can still flip any individual page live.
+      # --- The interactive gate (lib/access.py) ------------------------
+      # Baseline tier for pages whose frontmatter does not set one:
+      # public | auth | admin | hidden.
+      #
+      # THIS IS THE FLIP. The gate ships dark — the code is live and every
+      # verdict answers `allow` while this reads `public`. Changing it to
+      # `auth` here, in the dashboard, gates every documentation page behind
+      # a sign-in card on the next request. No redeploy, and the rollback is
+      # the same edit in reverse (see DEPLOYMENT.md's rollback rehearsal).
+      #
+      # `/`, `/llms-small.txt` and `/llms-full.txt` are pinned public in
+      # run.py and are NOT moved by this — the funnel's front door and the
+      # corpus documents are deliberate settings, never an ambient default.
+      #
+      # PAGE_DEFAULT_TIER is the network-standard name and the canonical one.
+      # PAGE_DEFAULT_VISIBILITY is this service's older spelling of the SAME
+      # knob and is still read (lib/page_tiers._DEFAULT_TIER_ENV) — kept
+      # because dropping a variable a running service depends on is how a
+      # host changes posture between a push and the next blueprint sync. Set
+      # ONE of them; if both are set the canonical name wins.
+      - key: PAGE_DEFAULT_TIER
+        value: public
       - key: PAGE_DEFAULT_VISIBILITY
         value: public
-      # Overrides are written here — on the analytics disk, so control-board
-      # changes now OUTLIVE a deploy (they used to live on the ephemeral
-      # container filesystem and reset with every one).
+      # The SECOND axis, deliberately UNSET for the 30-day window.
+      #
+      # `tier` says who may use a page in a browser; this says whether its
+      # machine twin — /<page>/llms.txt, the crawler document, the prerender
+      # — stays open anyway. Unset means open, which is the window posture:
+      # humans meet the sign-in card while the crawl-demand dataset keeps
+      # accruing. The phase-4 agent flip is adding this as `0`, once, which
+      # closes every page that did not pin the axis in frontmatter.
+      #
+      # Do not add it before then. A page can still be closed individually
+      # from the control board or with `llms_public: false` in frontmatter,
+      # which is how the pilot's canary leak check is run.
+      # - key: LLMS_PUBLIC_DEFAULT
+      #   value: "0"
+      #
+      # Control-board overrides are written here — on the analytics disk, so
+      # they OUTLIVE a deploy (they used to live on the ephemeral container
+      # filesystem and reset with every one). An override written here beats
+      # both the frontmatter tier and PAGE_DEFAULT_TIER; only the hub's
+      # ceiling outranks it.
       - key: PAGE_VISIBILITY_FILE
         value: /var/data/page_visibility.json
+      # The hub's page-tier ceiling and the ?key= agent lane both need this
+      # (lib/hub_client.py). It is already set above for the traffic
+      # reporter — the same secret authenticates this satellite to
+      # /api/page-tiers and /api/agent-key/*. Without it the gate still
+      # works locally; only the network ceiling and agent keys go dark.
 
       # --- Optional ----------------------------------------------------
       # MUI X Pro licence for the TreeViewPro tile browser on

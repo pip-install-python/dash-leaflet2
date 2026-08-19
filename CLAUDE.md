@@ -36,11 +36,39 @@ The site de-risks; the package is the durable artifact. Keep both working.
 boilerplate's trio; it replaced the Gen-1 single-module tracker in the
 1.3.x instrumentation sync — `traffic_rollup._SKIP` must stay byte-identical
 to the boilerplate's) · `lib/auth.py` → Clerk satellite of 2plot.ai ·
-`lib/page_visibility.py` + `pages/control_board.py` → `/admin/control-board`,
-four tiers re-checked every render. Full reference in `DEPLOYMENT.md`. These
-are shared drop-in modules — when fixing a bug in `ad_client.py` or the
-analytics trio, the fix probably belongs in the other satellites too
-(canonical source: `../dash-documentation-boilerplate`).
+`lib/access.py` (+ `page_tiers` / `hub_client` / `gate_layouts` / `agent_key`)
+→ the gate · `lib/page_visibility.py` + `pages/control_board.py` →
+`/admin/control-board`. Full reference in `DEPLOYMENT.md`. These are shared
+drop-in modules — when fixing a bug in `ad_client.py` or the analytics trio,
+the fix probably belongs in the other satellites too (canonical source:
+`../dash-documentation-boilerplate`).
+
+## The gate (this repo is the fleet's pilot)
+
+`lib/access.py` is the enforcement engine; `lib/page_visibility.py` was demoted
+to the control board's **override store + UX** and no longer resolves access or
+wraps layouts. A verdict resolves from three inputs, in order: the board's
+override (most local, wins — that is what a live toggle is), the frontmatter
+registration in `page_tiers`, then the hub's ceiling, which only ever restricts.
+
+Two lanes, deliberately different: `resolve_page_access` answers what a BROWSER
+gets (`gate_layouts` renders the card), `check` answers what a MACHINE fetch
+gets (`/<page>/llms.txt`, crawler HTML, prerender) and honours `?key=` plus the
+`llms_public` axis. A key never unlocks a layout.
+
+Frontmatter: `tier:` is canonical, `visibility:` is an accepted alias for the
+same four values, and ONE declared value feeds both ledgers — they were
+independent keys before this pass, which let a page declare one tier and be
+enforced at another.
+
+Two postures that look like bugs and are not: docs fall **open** without Clerk
+(documentation must not brick over a missing credential) while admin fails
+**closed**; and a hub failure resolves to `gated`, never `allow`, never `deny`.
+
+Shipped **dark**: `run.py` wires the policy with `force=True` even though every
+tier is public, so the verdict path (and the prerender's use of it) runs in
+production before `PAGE_DEFAULT_TIER=auth` turns it on. That env flip is the
+whole change, and flipping it back is the rollback.
 
 ## Commands
 

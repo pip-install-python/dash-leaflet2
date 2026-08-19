@@ -1,8 +1,23 @@
-"""Dynamic per-page visibility for the dash-leaflet2 documentation site.
+"""The control board's override store — live per-page tiers, persisted.
 
-Four tiers, checked server-side at layout render time (i.e. on every request),
-so a toggle from ``/admin/control-board`` applies immediately — no restart, no
-redeploy:
+**Demoted, deliberately.** This module used to be the whole access system:
+frontmatter defaults, verdicts, gate layouts and the llms.txt bridge. The
+network stack now owns enforcement — :mod:`lib.page_tiers` holds the declared
+baseline, :mod:`lib.access` resolves the verdict (adding the hub ceiling, the
+``?key=`` agent lane and the ``llms_public`` axis), and
+:mod:`lib.gate_layouts` renders the interactive gate. What stayed here is the
+half that had no counterpart in the network stack and is working production
+UX: the ``/admin/control-board`` model, its live toggles, and their JSON
+persistence.
+
+So the reading order is: an override written here beats everything local (see
+:func:`lib.access.local_tier`), because the point of the board is that a
+toggle applies on the next render with no restart and no redeploy. Underneath
+it sits the frontmatter registration in :mod:`lib.page_tiers`, and above both
+sits the hub's ceiling, which only ever restricts.
+
+The four tiers are the network's, unchanged — they were always the same
+vocabulary:
 
   - ``public``  — anyone
   - ``auth``    — any signed-in Clerk user
@@ -11,23 +26,29 @@ redeploy:
 
 Where the defaults come from
 ----------------------------
-Each ``docs/<slug>/<slug>.md`` may declare ``visibility:`` in its frontmatter.
-Absent that, :data:`DEFAULT_TIER` applies — ``public``, because this is a
-component library's own documentation and the whole point is that people can
-read it. Override the baseline per deployment with ``PAGE_DEFAULT_VISIBILITY``.
+Each ``docs/<slug>/<slug>.md`` declares ``tier:`` (or its older spelling
+``visibility:``) in frontmatter, and ``pages/markdown.py`` feeds that one value
+to both this store's board rows and ``lib.page_tiers``. Absent a declaration
+the baseline comes from :func:`lib.page_tiers._default_tier`, i.e.
+``PAGE_DEFAULT_TIER`` / ``PAGE_DEFAULT_VISIBILITY`` — read through that
+function rather than re-derived here, so the board can never display a
+different default from the one enforced.
 
 Persistence
 -----------
-Overrides live in ``page_visibility.json`` at the project root. This is a
-deliberate simplification of the pip-docs+ original, which mirrors into
-Postgres: a docs satellite has one writer and no shared database, so a JSON
-file is the whole story. On an ephemeral container filesystem (Render's free
-tier) an override survives until the next deploy — set
-``PAGE_VISIBILITY_FILE`` to a path on a persistent disk if they must outlive it.
+Overrides live in ``page_visibility.json`` at the project root, or wherever
+``PAGE_VISIBILITY_FILE`` points — in production that is the persistent
+``/var/data`` disk, so a board toggle outlives a deploy. This is a deliberate
+simplification of the pip-docs+ original, which mirrors into Postgres: a docs
+satellite has one writer and no shared database, so a JSON file is the whole
+story.
 
-Auth degrades gracefully: with the Clerk env keys absent (local dev without
-credentials) every tier except ``hidden`` falls open to public and one warning
-is logged. The site must never brick because a dev forgot a key.
+What this module no longer does: resolve access (that is
+``lib.access.resolve_page_access`` for browsers and ``lib.access.check`` for
+machine surfaces, and their fail postures differ from the old
+``resolve_access``'s — admin fails CLOSED now), and wrap page layouts (that is
+``lib.gate_layouts.gated_layout``). The gate cards below are kept for
+``/admin/control-board``, which gates itself.
 """
 from __future__ import annotations
 
@@ -37,15 +58,26 @@ import os
 import threading
 from pathlib import Path
 
-from lib.auth import clerk_enabled, current_user, is_admin_user
+from lib import page_tiers
+from lib.auth import clerk_enabled, is_admin_user
 
 logger = logging.getLogger(__name__)
 
-TIERS = ("public", "auth", "admin", "hidden")
-DEFAULT_TIER = (os.environ.get("PAGE_DEFAULT_VISIBILITY") or "public").strip().lower()
-if DEFAULT_TIER not in TIERS:
-    logger.warning("PAGE_DEFAULT_VISIBILITY=%r is not a tier — using 'public'", DEFAULT_TIER)
-    DEFAULT_TIER = "public"
+TIERS = page_tiers.TIERS
+
+
+def default_tier() -> str:
+    """The baseline for a page that declares nothing.
+
+    Delegated to :mod:`lib.page_tiers` rather than re-read here. It used to be
+    a module constant computed from ``PAGE_DEFAULT_VISIBILITY`` at import time,
+    which meant two things this pilot cannot afford: the board's rows and the
+    enforced tier resolved the default independently (so they could disagree
+    once ``PAGE_DEFAULT_TIER`` was introduced), and a value read at import
+    could not be flipped by a test or a reload.
+    """
+    return page_tiers._default_tier()
+
 
 _STORE_PATH = Path(os.environ.get("PAGE_VISIBILITY_FILE") or "page_visibility.json")
 _lock = threading.Lock()
@@ -55,7 +87,6 @@ _lock = threading.Lock()
 # the control board wrote and always wins.
 _defaults: dict[str, dict] = {}
 _overrides: dict[str, dict] = {}
-_warned_no_clerk = False
 
 
 def _load_overrides() -> None:
@@ -85,19 +116,36 @@ _load_overrides()
 # ---------------------------------------------------------------------------
 
 def register_default(path: str, name: str, visibility: str | None = None,
-                     llms_public: bool = True) -> None:
-    """Called once per page at registration time (frontmatter defaults)."""
-    tier = (visibility or DEFAULT_TIER).strip().lower()
+                     llms_public: bool | None = None) -> None:
+    """Called once per page at registration time (frontmatter defaults).
+
+    ``llms_public=None`` means "this page did not pin the axis" and is stored
+    as None rather than resolved here, so ``LLMS_PUBLIC_DEFAULT`` keeps
+    governing it — including in the board's own switches, which then show what
+    the site is actually doing rather than what it was doing at boot.
+    """
+    fallback = default_tier()
+    tier = (visibility or fallback).strip().lower()
     if tier not in TIERS:
-        logger.warning("Page %s: unknown visibility %r — using %r", path, tier, DEFAULT_TIER)
-        tier = DEFAULT_TIER
+        logger.warning("Page %s: unknown visibility %r — using %r", path, tier, fallback)
+        tier = fallback
     _defaults[path] = {"visibility": tier, "llms_public": llms_public, "name": name}
 
 
 def get_settings(path: str) -> dict:
-    base = _defaults.get(path, {"visibility": "public", "llms_public": True, "name": path})
+    """Baseline + override, with the unpinned machine axis resolved live.
+
+    The board's model, not the resolver's — lib.access reads the override
+    accessors below instead, because a merged value cannot say whether an
+    operator chose it.
+    """
+    base = _defaults.get(path)
+    if base is None:
+        base = {"visibility": default_tier(), "llms_public": None, "name": path}
     merged = dict(base)
     merged.update(_overrides.get(path, {}))
+    if merged.get("llms_public") is None:
+        merged["llms_public"] = page_tiers.get_llms_public(path)
     return merged
 
 
@@ -130,42 +178,65 @@ def controllable_pages() -> dict[str, dict]:
     return {path: get_settings(path) for path in sorted(_defaults)}
 
 
-# ---------------------------------------------------------------------------
-# Access resolution
-# ---------------------------------------------------------------------------
+def pin_default(path: str, visibility: str) -> None:
+    """Force a page's baseline tier after it registered. Board rows follow.
 
-def resolve_access(path: str) -> str:
-    """Verdict for the current request: 'allow' | 'sign_in' | 'forbidden' | 'hidden'."""
-    global _warned_no_clerk
-    tier = get_visibility(path)
-    if tier == "hidden":
-        return "hidden"
-    if tier == "public":
-        return "allow"
-    if not clerk_enabled():
-        if not _warned_no_clerk:
-            logger.warning(
-                "Clerk env keys missing — visibility tier %r falls open to public. "
-                "Set CLERK_SECRET_KEY / CLERK_PUBLISHABLE_KEY in production.", tier,
-            )
-            _warned_no_clerk = True
-        return "allow"
-    user = current_user()
-    if user is None:
-        return "sign_in"
-    if tier == "admin" and not is_admin_user(user):
-        return "forbidden"
-    return "allow"
+    run.py pins the funnel's front door public so ``PAGE_DEFAULT_TIER=auth``
+    cannot gate it. That pin has to land on BOTH ledgers or the board would
+    display a tier the site does not enforce — the exact drift this pilot
+    unified the two systems to remove. An operator can still override the pin
+    from the board; that is the point of an override.
+    """
+    if visibility not in TIERS:
+        raise ValueError(f"unknown tier {visibility!r}")
+    entry = _defaults.get(path)
+    if entry is None:
+        return
+    entry["visibility"] = visibility
+
+
+# ---------------------------------------------------------------------------
+# Overrides, read by lib.access
+# ---------------------------------------------------------------------------
+# `get_settings` merges defaults and overrides, which is right for the board's
+# table and wrong for the resolver: a merged read cannot tell "the operator
+# set this page to public" from "nobody ever touched it". The resolver needs
+# that difference, because an untouched page has to fall through to the
+# frontmatter registration in lib.page_tiers rather than to this store's
+# unknown-path default. Hence two accessors that answer None for "no override".
+
+
+def tier_override(path: str) -> str | None:
+    """The tier the control board wrote for ``path``, or None."""
+    tier = (_overrides.get(path) or {}).get("visibility")
+    return tier if tier in TIERS else None
+
+
+def llms_public_override(path: str) -> bool | None:
+    """The machine-surface switch the control board wrote, or None."""
+    value = (_overrides.get(path) or {}).get("llms_public")
+    return None if value is None else bool(value)
 
 
 # ---------------------------------------------------------------------------
 # llms.txt bridge
 # ---------------------------------------------------------------------------
 # dash-improve-my-llms stores each page's prose as a plain string in its own
-# registry and reads it at request time, so a control-board toggle only takes
-# effect if we push the new verdict back into that registry. We therefore keep
-# the real prose here and re-register either it or a stub whenever the tier or
-# the llms_public switch changes.
+# registry and reads it at request time. This module used to swap that string
+# for a stub whenever a page's verdict said "not public" — a second, parallel
+# enforcement path.
+#
+# lib.access is the enforcement engine now, and it is strictly better at this
+# job: the package asks it per request, so the answer can honour the hub
+# ceiling, an agent's `?key=`, and the llms_public axis, and an unauthorised
+# fetch gets `gate_doc()` (which names the page and says how to unlock it)
+# instead of a bare stub. Registering the real prose once and letting the
+# check decide is therefore the whole design — a stub swapped in underneath a
+# working check would only mean a reader who IS authorised gets the stub.
+#
+# The stub swap survives as the fallback for one case: a boot where the
+# package could not be handed a policy at all (`lib.access.configured()` is
+# False). Then nothing else is standing between a hidden page and its prose.
 
 _llms_docs: dict[str, tuple[str, str, str]] = {}  # path -> (name, description, doc)
 
@@ -199,7 +270,13 @@ def published_name(path: str, name: str) -> str:
 
 
 def apply_llms_state(path: str) -> None:
-    """Re-register this page's llms.txt body to match the current verdict."""
+    """Register this page's llms.txt body. Real prose whenever a check is wired.
+
+    Still called on every control-board toggle, and still worth calling: it is
+    what re-asserts :func:`published_name` for "/" (see that docstring — a
+    board flip of the home page would otherwise republish the site's identity
+    as "Home").
+    """
     entry = _llms_docs.get(path)
     if entry is None:
         return
@@ -209,18 +286,31 @@ def apply_llms_state(path: str) -> None:
     except Exception:  # optional dependency — nothing to sync
         return
     name = published_name(path, name)
-    body = doc if llms_accessible(path) else (
-        f"# {name}\n\n> This page is not publicly available.\n"
-    )
+    body = doc
+    if not _enforcement_wired() and not llms_accessible(path):
+        body = f"# {name}\n\n> This page is not publicly available.\n"
     register_page_metadata(path=path, name=name, description=description, llms_doc=body)
 
 
-def llms_accessible(path: str) -> bool:
-    """Whether ``/<page>/llms.txt`` may serve this page's content.
+def _enforcement_wired() -> bool:
+    """Whether lib.access handed the package a policy. Imported lazily —
+    lib.access imports this module, so a top-level import would be a cycle."""
+    try:
+        from lib import access
 
-    llms.txt intentionally bypasses the sign-in gate when ``llms_public`` is on
-    — AI/SEO friendliness is the site's premise. But ``hidden`` pages are always
-    excluded, and ``admin`` pages are never served to anonymous LLM traffic.
+        return access.configured()
+    except Exception:
+        return False
+
+
+def llms_accessible(path: str) -> bool:
+    """The legacy machine-surface verdict — the degraded-boot fallback only.
+
+    :func:`lib.access.check` is the real answer; this stays for the case where
+    no policy could be wired at all, so a hidden or admin page still cannot
+    publish prose on a boot with the package misconfigured. It knows nothing
+    about the hub ceiling or `?key=`, which is exactly why it is not the
+    engine any more.
     """
     tier = get_visibility(path)
     if tier == "hidden":
@@ -231,8 +321,17 @@ def llms_accessible(path: str) -> bool:
 
 
 # ---------------------------------------------------------------------------
-# Gate layouts
+# Gate layouts — the CONTROL BOARD's cards only
 # ---------------------------------------------------------------------------
+# Docs pages moved to lib/gate_layouts.py, whose sign-in card carries the
+# `#auth-gate-*` ids that assets/auth_gate.js handles. These three stay
+# because /admin/control-board gates itself in `pages/control_board.layout`
+# and needs something to render; one admin page is not worth a second
+# dependency on the docs funnel's copy.
+#
+# Note the button here is `#clerk-login-button`, handled by lib/auth.py's
+# capture-phase delegation. Deliberately the OTHER selector: the two handlers
+# must stay disjoint or a single click runs both.
 
 def _card(icon: str, color: str, title: str, body: str, extra=None):
     import dash_mantine_components as dmc
@@ -254,11 +353,18 @@ def _card(icon: str, color: str, title: str, body: str, extra=None):
 
 
 def sign_in_layout(page_name: str, path: str | None = None):
-    """Sign-in card for a visitor hitting an ``auth``-tier page.
+    """Sign-in card for a signed-out visitor. Used by the control board.
 
-    The buttons carry the ids dash-clerk-auth's satellite click-interceptor
-    looks for, so sign-in redirects to the 2plot.ai primary and lands the user
-    back on this page.
+    The primary button carries `#clerk-login-button`, the id lib/auth.py's
+    satellite click-interceptor looks for, so sign-in redirects to the
+    2plot.ai primary and lands the user back on this page.
+
+    The secondary "Sign in" anchor still points straight at
+    ``CLERK_SIGN_IN_URL`` with no ``returnTo``, which strands the visitor on
+    the primary after they authenticate. lib/gate_layouts.sign_in_layout is
+    the fixed version and is what every docs page renders; this copy is left
+    as-is because an administrator who lands here knows the board's URL. Fix
+    it here too if this card ever gets a second caller.
     """
     import dash_mantine_components as dmc
     from dash_iconify import DashIconify
@@ -325,26 +431,3 @@ def hidden_layout():
         "tabler:eye-off", "gray", "404 — Page not available",
         "This page is not currently published.",
     )
-
-
-def gated_layout(path: str, page_name: str, build_layout):
-    """Wrap a page layout in the dynamic visibility gate.
-
-    ``build_layout`` is a prebuilt component tree (or a zero-arg callable
-    returning one). The returned function becomes the Dash page layout, so the
-    check runs on every render and control-board toggles apply live.
-
-    ``**kwargs`` is required: Dash Pages forwards query params — including
-    Clerk's ``?__clerk_handshake=`` — into layout callables.
-    """
-    def layout(**kwargs):
-        verdict = resolve_access(path)
-        if verdict == "hidden":
-            return hidden_layout()
-        if verdict == "sign_in":
-            return sign_in_layout(page_name, path)
-        if verdict == "forbidden":
-            return forbidden_layout(page_name)
-        return build_layout() if callable(build_layout) else build_layout
-
-    return layout

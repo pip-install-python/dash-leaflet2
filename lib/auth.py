@@ -150,6 +150,56 @@ def is_admin_user(user=None) -> bool:
 
 
 # ---------------------------------------------------------------------------
+# Viewer identity for the llms.txt banner
+# ---------------------------------------------------------------------------
+
+# session_id -> first ISO timestamp this process saw it. Deliberately NOT the
+# Clerk token's `iat`: the session token is refreshed roughly every 60 seconds,
+# so `iat` is the age of the *token*, not of the sign-in — wiring it renders a
+# "signed in since" clock that resets every minute.
+#
+# Process-local and unbounded-by-design is wrong, so it is capped. Losing an
+# entry costs a slightly-late timestamp, nothing more.
+_SESSION_FIRST_SEEN: dict[str, str] = {}
+_SESSION_CACHE_MAX = 2048
+
+
+def _first_seen(session_id: str) -> str:
+    from datetime import datetime, timezone
+
+    stamp = _SESSION_FIRST_SEEN.get(session_id)
+    if stamp is None:
+        if len(_SESSION_FIRST_SEEN) >= _SESSION_CACHE_MAX:
+            _SESSION_FIRST_SEEN.clear()
+        stamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+        _SESSION_FIRST_SEEN[session_id] = stamp
+    return stamp
+
+
+def viewer_identity() -> dict | None:
+    """For ``configure_viewer_identity``. None when nobody is signed in.
+
+    Rendered in the HTML viewer's banner only — the Markdown variant of the
+    same URL is byte-identical with and without it, so this can never reach an
+    agent, a crawler or an index.
+    """
+    user = current_user()
+    if not user:
+        return None
+    try:
+        identity = {"name": getattr(user, "email", None) or getattr(user, "user_id", "")}
+        session_id = getattr(user, "session_id", None)
+        if session_id:
+            identity["since"] = _first_seen(session_id)
+        plan = getattr(user, "plan", None)
+        if plan:
+            identity["plan"] = plan
+        return identity if identity.get("name") else None
+    except Exception:
+        return None
+
+
+# ---------------------------------------------------------------------------
 # Registration — MUST run BEFORE Dash() is constructed
 # ---------------------------------------------------------------------------
 

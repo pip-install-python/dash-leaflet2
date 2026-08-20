@@ -56,6 +56,7 @@ import json
 import logging
 import os
 import threading
+import time
 from pathlib import Path
 
 from lib import page_tiers
@@ -88,13 +89,29 @@ _lock = threading.Lock()
 _defaults: dict[str, dict] = {}
 _overrides: dict[str, dict] = {}
 
+# Cross-worker reconciliation. gunicorn runs this app with more than one
+# worker process (Dockerfile: --workers ${WEB_CONCURRENCY:-2}), and a board
+# toggle mutates _overrides only in the worker that served the POST. Every
+# other worker kept its import-time copy — so an anonymous refresh became a
+# coin flip between the new verdict and the stale one, decided by which
+# worker answered. The store file is the one thing all workers share;
+# re-reading it when its mtime moves is what makes a toggle land everywhere.
+# The stat is throttled so hot paths pay at most one os.stat per second.
+_store_mtime_ns: int | None = None
+_next_stat_at = 0.0
+_STAT_INTERVAL_S = 1.0
+
 
 def _load_overrides() -> None:
-    global _overrides
+    global _overrides, _store_mtime_ns
     try:
         if _STORE_PATH.exists():
+            # stat BEFORE read: a write that lands between the two is picked
+            # up by the next mtime check instead of being masked forever.
+            stamp = _STORE_PATH.stat().st_mtime_ns
             loaded = json.loads(_STORE_PATH.read_text())
             _overrides = loaded if isinstance(loaded, dict) else {}
+            _store_mtime_ns = stamp
     except Exception as exc:  # a corrupt file must not kill the app
         logger.error("%s unreadable (%s) — ignoring overrides", _STORE_PATH, exc)
         _overrides = {}
@@ -102,10 +119,37 @@ def _load_overrides() -> None:
 
 def _persist() -> None:
     """Write overrides to disk. Call while holding ``_lock``."""
+    global _store_mtime_ns
     try:
         _STORE_PATH.write_text(json.dumps(_overrides, indent=2, sort_keys=True))
+        # Record our own write's stamp so this worker doesn't re-read it.
+        _store_mtime_ns = _STORE_PATH.stat().st_mtime_ns
     except Exception as exc:
         logger.error("Could not persist %s: %s", _STORE_PATH, exc)
+
+
+def _maybe_reload() -> None:
+    """Pick up another worker's board writes; no-op when nothing changed.
+
+    Reload triggers ONLY on an observed mtime change of the store file:
+    a missing file, a stat error, or an unchanged stamp all leave the
+    in-memory dict alone — which is also what keeps tests that inject
+    straight into ``_overrides`` (without touching the file) valid.
+    """
+    global _next_stat_at
+    if time.monotonic() < _next_stat_at:
+        return
+    with _lock:
+        if time.monotonic() < _next_stat_at:  # another thread just checked
+            return
+        _next_stat_at = time.monotonic() + _STAT_INTERVAL_S
+        try:
+            stamp = _STORE_PATH.stat().st_mtime_ns
+        except OSError:
+            return
+        if stamp == _store_mtime_ns:
+            return
+        _load_overrides()
 
 
 _load_overrides()
@@ -139,6 +183,7 @@ def get_settings(path: str) -> dict:
     accessors below instead, because a merged value cannot say whether an
     operator chose it.
     """
+    _maybe_reload()
     base = _defaults.get(path)
     if base is None:
         base = {"visibility": default_tier(), "llms_public": None, "name": path}
@@ -208,12 +253,14 @@ def pin_default(path: str, visibility: str) -> None:
 
 def tier_override(path: str) -> str | None:
     """The tier the control board wrote for ``path``, or None."""
+    _maybe_reload()
     tier = (_overrides.get(path) or {}).get("visibility")
     return tier if tier in TIERS else None
 
 
 def llms_public_override(path: str) -> bool | None:
     """The machine-surface switch the control board wrote, or None."""
+    _maybe_reload()
     value = (_overrides.get(path) or {}).get("llms_public")
     return None if value is None else bool(value)
 

@@ -5,6 +5,7 @@ endpoint: "/emoji-iconify"
 package: dash-leaflet2
 category: "Markers"
 icon: "tabler:mood-smile"
+lastmod: 2026-07-28
 ---
 
 .. llms_copy::Emoji & Iconify

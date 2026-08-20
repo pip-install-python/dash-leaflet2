@@ -5,6 +5,7 @@ endpoint: "/tilelayer-pro-props"
 package: dash-leaflet2
 category: "Layers"
 icon: "tabler:map-2"
+lastmod: 2026-07-28
 ---
 
 .. llms_copy::TileLayer pro props

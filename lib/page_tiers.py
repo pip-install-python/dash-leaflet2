@@ -17,9 +17,22 @@ board to mark one page::
     tier: admin
     ---
 
-Absent that, :data:`DEFAULT_TIER` applies — ``public``, because a
-documentation site that defaults to gated is a documentation site nobody
-reads. Override the default per deployment with ``PAGE_DEFAULT_TIER``.
+Absent that, the default applies — ``public``, because a documentation site
+that defaults to gated is a documentation site nobody reads. Override it per
+deployment with ``PAGE_DEFAULT_TIER`` (or this site's older spelling
+``PAGE_DEFAULT_VISIBILITY``, still accepted).
+
+``tier:`` is the canonical frontmatter key. ``visibility:`` is accepted as an
+alias for it — the two vocabularies were always identical
+(public/auth/admin/hidden), and pages/markdown.py feeds one declared value to
+both this ledger and :mod:`lib.page_visibility`'s control-board rows, so the
+board can never show a page a different tier from the one enforced.
+
+**This module is the enforcement engine.** :mod:`lib.page_visibility` still
+owns the live control-board overrides and their ``/var/data`` persistence, and
+:func:`lib.access.local_tier` consults those overrides ahead of what is
+registered here — a board toggle must apply without a restart. What was
+registered here is the declared baseline underneath them.
 
 Two rules make this safe to run before the hub exists:
 
@@ -49,16 +62,47 @@ logger = logging.getLogger(__name__)
 TIERS = ("public", "auth", "admin", "hidden")
 
 
+# `PAGE_DEFAULT_VISIBILITY` is this site's own older spelling of the same
+# knob and is already set on the live service (render.yaml). It is accepted as
+# an ALIAS rather than migrated: dropping a variable a running deployment
+# depends on is how a host silently changes posture between a git push and the
+# next blueprint sync. PAGE_DEFAULT_TIER is canonical and wins when both are
+# set. lib.page_visibility reads its baseline through this function too, so the
+# board's rows and the enforced tier cannot disagree about the default.
+_DEFAULT_TIER_ENV = ("PAGE_DEFAULT_TIER", "PAGE_DEFAULT_VISIBILITY")
+
+
 def _default_tier() -> str:
-    tier = (os.getenv("PAGE_DEFAULT_TIER") or "public").strip().lower()
-    if tier not in TIERS:
-        logger.warning("PAGE_DEFAULT_TIER=%r is not a tier — using 'public'", tier)
-        return "public"
-    return tier
+    for name in _DEFAULT_TIER_ENV:
+        raw = (os.getenv(name) or "").strip().lower()
+        if not raw:
+            continue
+        if raw not in TIERS:
+            logger.warning("%s=%r is not a tier — using 'public'", name, raw)
+            return "public"
+        return raw
+    return "public"
 
 
 # endpoint -> tier, populated from frontmatter as pages/markdown.py loads docs.
 _LOCAL_TIERS: Dict[str, str] = {}
+
+# endpoint -> machine-surface openness, the SECOND axis. `tier` answers "who
+# may use the page in a browser"; `llms_public` answers "does the machine
+# twin (/<page>/llms.txt, crawler HTML, the prerender) stay open anyway".
+# The split exists so the fleet can gate the interactive experience for
+# humans while the 30-day crawl-demand window keeps measuring agents — and
+# so the later agent flip is one env change (`LLMS_PUBLIC_DEFAULT=0`), not a
+# code change. Only meaningful on `auth` pages: `public` needs no exemption,
+# and `admin`/`hidden` must never leak through a machine surface.
+_LOCAL_LLMS_PUBLIC: Dict[str, bool] = {}
+
+_FALSE_VALUES = ("0", "false", "no", "off")
+
+
+def _default_llms_public() -> bool:
+    raw = (os.getenv("LLMS_PUBLIC_DEFAULT") or "").strip().lower()
+    return raw not in _FALSE_VALUES if raw else True
 
 
 def normalize(path: str) -> str:
@@ -69,8 +113,14 @@ def normalize(path: str) -> str:
     return path.rstrip("/") or "/"
 
 
-def register(path: str, tier: Optional[str]) -> str:
-    """Record a page's locally declared tier. Returns the tier applied."""
+def register(path: str, tier: Optional[str],
+             llms_public: Optional[bool] = None) -> str:
+    """Record a page's locally declared tier. Returns the tier applied.
+
+    ``llms_public`` pins the machine-surface axis for this page; ``None``
+    (the overwhelmingly common case) defers to ``LLMS_PUBLIC_DEFAULT`` at
+    lookup time, so flipping the env flips every undeclared page at once.
+    """
     resolved = (tier or _default_tier()).strip().lower()
     if resolved not in TIERS:
         logger.warning(
@@ -79,7 +129,23 @@ def register(path: str, tier: Optional[str]) -> str:
         )
         resolved = _default_tier()
     _LOCAL_TIERS[normalize(path)] = resolved
+    # Declarative: a registration fully describes the page, so None does not
+    # mean "keep whatever was pinned before" — it clears the pin and defers
+    # to the env default again.
+    if llms_public is None:
+        _LOCAL_LLMS_PUBLIC.pop(normalize(path), None)
+    else:
+        _LOCAL_LLMS_PUBLIC[normalize(path)] = bool(llms_public)
     return resolved
+
+
+def get_llms_public(path: str) -> bool:
+    """Whether ``path``'s machine twin stays open to anonymous fetches.
+
+    Read at verdict time, not registration time, so `LLMS_PUBLIC_DEFAULT`
+    governs every page that did not pin the axis in frontmatter.
+    """
+    return _LOCAL_LLMS_PUBLIC.get(normalize(path), _default_llms_public())
 
 
 def local_tier(path: str) -> str:

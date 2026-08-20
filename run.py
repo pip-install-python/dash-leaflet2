@@ -19,10 +19,19 @@ https://leaflet.2plot.dev as a 2plot network satellite:
                lib/traffic_rollup.py (the hub's own daily definitions) +
                lib/satellite_reporter.py → 2plot.ai/api/satellite/traffic
   * auth     — lib/auth.py              → Clerk satellite of the 2plot.ai primary
+  * gate     — lib/access.py (+ page_tiers / hub_client / gate_layouts)
+                                        → who may read which page
   * control  — pages/control_board.py   → /admin/control-board
 
 Every one of those is dormant without its env keys, so a plain `python run.py`
 gives you the same local docs site it always did.
+
+The gate is wired unconditionally (`_access.configure(force=True)` below) and
+ships DARK: with PAGE_DEFAULT_TIER=public every verdict answers `allow`, so the
+whole verdict path — including the prerender's use of it — is exercised in
+production before the flip that turns it on. Flipping that one environment
+variable to `auth` gates the site; flipping it back is the rollback. Read
+lib/access.py for the policy and DEPLOYMENT.md for the operational half.
 
 Run:
     python run.py                          # FastAPI backend (default)
@@ -52,6 +61,7 @@ from dash_improve_my_llms import (
 )
 
 from lib import auth, bulletin, network_directory
+from lib import hub_client as _hub_client
 from lib.analytics_tracker import tracker
 from lib.backend import get_backend_info, resolve_backend
 from lib.constants import (
@@ -82,7 +92,10 @@ print(f"[dash-leaflet2] v{APP_VERSION} on Dash {dash.__version__} · backend='{B
 # ----------------------------------------------------------------------------
 CLERK_ENABLED = auth.register()
 if not CLERK_ENABLED:
-    print("[auth] Clerk dormant — every visibility tier falls open to public.")
+    # Precisely: every DOCS tier falls open, because documentation must not
+    # brick over a missing credential. Admin surfaces do not — they gate on
+    # `auth.admin_access_open()` and stay closed. See lib/access.py.
+    print("[auth] Clerk dormant — docs tiers fall open to public; admin stays closed.")
 
 # ----------------------------------------------------------------------------
 # Leaflet 2 alpha delivery via dash.hooks — the same no-build-step contract
@@ -270,19 +283,47 @@ elif BACKEND == "quart":
         except Exception:
             pass
 
+# ============================================================================
+# Access control. Reads the tiers the pages just declared, so it runs after
+# they are registered and before the routes are attached. The policy and its
+# reasoning live in lib/access.py; lib/page_visibility.py keeps the live
+# control-board overrides it reads first.
+# ============================================================================
+
+from lib import access as _access  # noqa: E402
+from lib import page_tiers as _page_tiers  # noqa: E402
+from lib import page_visibility as _page_visibility  # noqa: E402
+
 # Tiered corpus documents (dash-improve-my-llms >= 2.4.0). Pseudo-paths:
 # they never enter dash.page_registry, so they cannot leak into listings —
 # registering them here lets this satellite tier its compact briefing and
-# full corpus via env (LLMS_SMALL_TIER / LLMS_FULL_TIER; unset = the
-# default tier, i.e. public), and the hub can tighten either network-wide
-# through its page-tier ceilings with no redeploy here. Inert on older
-# package versions. (The boilerplate pairs this with lib/access.py
-# enforcement, which has no counterpart in this repo yet — the registrations
-# are the contract the hub reads either way.)
-from lib import page_tiers as _page_tiers  # noqa: E402
+# full corpus via env (LLMS_SMALL_TIER / LLMS_FULL_TIER), and the hub can
+# tighten either network-wide through its page-tier ceilings with no redeploy
+# here. The explicit `or "public"` matters: unset, these would inherit
+# PAGE_DEFAULT_TIER, so flipping that env to gate the *interactive* site would
+# silently gate the corpus documents too. Their tier is always a deliberate
+# setting, never an ambient default.
+_page_tiers.register("/llms-small.txt",
+                     os.environ.get("LLMS_SMALL_TIER") or "public")
+_page_tiers.register("/llms-full.txt",
+                     os.environ.get("LLMS_FULL_TIER") or "public")
 
-_page_tiers.register("/llms-small.txt", os.environ.get("LLMS_SMALL_TIER"))
-_page_tiers.register("/llms-full.txt", os.environ.get("LLMS_FULL_TIER"))
+# The funnel's front door stays public, always. docs/home/home.md declares no
+# tier, so under PAGE_DEFAULT_TIER=auth the landing page would inherit the
+# gate and a signed-out visitor would meet a sign-in card before they had any
+# reason to want an account. Pinned on BOTH ledgers so the control board shows
+# what the site enforces; an operator can still override it from the board.
+_page_tiers.register("/", "public")
+_page_visibility.pin_default("/", "public")
+
+# force=True, unconditionally — the deviation from the boilerplate, and the
+# whole point of shipping dark. With every tier still public the auto-detect
+# would skip the wiring entirely, so the gate would go live in the same change
+# that first exercises it. Wiring it now means the verdict path, the gate
+# document and the prerender's use of the check are all running (and
+# answering `allow`) before PAGE_DEFAULT_TIER flips, and the flip is then an
+# environment change against code that has been serving for a week.
+ACCESS_ENABLED = _access.configure(force=True)
 
 # Wire up /llms.txt, /<page>/llms.txt, /robots.txt, /sitemap.xml + bot
 # middleware. dash-improve-my-llms auto-detects the active backend
@@ -329,6 +370,31 @@ from components.appshell import create_appshell  # noqa: E402  (needs the regist
 
 app.layout = create_appshell(dash.page_registry.values())
 server = app.server
+
+# ============================================================================
+# The person->agent handoff: /api/agent-key turns the browser's Clerk session
+# into a portable ?key= for copied llms.txt URLs (lib/agent_key.py, consumed
+# by assets/llms_copy.js on the first copy click). 204 for everyone until
+# Clerk AND the hub are both configured, so it is safe to mount always.
+# ============================================================================
+
+from lib.agent_key import register_agent_key_route  # noqa: E402
+
+register_agent_key_route(app, BACKEND)
+
+# One line, because every part of this is env-driven and invisible from
+# inside the container. A dark launch that quietly failed to wire looks
+# exactly like a dark launch that worked.
+_non_public = sum(1 for t in _page_tiers.registered().values() if t != "public")
+print(
+    "[dash-leaflet2] interactive gate: default tier "
+    f"'{_page_tiers._default_tier()}', {_non_public} non-public page(s), "
+    "machine surfaces "
+    f"{'GATED' if not _page_tiers.get_llms_public('/__probe__') else 'open'} "
+    f"by default (LLMS_PUBLIC_DEFAULT), access wiring "
+    f"{'ON' if ACCESS_ENABLED else 'off'}, hub "
+    f"{'reachable' if _hub_client.enabled() else 'off (no CROSS_APP_WEBHOOK_SECRET)'}."
+)
 
 # ============================================================================
 # Analytics tracking (FastAPI) — added LAST on purpose.

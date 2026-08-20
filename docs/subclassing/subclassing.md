@@ -5,6 +5,7 @@ endpoint: "/subclassing"
 package: dash-leaflet2
 category: "v2 capabilities"
 icon: "tabler:hierarchy"
+lastmod: 2026-07-28
 ---
 
 .. llms_copy::ES6 Subclassing

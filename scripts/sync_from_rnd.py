@@ -78,6 +78,15 @@ MIRROR_OWNED = {
     "lib/versions.py",
     "lib/auth.py",
     "lib/page_visibility.py",
+    # The gate pilot. These are adapted from dash-documentation-boilerplate,
+    # not from R&D — lib/access.py in particular resolves the control board's
+    # overrides ahead of the frontmatter tier, which the template has no
+    # counterpart for. A pull that overwrote it would silently drop the board.
+    "lib/access.py",
+    "lib/hub_client.py",
+    "lib/gate_layouts.py",
+    "lib/auth_demos.py",
+    "lib/agent_key.py",
     "lib/constants.py",
     "pages/markdown.py",
     "pages/control_board.py",

@@ -36,11 +36,39 @@ The site de-risks; the package is the durable artifact. Keep both working.
 boilerplate's trio; it replaced the Gen-1 single-module tracker in the
 1.3.x instrumentation sync — `traffic_rollup._SKIP` must stay byte-identical
 to the boilerplate's) · `lib/auth.py` → Clerk satellite of 2plot.ai ·
-`lib/page_visibility.py` + `pages/control_board.py` → `/admin/control-board`,
-four tiers re-checked every render. Full reference in `DEPLOYMENT.md`. These
-are shared drop-in modules — when fixing a bug in `ad_client.py` or the
-analytics trio, the fix probably belongs in the other satellites too
-(canonical source: `../dash-documentation-boilerplate`).
+`lib/access.py` (+ `page_tiers` / `hub_client` / `gate_layouts` / `agent_key`)
+→ the gate · `lib/page_visibility.py` + `pages/control_board.py` →
+`/admin/control-board`. Full reference in `DEPLOYMENT.md`. These are shared
+drop-in modules — when fixing a bug in `ad_client.py` or the analytics trio,
+the fix probably belongs in the other satellites too (canonical source:
+`../dash-documentation-boilerplate`).
+
+## The gate (this repo is the fleet's pilot)
+
+`lib/access.py` is the enforcement engine; `lib/page_visibility.py` was demoted
+to the control board's **override store + UX** and no longer resolves access or
+wraps layouts. A verdict resolves from three inputs, in order: the board's
+override (most local, wins — that is what a live toggle is), the frontmatter
+registration in `page_tiers`, then the hub's ceiling, which only ever restricts.
+
+Two lanes, deliberately different: `resolve_page_access` answers what a BROWSER
+gets (`gate_layouts` renders the card), `check` answers what a MACHINE fetch
+gets (`/<page>/llms.txt`, crawler HTML, prerender) and honours `?key=` plus the
+`llms_public` axis. A key never unlocks a layout.
+
+Frontmatter: `tier:` is canonical, `visibility:` is an accepted alias for the
+same four values, and ONE declared value feeds both ledgers — they were
+independent keys before this pass, which let a page declare one tier and be
+enforced at another.
+
+Two postures that look like bugs and are not: docs fall **open** without Clerk
+(documentation must not brick over a missing credential) while admin fails
+**closed**; and a hub failure resolves to `gated`, never `allow`, never `deny`.
+
+Shipped **dark**: `run.py` wires the policy with `force=True` even though every
+tier is public, so the verdict path (and the prerender's use of it) runs in
+production before `PAGE_DEFAULT_TIER=auth` turns it on. That env flip is the
+whole change, and flipping it back is the rollback.
 
 ## Commands
 
@@ -140,6 +168,14 @@ race fixed there. Its `clerk-backend-api<8` cap (widened in 1.0.1) is what lets
   is hand-maintained (registers `_js_dist`); everything else in `dash_leaflet2/` is generated.
 - **Showcase JS** (`assets/leaflet2_maps.js`): a new example = one `DEMOS` entry + one
   `docs/<slug>/{<slug>.md, example.py}` pair (`example.py` exports `component`). JS→Python uses `toStore()` (hardened `set_props` with retry — don't bypass it).
+- **`lastmod:` rides the prose.** Every `docs/<slug>/<slug>.md` declares a
+  sitemap date; `dash-improve-my-llms` >= 2.6.0 emits it verbatim and omits the
+  tag when absent. Edit a page's prose → bump its `lastmod` in the SAME commit.
+  Never script these from file mtimes (they reset on every Docker build, which
+  re-creates the every-page-changed-today sitemap the 2.6.0 floor exists to
+  end). The initial values came from `git log -1 --format=%cs -- <file>`.
+  `tests/test_seo_icons.py` fails if the sitemap ever emits a date no page
+  declared, and if crawler-head icon discovery comes back empty.
 
 ## More detail
 

@@ -5,6 +5,7 @@ endpoint: "/flight-sim"
 package: dash-leaflet2
 category: "Rotation & Sims"
 icon: "tabler:plane"
+lastmod: 2026-07-28
 ---
 
 .. llms_copy::Flight Sim

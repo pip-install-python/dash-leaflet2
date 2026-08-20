@@ -12,9 +12,11 @@ behind `.get(path, user_agent=...) -> Response`.
 
 SECRETLESS, AND ORDER MATTERS. The suite runs against the app exactly as CI's
 zero-secret container does: no Clerk keys (auth falls open, non-public tiers
-still deny), no `CROSS_APP_WEBHOOK_SECRET` (the traffic reporter never starts
-a thread and nothing is ever POSTed to the hub), and the analytics ledger in
-a temp dir. The zero-secret boot is itself the first invariant.
+still deny), no `CROSS_APP_WEBHOOK_SECRET` (the hub client reports itself
+disabled, the traffic reporter never starts a thread, and nothing is ever
+POSTed to the hub), and the analytics ledger in a temp dir. The zero-secret
+boot is itself the first invariant — every fail-closed assertion in
+tests/test_access.py depends on it.
 
 The env block below therefore has to run BEFORE anything imports `run.py`,
 because run.py calls `load_dotenv()` at import time and a developer's local
@@ -47,6 +49,16 @@ SECRET_ENV_KEYS = (
     "ADMIN_EMAILS", "MUI_PRO_API_KEY", "DATABASE_URL", "AD_DATABASE_URL",
 )
 for _key in SECRET_ENV_KEYS:
+    os.environ[_key] = ""
+
+# --- 1b. Pin the gate's env knobs to the shipped-dark posture ---------------
+# These are not secrets, but they change what every page IS, so a developer
+# who exported PAGE_DEFAULT_TIER=auth to try the gate locally would otherwise
+# see two dozen unrelated tests fail on a sign-in card. Blank means "unset" to
+# `lib.page_tiers._default_tier`, i.e. public — the posture the pilot deploys
+# with, and the one tests/test_access.py's inertness assertions describe.
+for _key in ("PAGE_DEFAULT_TIER", "PAGE_DEFAULT_VISIBILITY", "LLMS_PUBLIC_DEFAULT",
+             "LLMS_SMALL_TIER", "LLMS_FULL_TIER"):
     os.environ[_key] = ""
 
 # --- 2. Keep app state out of the repo --------------------------------------

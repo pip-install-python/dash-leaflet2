@@ -5,6 +5,7 @@ endpoint: "/tile-selector"
 package: dash-leaflet2
 category: "Controls (compiled dl2.*)"
 icon: "tabler:grid-4x4"
+lastmod: 2026-07-28
 ---
 
 .. llms_copy::Tile Selector

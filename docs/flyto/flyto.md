@@ -5,6 +5,7 @@ endpoint: "/flyto"
 package: dash-leaflet2
 category: "Dash integration"
 icon: "tabler:plane-departure"
+lastmod: 2026-07-28
 ---
 
 .. llms_copy::FlyTo

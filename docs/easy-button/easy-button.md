@@ -5,6 +5,7 @@ endpoint: "/easy-button"
 package: dash-leaflet2
 category: "Controls (compiled dl2.*)"
 icon: "tabler:hand-click"
+lastmod: 2026-07-28
 ---
 
 .. llms_copy::Easy Button

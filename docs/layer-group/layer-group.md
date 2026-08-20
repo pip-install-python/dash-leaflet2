@@ -5,6 +5,7 @@ endpoint: "/layer-group"
 package: dash-leaflet2
 category: "Layers"
 icon: "tabler:stack-2"
+lastmod: 2026-07-28
 ---
 
 .. llms_copy::LayerGroup & FeatureGroup

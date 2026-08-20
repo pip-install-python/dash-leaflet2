@@ -5,6 +5,7 @@ endpoint: "/tile-layers-pro"
 package: dash-leaflet2
 category: "Controls (compiled dl2.*)"
 icon: "tabler:layers-difference"
+lastmod: 2026-07-28
 ---
 
 .. llms_copy::Tile Layers (Pro)

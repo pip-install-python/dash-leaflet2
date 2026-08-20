@@ -5,6 +5,7 @@ endpoint: "/resize-observer"
 package: dash-leaflet2
 category: "v2 capabilities"
 icon: "tabler:resize"
+lastmod: 2026-07-28
 ---
 
 .. llms_copy::ResizeObserver Sizing

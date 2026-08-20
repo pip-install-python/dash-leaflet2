@@ -41,25 +41,13 @@ from typing import Any, Dict, List
 
 # Only list hosts that are actually live. A directory entry pointing at a
 # subdomain with no site is a dead link an agent will follow once and then
-# distrust the rest of the list for. muicharts.2plot.dev and
-# flexlayout.2plot.dev have no docs site yet — add them in the same change
-# that ships them, not before.
-# UPSTREAM DIVERGENCE — the only edit this file carries, and it is temporary.
-#
-# pannellum.2plot.dev and emojimart.2plot.dev are commented out below because
-# they are NXDOMAIN as of 2026-07-31 (verified via DNS, not just a failed
-# request — email/flows returned 000 on a first curl too, but that was a Render
-# free-tier cold start and they serve fine on retry).
-#
-# The rule this enforces is the module's own, three paragraphs up: "a directory
-# entry pointing at a subdomain with no site is a dead link an agent will follow
-# once and then distrust the rest of the list for." Shipping them would publish
-# two dead links from a live docs site.
-#
-# The real fix belongs in dash-documentation-boilerplate, which is the single
-# definition every satellite copies — otherwise each repo rediscovers this
-# independently. Once those hosts resolve, delete this note and re-copy the file
-# from the boilerplate rather than un-commenting by hand.
+# distrust the rest of the list for. The full docs fleet went live on paid
+# hosting 2026-08-19/20 — muicharts, flexlayout and llms joined in that
+# window, and this file's temporary divergence (pannellum/emojimart
+# commented out while NXDOMAIN) is resolved per its own instruction:
+# re-copied from the boilerplate, the canonical definition every satellite
+# syncs FROM, verbatim. Still deliberately absent until they deploy:
+# excalidraw.2plot.dev and modelviewer.2plot.dev.
 PEERS: List[Dict[str, str]] = [
     {
         "name": "2plot.ai",
@@ -87,20 +75,35 @@ PEERS: List[Dict[str, str]] = [
         "description": "MUI X Scheduler — calendars and event scheduling for Dash.",
     },
     {
+        "name": "dash-mui-charts",
+        "url": "https://muicharts.2plot.dev",
+        "description": "MUI X charts, tree views and time pickers for Dash.",
+    },
+    {
+        "name": "flexlayout-dash",
+        "url": "https://flexlayout.2plot.dev",
+        "description": "IDE-style dockable, resizable and floatable window panels.",
+    },
+    {
+        "name": "dash-improve-my-llms",
+        "url": "https://llms.2plot.dev",
+        "description": "The AI/LLM and SEO package every site in this network is built on.",
+    },
+    {
         "name": "dash-flows",
         "url": "https://flows.2plot.dev",
         "description": "Node-graph editors built on React Flow.",
     },
-    # {
-    #     "name": "dash-pannellum",
-    #     "url": "https://pannellum.2plot.dev",
-    #     "description": "360° panorama and virtual-tour viewer.",
-    # },
-    # {
-    #     "name": "dash-emoji-mart",
-    #     "url": "https://emojimart.2plot.dev",
-    #     "description": "Emoji picker component.",
-    # },
+    {
+        "name": "dash-pannellum",
+        "url": "https://pannellum.2plot.dev",
+        "description": "360° panorama and virtual-tour viewer.",
+    },
+    {
+        "name": "dash-emoji-mart",
+        "url": "https://emojimart.2plot.dev",
+        "description": "Emoji picker component.",
+    },
     {
         "name": "dash-email",
         "url": "https://email.2plot.dev",
@@ -108,12 +111,12 @@ PEERS: List[Dict[str, str]] = [
     },
 ]
 
+# pip-install-python.com is deliberately NOT here: the domain is retired
+# network-wide (the fleet's retire-pip-install-python-domain sweep), and
+# this repo's test_social_card pins its absence. A directory that keeps
+# pointing agents at a retired origin re-teaches them the identity the
+# network spent a release unlearning.
 AFFILIATED: List[Dict[str, str]] = [
-    {
-        "name": "2plot.ai",
-        "url": "https://2plot.ai",
-        "description": "The original component documentation site.",
-    },
     {
         "name": "Pirate's Bargain",
         "url": "https://piratesbargain.com",

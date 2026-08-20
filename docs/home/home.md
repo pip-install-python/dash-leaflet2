@@ -5,6 +5,7 @@ endpoint: "/"
 package: dash-leaflet2
 category: "Start here"
 icon: "tabler:home"
+lastmod: 2026-08-01
 ---
 
 .. llms_copy::Home

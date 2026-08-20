@@ -5,6 +5,7 @@ endpoint: "/map-pro-props"
 package: dash-leaflet2
 category: "Layers"
 icon: "tabler:viewport-narrow"
+lastmod: 2026-07-28
 ---
 
 .. llms_copy::Map pro props

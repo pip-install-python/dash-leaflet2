@@ -5,6 +5,7 @@ endpoint: "/pointer-events"
 package: dash-leaflet2
 category: "v2 capabilities"
 icon: "tabler:pointer"
+lastmod: 2026-07-28
 ---
 
 .. llms_copy::Pointer Events

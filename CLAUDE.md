@@ -168,6 +168,14 @@ race fixed there. Its `clerk-backend-api<8` cap (widened in 1.0.1) is what lets
   is hand-maintained (registers `_js_dist`); everything else in `dash_leaflet2/` is generated.
 - **Showcase JS** (`assets/leaflet2_maps.js`): a new example = one `DEMOS` entry + one
   `docs/<slug>/{<slug>.md, example.py}` pair (`example.py` exports `component`). JS→Python uses `toStore()` (hardened `set_props` with retry — don't bypass it).
+- **`lastmod:` rides the prose.** Every `docs/<slug>/<slug>.md` declares a
+  sitemap date; `dash-improve-my-llms` >= 2.6.0 emits it verbatim and omits the
+  tag when absent. Edit a page's prose → bump its `lastmod` in the SAME commit.
+  Never script these from file mtimes (they reset on every Docker build, which
+  re-creates the every-page-changed-today sitemap the 2.6.0 floor exists to
+  end). The initial values came from `git log -1 --format=%cs -- <file>`.
+  `tests/test_seo_icons.py` fails if the sitemap ever emits a date no page
+  declared, and if crawler-head icon discovery comes back empty.
 
 ## More detail
 

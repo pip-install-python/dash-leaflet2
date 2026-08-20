@@ -7,7 +7,7 @@ import dash
 import dash_mantine_components as dmc
 import frontmatter
 from markdown2dash import Admonition, BlockExec, Divider, Image, create_parser
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 
 from lib.ad_client import inject_ad_into_aside
 from lib.constants import OG_IMAGE_URL, PAGE_TITLE_PREFIX, NAME_CONTENT_MAP
@@ -53,6 +53,23 @@ class Meta(BaseModel):
     # so the fleet-wide agent flip is one env change rather than 28 edits.
     # Also live-toggleable from the control board.
     llms_public: Optional[bool] = None
+    # Sitemap <lastmod>, YYYY-MM-DD, emitted VERBATIM by dash-improve-my-llms
+    # >= 2.6.0 — and omitted entirely when absent. Truth or silence: set it
+    # when the page's prose genuinely changes, in the SAME commit as the
+    # prose. Never script it from file mtimes, which reset on every Docker
+    # build and would re-invent the every-page-changed-today sitemap that
+    # 2.6.0 exists to end. The initial values here are each page's real
+    # `git log -1 --format=%cs` date.
+    #
+    # The validator is not optional: YAML parses a bare `lastmod: 2026-07-28`
+    # into a datetime.date before pydantic ever sees it, and Optional[str]
+    # rejects that — every page would fail Meta validation at import.
+    lastmod: Optional[str] = None
+
+    @field_validator("lastmod", mode="before")
+    @classmethod
+    def _lastmod_to_iso(cls, value):
+        return value.isoformat() if hasattr(value, "isoformat") else value
 
 
 def _declared_tier(metadata: "Meta", source: str) -> Optional[str]:
@@ -213,10 +230,34 @@ for file in files:
     # page_visibility, which now registers the REAL prose and lets
     # lib.access.check decide per request whether the fetch may have it — see
     # that module's llms.txt-bridge comment for why the old stub swap went.
+    #
+    # The kwargs below are the CRAWLER document's record, and they must not
+    # describe the page differently from the `dash.register_page` call above:
+    # that call is what a browser reads, this one is what Googlebot reads, and
+    # a site whose two heads disagree is the shape of every SEO defect the
+    # network measured in 2026-08. Content may differ between the two
+    # documents; identity may not. Before this passed anything, the crawler
+    # document carried no og:image at all (browsers got one) and typed every
+    # documentation page as a bare schema.org WebPage.
     expanded = _expand_source_directives(content)
     register_llms_doc(
         metadata.endpoint,
         metadata.name,
         metadata.description,
         _build_llms_doc(metadata.name, metadata.description, expanded, metadata.endpoint),
+        # Same string dash.register_page got. Measured, not assumed: it does
+        # NOT double the brand — the package composes its own
+        # "<page> · <site>" only when no title is declared.
+        title=PAGE_TITLE_PREFIX + metadata.name,
+        image_url=OG_IMAGE_URL,
+        # TechArticle, not the package's WebPage default: every page here
+        # documents software, and "WebPage" tells a crawler nothing it could
+        # not already see. run.py declares the home page separately.
+        schema_type="TechArticle",
+        # None omits the sitemap tag on >= 2.6.0 (the floor in
+        # requirements.txt), which is the truth-or-silence half. `lastmod`
+        # only exists from 2.6.0; below the floor it is at best ignored, and
+        # the sitemap goes back to stamping every page "today" — which is why
+        # the floor is a floor and not a preference.
+        lastmod=metadata.lastmod,
     )

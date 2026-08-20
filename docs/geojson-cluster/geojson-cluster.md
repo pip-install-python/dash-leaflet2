@@ -5,6 +5,7 @@ endpoint: "/geojson-cluster"
 package: dash-leaflet2
 category: "Layers"
 icon: "tabler:circles-relation"
+lastmod: 2026-07-28
 ---
 
 .. llms_copy::GeoJSON clustering

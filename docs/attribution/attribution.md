@@ -5,6 +5,7 @@ endpoint: "/attribution"
 package: dash-leaflet2
 category: "Dash integration"
 icon: "tabler:license"
+lastmod: 2026-07-28
 ---
 
 .. llms_copy::Attribution

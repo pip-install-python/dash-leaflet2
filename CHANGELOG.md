@@ -18,6 +18,28 @@ changed, and `pip install dash-leaflet2` is untouched by any of it.
 
 ### Added
 
+- **The sitemap stopped lying.** Every entry used to claim the page changed
+  today, regenerated on every crawl — a sitemap asserting that 27 pages change
+  daily is one search engines learn to discard wholesale. Each page now
+  publishes the real date its prose last changed, and a page that declares no
+  date gets no date: truth or silence.
+
+- **Google now sees this site's own icons.** The crawler document carried no
+  favicon at all — browsers got six, Googlebot got zero, which is why search
+  showed a generic globe. It also had no social image and described every
+  documentation page as an untyped generic web page. All three now match what
+  a browser gets. (Requires `dash-improve-my-llms` 2.6.0, which discovers the
+  icons from `assets/favicon_io/` with nothing declared.)
+
+- **A live "active now" figure** on the hub's dashboard, from a lightweight
+  presence beacon alongside the existing hourly rollup. Display-only — the
+  daily numbers still come from the rollup, which now reports every 15 minutes
+  rather than hourly.
+
+- **The network directory caught up with the fleet**: muicharts, flexlayout
+  and llms.2plot.dev added, and pannellum/emojimart restored now that they
+  resolve — twelve peers, no dead links.
+
 - **A sign-in gate, shipped dark.** Documentation pages can now require an
   account. Nothing is gated yet: the site deploys with the gate wired and
   every verdict answering "allow", so the whole path runs in production

@@ -5,6 +5,7 @@ endpoint: "/edit-control"
 package: dash-leaflet2
 category: "Controls (compiled dl2.*)"
 icon: "tabler:edit"
+lastmod: 2026-07-28
 ---
 
 .. llms_copy::Draw & Edit

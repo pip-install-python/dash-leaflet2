@@ -5,6 +5,7 @@ endpoint: "/text-marker"
 package: dash-leaflet2
 category: "Markers"
 icon: "mdi:format-text"
+lastmod: 2026-07-28
 ---
 
 .. llms_copy::TextMarker

@@ -5,6 +5,7 @@ endpoint: "/compare-lab"
 package: dash-leaflet2
 category: "Controls (compiled dl2.*)"
 icon: "tabler:flip-horizontal"
+lastmod: 2026-07-28
 ---
 
 .. llms_copy::Compare Lab

@@ -5,6 +5,7 @@ endpoint: "/edit-control-measurement"
 package: dash-leaflet2
 category: "Controls (compiled dl2.*)"
 icon: "tabler:ruler-measure"
+lastmod: 2026-07-28
 ---
 
 .. llms_copy::Edit Control + Measurement

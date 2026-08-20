@@ -5,6 +5,7 @@ endpoint: "/events-python"
 package: dash-leaflet2
 category: "Dash integration"
 icon: "tabler:bolt"
+lastmod: 2026-07-28
 ---
 
 .. llms_copy::Events → Python

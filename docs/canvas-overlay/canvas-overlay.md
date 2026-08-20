@@ -5,6 +5,7 @@ endpoint: "/canvas-overlay"
 package: dash-leaflet2
 category: "v2 capabilities"
 icon: "tabler:chart-dots"
+lastmod: 2026-07-28
 ---
 
 .. llms_copy::Canvas Renderer

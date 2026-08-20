@@ -238,12 +238,23 @@ def llms_public_override(path: str) -> bool | None:
 # package could not be handed a policy at all (`lib.access.configured()` is
 # False). Then nothing else is standing between a hidden page and its prose.
 
-_llms_docs: dict[str, tuple[str, str, str]] = {}  # path -> (name, description, doc)
+# path -> {"name", "description", "doc", "extra"}. `extra` is whatever else
+# the page declares for dash-improve-my-llms — `lastmod`, `image_url`,
+# `schema_type`. It has to be REMEMBERED rather than passed once, because
+# `apply_llms_state` re-registers the whole record on every control-board
+# toggle, and register_page_metadata MERGES: a re-registration that omitted
+# these would leave the earlier values in place today and silently drop them
+# the day the package's merge semantics change. Remembering them is the
+# version of this that cannot rot.
+_llms_docs: dict[str, dict] = {}
 
 
-def register_llms_doc(path: str, name: str, description: str, doc: str) -> None:
-    """Record a page's llms.txt prose and push the current verdict."""
-    _llms_docs[path] = (name, description, doc)
+def register_llms_doc(path: str, name: str, description: str, doc: str,
+                      **extra) -> None:
+    """Record a page's llms.txt prose (and its metadata) and push it."""
+    _llms_docs[path] = {
+        "name": name, "description": description, "doc": doc, "extra": extra,
+    }
     apply_llms_state(path)
 
 
@@ -280,16 +291,21 @@ def apply_llms_state(path: str) -> None:
     entry = _llms_docs.get(path)
     if entry is None:
         return
-    name, description, doc = entry
     try:
         from dash_improve_my_llms import register_page_metadata
     except Exception:  # optional dependency — nothing to sync
         return
-    name = published_name(path, name)
-    body = doc
+    name = published_name(path, entry["name"])
+    body = entry["doc"]
     if not _enforcement_wired() and not llms_accessible(path):
         body = f"# {name}\n\n> This page is not publicly available.\n"
-    register_page_metadata(path=path, name=name, description=description, llms_doc=body)
+    register_page_metadata(
+        path=path,
+        name=name,
+        description=entry["description"],
+        llms_doc=body,
+        **entry["extra"],
+    )
 
 
 def _enforcement_wired() -> bool:

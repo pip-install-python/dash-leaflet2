@@ -5,6 +5,7 @@ endpoint: "/rotation-basic"
 package: dash-leaflet2
 category: "Rotation & Sims"
 icon: "tabler:rotate-360"
+lastmod: 2026-07-28
 ---
 
 .. llms_copy::Basic Rotation

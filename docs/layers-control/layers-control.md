@@ -5,6 +5,7 @@ endpoint: "/layers-control"
 package: dash-leaflet2
 category: "Controls (compiled dl2.*)"
 icon: "tabler:stack-2"
+lastmod: 2026-07-28
 ---
 
 .. llms_copy::Layers Control

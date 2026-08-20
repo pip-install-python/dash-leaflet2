@@ -77,9 +77,24 @@ hourly, HMAC-signed. `/healthz` itself now lives in `lib/health.py`.
 | `SATELLITE_APP_KEY` | `leaflet` | Series name on 2plot.ai's `/traffic`. This is the network-directory key. (The Gen-1 spelling `SATELLITE_APP_ID` is retired.) |
 | `SATELLITE_TRAFFIC_URL` | `https://2plot.ai/api/satellite/traffic` | Hub endpoint override. |
 | `TRAFFIC_ANALYTICS_FILE` | `visitor_analytics.json` (repo root) | Visit ledger. Production points it at the persistent disk (`/var/data/visitor_analytics.json` in render.yaml) — the hub keeps the LAST report per (app, date), so a ledger that dies with the container under-reports every deploy day. |
-| `SATELLITE_REPORT_INTERVAL_S` | `3600` | Seconds between rollup POSTs. |
+| `SATELLITE_REPORT_INTERVAL_S` | `3600` (render.yaml sets `900`) | Seconds between rollup POSTs. 15 minutes on the live service: the fleet is on paid instances and the hub board reads near-real-time. |
 | `SATELLITE_REPORT_DELAY_S` | `90` | Delay before the first report after boot. |
+| `SATELLITE_PRESENCE_INTERVAL_S` | `60` | Seconds between "active now" presence pings. `0` disables; values below the hub's `30` floor are raised to it. |
+| `SATELLITE_PRESENCE_URL` | derived from `SATELLITE_TRAFFIC_URL` | Presence endpoint override (`POST /api/satellite/active`). |
 | `ANALYTICS_GEO_LOOKUP` | `1` | `0` disables the ip-api.com fallback — behind Cloudflare the `CF-IPCountry` header already answers it. |
+
+The **presence beacon** is a second, faster loop alongside the rollup, and the
+two are not interchangeable: presence is display-only and ephemeral hub-side
+(it drives the live "active now" number), while the rollup stays the sole
+source of the daily figures. It derives its count the same way the hub does —
+distinct human visitor keys inside the session window — so the two never
+disagree about what "active" means. Fail-silent by contract: nothing it does
+escapes its loop.
+
+`SATELLITE_APP_KEY` is deliberately NOT chained to `AD_APP_ID` here, unlike
+some satellites. This host historically ran `AD_APP_ID=dash-leaflet2` against
+directory key `leaflet`; setting one for the ad network must never silently
+rename this app's traffic series.
 
 To exercise the payload without a secret: `python -m lib.satellite_reporter --dry-run`.
 
@@ -341,6 +356,49 @@ Clerk it is hidden, not merely unstyled.
 > **Persistence.** Overrides are a JSON file. `PAGE_VISIBILITY_FILE` points at
 > the `/var/data` disk in production, so a toggle outlives a deploy; on an
 > ephemeral filesystem it would reset with every one.
+
+### Crawler identity and sitemap honesty (dash-improve-my-llms >= 2.6.0)
+
+The 2.6.0 floor in `requirements.txt` is load-bearing — `pages/markdown.py`
+passes `lastmod=` unconditionally, and that argument does not exist below it.
+
+**Icons come from discovery, not a declaration.** This app has never called
+`configure_seo`, so before 2.6.0 Googlebot received a crawler document with
+zero icons while browsers got six from `templates/index.html`. 2.6.0 scans the
+assets tree — `assets/favicon_io/` is one of its covered directory names — and
+this site's own art becomes its crawler-head identity with nothing declared.
+Discovery fails **soft** (it returns nothing and logs at debug), so a renamed
+favicon directory would take the icons away in silence; `tests/test_seo_icons.py`
+is the alarm for that, and it also pins that the emitted hrefs resolve.
+
+**`<lastmod>` is verbatim or absent.** Before 2.6.0 every sitemap entry claimed
+"today", regenerated on every crawl — a sitemap asserting that 27 pages change
+daily is one a search engine learns to discard wholesale. Each page now
+declares its own date in frontmatter:
+
+```yaml
+lastmod: 2026-07-28      # optional; omitted -> no <lastmod> tag at all
+```
+
+The initial values are each file's real `git log -1 --format=%cs` date. **Never
+script these from file mtimes** — those reset on every Docker build and would
+re-invent exactly the lie the floor exists to end. When you edit a page's
+prose, bump its `lastmod` in the same commit.
+
+**Both heads must agree on identity.** `pages/markdown.py` passes the full
+record (`title`, `image_url`, `schema_type`, `lastmod`) through to
+`register_page_metadata`, because the `dash.register_page` call above it is
+what a browser reads and this one is what a crawler reads. Until it did, the
+crawler document carried no `og:image` at all and typed every documentation
+page as a bare schema.org `WebPage`.
+
+> **Still pending: normalized favicon art.** The fleet's standard layout wants
+> source art at `cdn.2plot.ai/github_assets/favicons/leaflet.png` regenerated
+> through the boilerplate's `scripts/make_favicons.py` (not present in this
+> repo). Not blocking: discovery already serves the existing `favicon_io/` art,
+> which is this site's own and not the template's, and
+> `assets/favicon_io/site.webmanifest` already carries leaflet's name,
+> description and `#2f9e44` theme colour.
 
 ### The person→agent handoff
 

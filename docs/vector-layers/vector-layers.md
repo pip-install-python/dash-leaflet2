@@ -5,6 +5,7 @@ endpoint: "/vector-layers"
 package: dash-leaflet2
 category: "Layers"
 icon: "tabler:vector-triangle"
+lastmod: 2026-07-28
 ---
 
 .. llms_copy::Vector Layers

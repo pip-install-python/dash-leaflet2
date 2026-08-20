@@ -5,6 +5,7 @@ endpoint: "/minimap"
 package: dash-leaflet2
 category: "Controls (compiled dl2.*)"
 icon: "tabler:map-pin"
+lastmod: 2026-07-28
 ---
 
 .. llms_copy::MiniMap

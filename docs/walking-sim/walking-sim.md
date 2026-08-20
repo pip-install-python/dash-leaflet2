@@ -5,6 +5,7 @@ endpoint: "/walking-sim"
 package: dash-leaflet2
 category: "Rotation & Sims"
 icon: "tabler:walk"
+lastmod: 2026-07-28
 ---
 
 .. llms_copy::Walking Sim

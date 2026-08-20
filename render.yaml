@@ -79,6 +79,13 @@ services:
       #   PULSE_POLL_TARGETS=...,leaflet=https://leaflet.2plot.dev/healthz
       - key: CROSS_APP_WEBHOOK_SECRET
         sync: false
+      # 15 minutes, not the code default of hourly: the fleet is on paid
+      # instances now and the hub board reads near-real-time. The live
+      # "active now" number rides the separate presence beacon
+      # (SATELLITE_PRESENCE_INTERVAL_S, default 60s, 0 disables) — this knob
+      # only paces the daily rollup.
+      - key: SATELLITE_REPORT_INTERVAL_S
+        value: "900"
       # The series name this app reports under on 2plot.ai/traffic. "leaflet"
       # is this app's 2plot network-directory key — the hub labels and colours
       # the series from that directory. (The Gen-1 spelling SATELLITE_APP_ID

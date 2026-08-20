@@ -142,6 +142,39 @@ services:
         value: https://accounts.2plot.ai/sign-in
       - key: CLERK_SIGN_UP_URL
         value: https://accounts.2plot.ai/sign-up
+      # THE RETURN TRIP. Without this, sign-in reaches the primary and the
+      # user never comes back — the exact failure observed on this host
+      # 2026-08-20.
+      #
+      # Two different paths exist, and only one of them is ours:
+      #
+      #   SET (this):   the Sign In button NAVIGATES to
+      #                 https://2plot.ai/onboarding?returnTo=<this page>.
+      #                 That is a page on the hub's own Dash app, which
+      #                 injects a script that validates returnTo against
+      #                 lib.auth.allowed_redirect_origins() (leaflet.2plot.dev
+      #                 is in that list) and then force-redirects home. The
+      #                 network owns and can debug every hop.
+      #
+      #   UNSET:        dash-clerk-auth falls back to
+      #                 Clerk.redirectToSignIn(), which goes to
+      #                 CLERK_SIGN_IN_URL — accounts.2plot.ai, Clerk's HOSTED
+      #                 Account Portal. The hub's Dash app is never in the
+      #                 loop, so none of its returnTo machinery runs, and the
+      #                 return depends entirely on the Clerk dashboard's own
+      #                 allowed-redirect list. When that does not name this
+      #                 host, ClerkJS silently drops signInForceRedirectUrl
+      #                 and uses the portal's default after-sign-in URL: the
+      #                 user authenticates successfully and lands on 2plot.ai.
+      #                 No error, client-side or server-side.
+      #
+      # dash-clerk-auth reads this name from the environment itself
+      # (satellite_sign_in_redirect's env fallback), so lib/auth.py does not
+      # pass it through. `assets/auth_gate.js` appends &mode=signup for the
+      # "Create free account" button, which /onboarding reads to open the
+      # sign-UP modal instead — so this one value serves both buttons.
+      - key: CLERK_SATELLITE_SIGN_IN_REDIRECT
+        value: https://2plot.ai/onboarding
       # REQUIRED in satellite mode. A production custom-domain instance cannot
       # derive this from CLERK_SIGN_IN_URL — it must be set explicitly.
       - key: CLERK_FRONTEND_API

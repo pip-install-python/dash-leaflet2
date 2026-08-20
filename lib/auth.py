@@ -30,14 +30,29 @@ Satellite config:
     CLERK_SATELLITE_DOMAIN "leaflet.2plot.dev"  (host only, no scheme)
     CLERK_SIGN_UP_URL      https://2plot.ai/sign-up
     CLERK_SATELLITE_SIGN_IN_REDIRECT
-                           OPTIONAL (dash-clerk-auth >= 0.9.2). An absolute URL
-                           on the PRIMARY that the Sign In button navigates to,
-                           with this page carried in ?returnTo=. Read by the
-                           package itself, so we do not pass it through. Unset,
-                           sign-in falls back to Clerk.redirectToSignIn() with
-                           this page forced as the return — the behaviour this
-                           site already ships. Only set it once 2plot.ai has a
-                           page that honours ?returnTo=.
+                           REQUIRED in production, despite reading as optional.
+                           An absolute URL on the PRIMARY that the Sign In
+                           button navigates to, with this page carried in
+                           ?returnTo=. Read by dash-clerk-auth from the
+                           environment itself, so we do not pass it through.
+                           Set to https://2plot.ai/onboarding (render.yaml).
+
+                           It was left unset here while the note below said
+                           "only set it once 2plot.ai has a page that honours
+                           ?returnTo=". 2plot.ai gained exactly that page —
+                           /onboarding, which validates returnTo against its
+                           own satellite whitelist and force-redirects home —
+                           and nobody came back to set it. The result, live on
+                           2026-08-20: sign-in succeeded on the primary and
+                           stranded the user there.
+
+                           Unset, the fallback is Clerk.redirectToSignIn(),
+                           which hops to CLERK_SIGN_IN_URL — the Clerk-HOSTED
+                           Account Portal. The hub's Dash app never sees that
+                           request, so none of its returnTo handling runs and
+                           the return depends solely on the Clerk dashboard's
+                           own allowed-redirect list. That failure is silent
+                           on both sides. See the boot warning in register().
 
 Admin allowlist (drives /admin/control-board):
     ADMIN_EMAILS           comma-separated, case-insensitive
@@ -262,6 +277,33 @@ def register() -> bool:
             "[auth] ⚠️  pk_live key but NOT satellite mode — set "
             f"CLERK_SATELLITE_DOMAIN={SATELLITE_HOST} (and CLERK_IS_SATELLITE=true) "
             "or ClerkJS will fail with 'satellite needs a domain'."
+        )
+    sat_redirect = (os.getenv("CLERK_SATELLITE_SIGN_IN_REDIRECT") or "").strip()
+    if is_satellite and not sat_redirect:
+        # The one Clerk misconfiguration with NO error on either side: the
+        # user signs in successfully and is simply left on the primary. It
+        # shipped that way here for weeks because nothing said so. Now
+        # something does.
+        print(
+            "[auth] ⚠️  Satellite mode with CLERK_SATELLITE_SIGN_IN_REDIRECT "
+            "unset — sign-in will hop to the Clerk Account Portal instead of "
+            "the hub, and users may not be returned to this site at all. "
+            "Set it to https://2plot.ai/onboarding (see render.yaml)."
+        )
+    elif is_satellite and not sat_redirect.startswith(("http://", "https://")):
+        # It is a URL, not a flag, and the package does not reject a bad one:
+        # it logs a warning and uses the value anyway. `buildSatelliteRedirect`
+        # concatenates `<value>?returnTo=<here>`, so a non-absolute value is
+        # resolved against THIS host — CLERK_SATELLITE_SIGN_IN_REDIRECT=true
+        # sends the Sign In button to https://<this host>/true?returnTo=...,
+        # which is strictly worse than leaving it unset. The package's own
+        # warning goes to `logger`, several screens up in the boot output;
+        # this one prints where the rest of the [auth] diagnostics are.
+        print(
+            f"[auth] ⚠️  CLERK_SATELLITE_SIGN_IN_REDIRECT={sat_redirect!r} is not "
+            "an absolute http(s) URL. It is a DESTINATION, not a flag — the "
+            "Sign In button will navigate to a path on THIS host and 404. "
+            "Set it to https://2plot.ai/onboarding."
         )
 
     if is_satellite and sat_domain:

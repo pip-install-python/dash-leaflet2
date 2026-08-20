@@ -147,6 +147,7 @@ is logged.
 | `CLERK_SATELLITE_SIGN_IN_REDIRECT` | (unset) | Optional, dash-clerk-auth ≥ 0.9.2. Absolute URL on the **primary** that Sign In navigates to, with this page in `?returnTo=`. Read by the package itself. Unset, sign-in falls back to `Clerk.redirectToSignIn()` forcing this page as the return — what this site ships today. Only set it once `2plot.ai` honours `?returnTo=`. |
 | `SESSION_SECRET` | (generated) | Signs the session + `__dca_identity` cookies. Without it dash-clerk-auth uses a **public dev default**. |
 | `ADMIN_EMAILS` | `a@b.com,c@d.com` | Allowlist for `/admin/control-board`. `OWNER_EMAIL` always counts. |
+| `CLERK_SATELLITE_SIGN_IN_REDIRECT` | — | **Required in production.** `https://2plot.ai/onboarding`. Unset, sign-in reaches the primary and never returns — see the next section. |
 | `DISABLE_CLERK` | `1` | Dev kill switch — reads as "intentionally off" without touching the keys. Never set in production. |
 | `ALLOW_UNGATED_ADMIN` | `1` | Lets `/admin/control-board` render without Clerk. **Never set in production.** |
 
@@ -182,6 +183,81 @@ instance and cannot host satellites):
 
 All five are already literals in `render.yaml`; only `CLERK_SECRET_KEY` and
 `CLERK_PUBLISHABLE_KEY` need entering in the dashboard.
+
+### The sign-in return trip — the failure with no error
+
+**Symptom:** the visitor clicks Sign In, authenticates successfully on the
+primary, and is left there. Nothing is logged on either host, no console error,
+no failed request. Observed live on this service 2026-08-20.
+
+**Cause:** `CLERK_SATELLITE_SIGN_IN_REDIRECT` unset. There are two paths, and
+only one of them belongs to this network:
+
+| | Set to `https://2plot.ai/onboarding` | Unset (the fallback) |
+|---|---|---|
+| Where the button goes | `2plot.ai/onboarding?returnTo=<this page>` | `CLERK_SIGN_IN_URL` → `accounts.2plot.ai`, Clerk's **hosted** Account Portal |
+| Who validates the return | 2plot.ai's own Dash app, against `lib.auth.allowed_redirect_origins()` | Clerk's dashboard allowed-redirect list |
+| Sign-up button | `&mode=signup` opens the sign-**up** modal | no equivalent |
+| When it breaks | the hub's whitelist rejects the origin — visible in that repo | ClerkJS silently drops `signInForceRedirectUrl` and uses the portal default |
+
+The fallback is why this is so quiet: the hub's Dash app is **never in the
+loop**, so none of its `returnTo` machinery — the whitelist check, the
+force-redirect, the auto-open — ever executes. `accounts.2plot.ai` is Clerk's
+property, not ours.
+
+**It is a destination, not a flag.** The value must be an absolute `http(s)`
+URL, because `buildSatelliteRedirect()` builds `<value>?returnTo=<here>` by
+concatenation. A truthy non-URL is the worst of the three states:
+
+| Value | Where the Sign In button goes |
+|---|---|
+| `https://2plot.ai/onboarding` | `https://2plot.ai/onboarding?returnTo=…` — correct |
+| *(unset)* | Clerk Account Portal — the stranding above |
+| `true`, or a bare `2plot.ai/onboarding` | `https://leaflet.2plot.dev/true?returnTo=…` — resolved against **this** host, 404, sign-in impossible |
+
+`dash-clerk-auth` does not reject a bad value: it emits one `logger.warning`
+and uses it regardless. `lib/auth.py` therefore prints its own `[auth] ⚠️`
+line for both mistakes, alongside the rest of the boot diagnostics.
+
+`dash-clerk-auth` reads the variable from the environment itself, so
+`lib/auth.py` does not pass it through; setting it on the service is the whole
+fix. `lib/auth.py` now **warns at boot** whenever satellite mode is on and this
+is unset, because the original note here said to set it "once 2plot.ai has a
+page that honours `?returnTo=`" — 2plot.ai gained that page, and nobody came
+back.
+
+**The other half to check when this misbehaves** lives in the *2plotai* repo,
+not here: `allowed_redirect_origins()` is env-first, so if
+`CLERK_ALLOWED_REDIRECT_ORIGINS` is set on the hub's service it **replaces** the
+built-in list rather than extending it. `https://leaflet.2plot.dev` is in the
+built-in default; confirm it survived any override.
+
+### Blueprint vs dashboard drift
+
+`render.yaml` declares the contract; Render applies `envVars` on a **blueprint
+sync**, not on an autoDeploy from a git push. So the two drift, silently, and
+the code cannot tell. As measured on 2026-08-20 the live service was missing:
+
+| Missing on the service | Consequence |
+|---|---|
+| `CLERK_SATELLITE_SIGN_IN_REDIRECT` | The sign-in return trip above. **Fix this one first.** |
+| `PAGE_VISIBILITY_FILE` | Control-board overrides land on the container filesystem instead of `/var/data`, so every toggle resets on the next deploy. |
+| `AD_SERVER_URL` | The ad slot never renders (the client's circuit breaker just keeps it hidden). |
+| `ANALYTICS_GEO_LOOKUP` | Re-enables the per-visit ip-api.com lookup that Cloudflare's country header already answers. |
+| `PAGE_DEFAULT_TIER` | Harmless today — `PAGE_DEFAULT_VISIBILITY` is set and is an accepted alias — but the gate's flip lever should be the canonical name. |
+| `LLMS_SMALL_TIER` / `LLMS_FULL_TIER` | Harmless (`run.py` defaults both to `public` explicitly), but the knob is invisible on the dashboard. |
+| `WEB_CONCURRENCY` | gunicorn falls back to its own worker default. |
+
+And carrying two variables **nothing reads any more** — Gen-1 leftovers retired
+with the single-module tracker; delete them so the dashboard stops implying
+they do something:
+
+- `SATELLITE_ANALYTICS_DRY_RUN`
+- `SATELLITE_APP_ID` (the trio reads `SATELLITE_APP_KEY`)
+
+`PYTHONUNBUFFERED` belongs in the **Dockerfile**, not the dashboard — it is set
+there already (`ENV PYTHONUNBUFFERED=1`), which is why it is correctly absent
+from the service's variable list.
 
 ### Registering the satellite on the primary — two separate lists
 
@@ -429,8 +505,10 @@ offline. The hub verifies the Clerk token against Clerk's JWKS and pins
    the environment table.
 2. `GET /llms.txt`, `/robots.txt`, `/sitemap.xml` all 200, and the sitemap URLs
    use `leaflet.2plot.dev` (i.e. `APP_BASE_URL` is set correctly).
-3. Sign in from the site — you should bounce to 2plot.ai and land **back here**,
-   not on the primary's home page.
+3. Sign in from the site — you should bounce to **`2plot.ai/onboarding`** (not
+   `accounts.2plot.ai`) and land **back here**, not on the primary's home page.
+   Landing on the primary means `CLERK_SATELLITE_SIGN_IN_REDIRECT` is unset;
+   the boot log warns about it, and "The sign-in return trip" above is the fix.
 4. `/admin/control-board` shows the page table with **no** dev-mode banner.
 4b. The gate's boot line reads `access wiring ON` (see "Shipping dark, then
    flipping"). With `PAGE_DEFAULT_TIER=public` that is the dark launch:

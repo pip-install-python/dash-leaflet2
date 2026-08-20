@@ -278,7 +278,8 @@ def register() -> bool:
             f"CLERK_SATELLITE_DOMAIN={SATELLITE_HOST} (and CLERK_IS_SATELLITE=true) "
             "or ClerkJS will fail with 'satellite needs a domain'."
         )
-    if is_satellite and not (os.getenv("CLERK_SATELLITE_SIGN_IN_REDIRECT") or "").strip():
+    sat_redirect = (os.getenv("CLERK_SATELLITE_SIGN_IN_REDIRECT") or "").strip()
+    if is_satellite and not sat_redirect:
         # The one Clerk misconfiguration with NO error on either side: the
         # user signs in successfully and is simply left on the primary. It
         # shipped that way here for weeks because nothing said so. Now
@@ -288,6 +289,21 @@ def register() -> bool:
             "unset — sign-in will hop to the Clerk Account Portal instead of "
             "the hub, and users may not be returned to this site at all. "
             "Set it to https://2plot.ai/onboarding (see render.yaml)."
+        )
+    elif is_satellite and not sat_redirect.startswith(("http://", "https://")):
+        # It is a URL, not a flag, and the package does not reject a bad one:
+        # it logs a warning and uses the value anyway. `buildSatelliteRedirect`
+        # concatenates `<value>?returnTo=<here>`, so a non-absolute value is
+        # resolved against THIS host — CLERK_SATELLITE_SIGN_IN_REDIRECT=true
+        # sends the Sign In button to https://<this host>/true?returnTo=...,
+        # which is strictly worse than leaving it unset. The package's own
+        # warning goes to `logger`, several screens up in the boot output;
+        # this one prints where the rest of the [auth] diagnostics are.
+        print(
+            f"[auth] ⚠️  CLERK_SATELLITE_SIGN_IN_REDIRECT={sat_redirect!r} is not "
+            "an absolute http(s) URL. It is a DESTINATION, not a flag — the "
+            "Sign In button will navigate to a path on THIS host and 404. "
+            "Set it to https://2plot.ai/onboarding."
         )
 
     if is_satellite and sat_domain:

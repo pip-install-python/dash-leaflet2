@@ -205,6 +205,20 @@ loop**, so none of its `returnTo` machinery — the whitelist check, the
 force-redirect, the auto-open — ever executes. `accounts.2plot.ai` is Clerk's
 property, not ours.
 
+**It is a destination, not a flag.** The value must be an absolute `http(s)`
+URL, because `buildSatelliteRedirect()` builds `<value>?returnTo=<here>` by
+concatenation. A truthy non-URL is the worst of the three states:
+
+| Value | Where the Sign In button goes |
+|---|---|
+| `https://2plot.ai/onboarding` | `https://2plot.ai/onboarding?returnTo=…` — correct |
+| *(unset)* | Clerk Account Portal — the stranding above |
+| `true`, or a bare `2plot.ai/onboarding` | `https://leaflet.2plot.dev/true?returnTo=…` — resolved against **this** host, 404, sign-in impossible |
+
+`dash-clerk-auth` does not reject a bad value: it emits one `logger.warning`
+and uses it regardless. `lib/auth.py` therefore prints its own `[auth] ⚠️`
+line for both mistakes, alongside the rest of the boot diagnostics.
+
 `dash-clerk-auth` reads the variable from the environment itself, so
 `lib/auth.py` does not pass it through; setting it on the service is the whole
 fix. `lib/auth.py` now **warns at boot** whenever satellite mode is on and this

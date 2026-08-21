@@ -26,7 +26,11 @@ dash[fastapi]==4.4.1  # COMPAT-MATRIX: dash
 # --- Docs shell ------------------------------------------------------------
 # NOTE: python-frontmatter 1.3+ imports typing.TypeGuard, so running the docs
 # site needs Python >= 3.10. The dash_leaflet2 PACKAGE needs only >= 3.9.
-dash_mantine_components==2.7.0
+# 2.8.0, matching the boilerplate (>=2.8.0): the network-standard mobile
+# drawer docks below the header via styles.inner — on 2.7.0 the identical
+# props render a floating card instead (owner-observed 2026-08-22; the two
+# hosts served pixel-different drawers from byte-identical layout JSON).
+dash_mantine_components==2.8.0
 dash-iconify==0.1.2
 # markdown2dash 0.1.2 declares `gunicorn>=21.2.0,<22.0.0` — a markdown parser
 # pinning a WSGI server, and directly against the CVE-driven gunicorn>=23 floor

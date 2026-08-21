@@ -23,7 +23,7 @@ ENV PYTHONUNBUFFERED=1 \
 WORKDIR /app
 
 # Install Python deps first so this layer is cached across app-code changes.
-# vendor/ must come along: requirements.txt installs dash-clerk-auth 1.0.3 from
+# vendor/ must come along: requirements.txt installs dash-clerk-auth 1.0.4 from
 # a local tarball there (it is vendored across the 2plot network, not on PyPI).
 # dash-emoji-mart and flexlayout-dash used to live here too and now come from
 # PyPI, so this is down to the single Clerk tarball.

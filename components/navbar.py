@@ -224,16 +224,82 @@ def create_navbar(data):
     )
 
 
+def create_mobile_content(data):
+    """Drawer body: a sticky search field above the scrolling nav sections.
+
+    The header's search Select is hidden on phones, so the drawer otherwise
+    has no way to jump straight to a page. Ported from the boilerplate's
+    mobile navigation (the network's reference drawer).
+    """
+    return dmc.Stack(
+        [
+            dmc.Box(
+                dmc.Select(
+                    id="mobile-select-component",
+                    placeholder="Search pages...",
+                    searchable=True,
+                    clearable=True,
+                    size="md",
+                    nothingFoundMessage="No pages found",
+                    leftSection=DashIconify(icon="mingcute:search-3-line",
+                                            width=18),
+                    data=[
+                        {"label": component["name"], "value": component["path"]}
+                        for component in data
+                        if component["name"] not in ["Home", "Not found 404"]
+                    ],
+                    comboboxProps={"zIndex": 2000},
+                ),
+                p="md",
+                pb="xs",
+            ),
+            dmc.Divider(),
+            # flex/minHeight give the ScrollArea a definite box to scroll in.
+            dmc.Box(create_content(data, loc="drawer"),
+                    style={"flex": 1, "minHeight": 0}),
+        ],
+        gap=0,
+        className="mobile-nav",
+        style={"height": "100%"},
+    )
+
+
 def create_navbar_drawer(data):
+    """Mobile navigation: a solid, full-height side panel.
+
+    Runs from the bottom of the fixed header to the bottom of the viewport —
+    no floating card, no close-button header row. The hamburger toggles it
+    and the header stays visible (and tappable) above the overlay. This is
+    the boilerplate's drawer — the network's reference mobile navigation.
+    """
+    from lib.constants import HEADER_HEIGHT
+
     return dmc.Drawer(
         id="components-navbar-drawer",
         overlayProps={"opacity": 0.55, "blur": 3},
         zIndex=1500,
-        offset=8,
-        radius="md",
-        withCloseButton=True,
-        size="280px",
-        children=create_content(data, loc="drawer"),
+        withCloseButton=False,  # removes the whole Drawer header row
+        size="300px",
+        padding=0,
+        children=create_mobile_content(data),
         trapFocus=False,
         position="left",
+        styles={
+            # Dock below the fixed header. dvh (not vh) so a collapsing
+            # mobile URL bar doesn't leave a dead gap at the bottom.
+            "inner": {
+                "top": HEADER_HEIGHT,
+                "height": f"calc(100dvh - {HEADER_HEIGHT}px)",
+            },
+            # Overlay starts below the header too — hamburger stays tappable.
+            "overlay": {"top": HEADER_HEIGHT},
+            # Solid panel: fill the inner, square corners.
+            "content": {
+                "height": "100%",
+                "maxHeight": "100%",
+                "borderRadius": 0,
+                "display": "flex",
+                "flexDirection": "column",
+            },
+        },
     )

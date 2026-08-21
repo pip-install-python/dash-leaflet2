@@ -401,13 +401,20 @@ def _install_satellite_signin_delegation() -> None:
 def _install_signout_delegation() -> None:
     """Make Sign Out actually revoke the SERVER's idea of who you are.
 
-    FIXED UPSTREAM IN 1.0.3 — this shim is now a deliberate duplicate, kept
-    for one release and retiring in 1.0.4. The package's POST is idempotent
+    FIXED UPSTREAM IN 1.0.3 — this shim is a deliberate duplicate. It said it
+    would retire at 1.0.4 and is NOT retiring there, on purpose: 1.0.4's
+    acceptance test *is* sign-out behaviour (sign out on the primary, load
+    this site fresh, expect one auto-reload and re-gated pages), and removing
+    the local handler in the same change would make a failure ambiguous
+    between "1.0.4 does not work" and "the shim was load-bearing". Retire it
+    in the pass AFTER that test passes.
+
+    Keeping it is cheap and cannot collide. The package's POST is idempotent
     (its changelog says so explicitly, so an app may keep its own handler
-    through the upgrade), and both handlers cannot both run on one click
-    anyway: this delegate takes the capture phase and calls
-    ``stopImmediatePropagation``. Retiring it early would be the riskier
-    move, because it is what actually shipped the fix to this host.
+    through the upgrade); both handlers cannot run on one click, because this
+    delegate takes the capture phase and calls ``stopImmediatePropagation``;
+    and 1.0.4's addition is a *load-time* reconciliation, not a click handler,
+    so it is not in this path at all.
 
     The defect, for the record. dash-clerk-auth 1.0.2's logout handler ran
     ``window.Clerk.signOut()`` and reloaded — client-side only. The server keeps trusting the signed
@@ -429,10 +436,15 @@ def _install_signout_delegation() -> None:
 
     1.0.3 sequences exactly this upstream — Clerk sign-out, then the revoke
     POST, then the reload, awaited — and additionally fires the POST on a
-    signed-in -> signed-out transition, which covers a sign-out performed in
-    another tab or on another host of the same Clerk instance. That last
-    part this shim does NOT do, which is the second reason to keep the
-    package's handler rather than replace it.
+    signed-in -> signed-out transition. 1.0.4 goes further and covers the case
+    neither this shim nor that transition check can see: a browser that signed
+    out on ANOTHER host and then navigated here never observed a signed-in
+    state in this tab, so on load the package now compares ClerkJS's verdict
+    against the ``clerk-signed-in`` class the server stamped on ``<html>`` and
+    revokes when they disagree. That is the ghost which served this site's
+    admin control board to a signed-out browser, and no local handler could
+    have caught it — the second reason to keep the package's handler rather
+    than replace it.
     """
     from dash import hooks as _dash_hooks
 

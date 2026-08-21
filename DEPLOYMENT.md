@@ -151,7 +151,7 @@ is logged.
 | `DISABLE_CLERK` | `1` | Dev kill switch — reads as "intentionally off" without touching the keys. Never set in production. |
 | `ALLOW_UNGATED_ADMIN` | `1` | Lets `/admin/control-board` render without Clerk. **Never set in production.** |
 
-> **`dash-clerk-auth` is not a dependency of this project.** The 1.0.3 build is
+> **`dash-clerk-auth` is not a dependency of this project.** The 1.0.4 build is
 > not resolved from PyPI — it is vendored across the 2plot network — so a stock
 > deploy has **no Clerk at all** and `clerk_enabled()` is `False` however many
 > `CLERK_*` variables you set.
@@ -161,7 +161,7 @@ is logged.
 > it returns a 404-style response and its save callback refuses writes, rather
 > than handing an open admin panel to anyone who guesses the URL.
 >
-> **Clerk is enabled** — `vendor/dash_clerk_auth-1.0.3.tar.gz` is committed and
+> **Clerk is enabled** — `vendor/dash_clerk_auth-1.0.4.tar.gz` is committed and
 > active in `requirements.txt`. One operational risk to know before debugging a
 > dead site: the package registers a `[dash_hooks]` entry point that Dash
 > auto-imports at **every** `Dash()` construction, so it sits in the boot path

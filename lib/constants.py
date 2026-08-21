@@ -2,6 +2,10 @@ import os
 
 PRIMARY_COLOR = "green"
 
+# The fixed AppShell header height (components/appshell.py header={"height"}).
+# The mobile drawer docks beneath it — one number, two files, keep in sync.
+HEADER_HEIGHT = 70
+
 # Keep in step with pyproject.toml and package.json when cutting a release.
 APP_VERSION = "0.2.2"
 LEAFLET_VERSION = "2.0.0-alpha.1"

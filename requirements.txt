@@ -125,9 +125,37 @@ flexlayout-dash>=1.1.0
 # and redeploy; /admin/control-board fails CLOSED without Clerk, so nothing is
 # left exposed by doing so.
 #
-# 1.0.4 — a SECURITY floor, and the one that closes the defect this site's own
-# certification caught: a satellite served its ADMIN CONTROL BOARD to a browser
-# that had already signed out on the primary.
+# 1.0.5 — the last of the three stale-gate cases, and the one on the happiest
+# path in the funnel: sign in from this satellite, get sent to the primary,
+# come back to the auth-gated page you started on — and the sign-in card is
+# still there until you refresh by hand.
+#
+# The first server render after the return happens BEFORE `__dca_identity`
+# exists: the cookie is minted only once ClerkJS completes the handshake and
+# the session reaches the server. So the layout resolves anonymous — correctly,
+# at that instant — and nothing re-renders when the client finishes a second
+# later. It fails SAFE (over-gating, never a leak), which is exactly why it
+# survived three releases of sign-out work: nothing leaked, so nothing
+# screamed. It was the owner's live report on this host that found it.
+#
+# 1.0.5 reads the same root-class signal 1.0.4 reads, in the other direction:
+# ClerkJS signed-in while the server rendered signed-out means call
+# `Clerk.session.getToken()`, POST it to `/api/auth/session` (the identity
+# writer that already existed), and reload on a confirmed 200. Same discipline
+# as 1.0.4 — fires once per load, waits for a usable token rather than firing
+# mid-handshake, and reloads ONLY on success, because reloading after a
+# rejected sync rebuilds the same anonymous page and spins.
+#
+# Both reconciliations now share a `sessionStorage` marker, because the
+# in-page fire-once flags die with the load: if the server reports success and
+# then still renders the previous state, the reload lands back at the same fork
+# and loops. The marker outlives the reload and clears as soon as server and
+# client agree. That closes a loop 1.0.4 could reach in principle, not just the
+# new path.
+#
+# 1.0.4 was the mirror case, and the one this site's certification caught: a
+# satellite served its ADMIN CONTROL BOARD to a browser that had already
+# signed out on the primary.
 #
 # 1.0.3 revoked the server session on a signed-in -> signed-out TRANSITION, but
 # that requires the tab to have observed the signed-in state first. A browser
@@ -149,7 +177,13 @@ flexlayout-dash>=1.1.0
 # is silent: the injected script never inspects the result, so sign-out simply
 # stops revoking server-side.
 #
-# THE SHIM STAYS ONE MORE RELEASE. lib/auth.py's `_install_signout_delegation`
+# THE SHIM IS STILL HERE, and 1.0.5 is why it was right to keep it: the 1.0.4
+# acceptance test never got a clean pass, because the return-trip stale gate
+# above interrupted it. Retiring the local handler into that would have made a
+# three-way ambiguity out of a two-way one. Retire it once a sign-out AND a
+# return trip both pass on one deploy.
+#
+# lib.auth's `_install_signout_delegation`
 # was written expecting to retire here, and deliberately does not: 1.0.4's
 # acceptance test IS sign-out behaviour, and removing the local handler in the
 # same change would make a failure ambiguous between "1.0.4 does not work" and
@@ -170,10 +204,12 @@ flexlayout-dash>=1.1.0
 # construction, so on this repo's CI matrix (3.10/3.12/3.13) that would have
 # taken the whole documentation site down, not just sign-in.
 #
-# VENDORED ARTIFACT — verify the hash, never the filename or the mtime. There
-# was a stale first build of 1.0.4 (sha256 22117b20...) that must be rejected:
+# VENDORED ARTIFACT — verify the hash, never the filename or the mtime. This
+# has now caught a stale build twice: an early 1.0.4 (sha256 22117b20...) and
+# an early 1.0.5 that went stale on sdist doc edits. Both are indistinguishable
+# from the good build by name, size at a glance, or date:
 #
-#   sha256  7a7c333af8da4739e944e3260f332a7f1a70dc3c4fd93ae9f10a197f14cf701a
+#   sha256  a2f9062e15a69fc79deeaf76fcf1380907a961978db558b2aa227572cb2b74f3
 #           — byte-identical to the authoring repo's dist, and this is the hash
 #             of the blob committed here, not just of the working file.
 #
@@ -218,7 +254,7 @@ flexlayout-dash>=1.1.0
 # Still not on PyPI — vendored the same way across every 2plot satellite, so
 # the tarball is the distribution channel.
 #   Used by: lib/auth.py, components/header.py, /admin/control-board
-./vendor/dash_clerk_auth-1.0.4.tar.gz
+./vendor/dash_clerk_auth-1.0.5.tar.gz
 # SECURITY FLOOR, and the reason dash-clerk-auth had to move first. This pin
 # is what `pip-audit` resolves; the vendored tarball's own cap is what gates
 # it. clerk-backend-api 5.x declares `cryptography>=45.0.0,<47.0.0`, holding

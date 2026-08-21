@@ -402,12 +402,15 @@ def _install_signout_delegation() -> None:
     """Make Sign Out actually revoke the SERVER's idea of who you are.
 
     FIXED UPSTREAM IN 1.0.3 — this shim is a deliberate duplicate. It said it
-    would retire at 1.0.4 and is NOT retiring there, on purpose: 1.0.4's
-    acceptance test *is* sign-out behaviour (sign out on the primary, load
-    this site fresh, expect one auto-reload and re-gated pages), and removing
-    the local handler in the same change would make a failure ambiguous
-    between "1.0.4 does not work" and "the shim was load-bearing". Retire it
-    in the pass AFTER that test passes.
+    would retire at 1.0.4 and has not, through 1.0.5, on purpose. The
+    acceptance test for each of these releases *is* auth-flow behaviour, and
+    removing the local handler inside one would make a failure ambiguous
+    between "the release does not work" and "the shim was load-bearing".
+
+    1.0.4's test never got a clean pass — the return-trip stale gate 1.0.5
+    fixes interrupted it — so the ambiguity would have been three-way, not
+    two. Retire this once a sign-out AND a return trip both pass on one
+    deploy.
 
     Keeping it is cheap and cannot collide. The package's POST is idempotent
     (its changelog says so explicitly, so an app may keep its own handler
@@ -436,7 +439,7 @@ def _install_signout_delegation() -> None:
 
     1.0.3 sequences exactly this upstream — Clerk sign-out, then the revoke
     POST, then the reload, awaited — and additionally fires the POST on a
-    signed-in -> signed-out transition. 1.0.4 goes further and covers the case
+    signed-in -> signed-out transition. 1.0.4 covers the case
     neither this shim nor that transition check can see: a browser that signed
     out on ANOTHER host and then navigated here never observed a signed-in
     state in this tab, so on load the package now compares ClerkJS's verdict
@@ -444,7 +447,10 @@ def _install_signout_delegation() -> None:
     revokes when they disagree. That is the ghost which served this site's
     admin control board to a signed-out browser, and no local handler could
     have caught it — the second reason to keep the package's handler rather
-    than replace it.
+    than replace it. 1.0.5 completes the set by reconciling the OTHER
+    direction (ClerkJS signed-in, server rendered signed-out), which is the
+    return trip from a satellite sign-in; nothing here participates in that
+    path either.
     """
     from dash import hooks as _dash_hooks
 

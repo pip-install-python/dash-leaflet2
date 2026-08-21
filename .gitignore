@@ -28,6 +28,12 @@ dash_leaflet2/metadata.json
 # Runtime state written by the app.
 # page_visibility.json — control-board overrides, per-deployment
 # visitor_analytics.json — the 2plot.ai analytics ledger (plus its .lock/.tmp
+
+# Flask-Session's server-side session store. dash-clerk-auth creates it in
+# the CWD the moment Clerk is configured, so any local run WITH the CLERK_*
+# keys drops session blobs into the repo — and `git add -A` will happily
+# commit somebody's session token. Never tracked.
+flask_session/
 #   siblings and the reporter's lease file). Committing it would publish
 #   visitor IPs and user agents.
 # satellite_traffic.jsonl — the RETIRED Gen-1 ledger; kept ignored so a stale

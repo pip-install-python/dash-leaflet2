@@ -265,6 +265,24 @@ def register() -> bool:
         satellite_domain=sat_domain,
         clerk_frontend_api=(os.getenv("CLERK_FRONTEND_API") or None),
         sign_up_url=(os.getenv("CLERK_SIGN_UP_URL") or None),
+        # THE REPLAY WINDOW, stated rather than inherited. dash-clerk-auth
+        # 1.0.3 made this an explicit re-vendor decision, because it is the
+        # only knob an application controls here: `__dca_identity` is a
+        # STATELESS signed token, so a value captured before sign-out keeps
+        # verifying until its max-age expires — the server holds no
+        # revocation list, and closing that would mean giving up the fast
+        # path the cookie exists to provide.
+        #
+        # 7 (the package default) is the choice for THIS host. What it gates
+        # is documentation: a captured cookie buys read access to pages a
+        # free account also unlocks, and the gate exists to drive account
+        # creation, so re-authenticating readers every day would tax the
+        # funnel for almost nothing. Shortening it is the whole mitigation
+        # if that calculus changes — and the one thing that would change it
+        # is /admin/control-board, which trusts the identity in this cookie
+        # and can hide or unhide any page on the site. If an admin account
+        # is ever used from a shared machine, drop this well below a week.
+        session_lifetime_days=7,
     )
 
     if not os.getenv("SESSION_SECRET"):
@@ -383,8 +401,16 @@ def _install_satellite_signin_delegation() -> None:
 def _install_signout_delegation() -> None:
     """Make Sign Out actually revoke the SERVER's idea of who you are.
 
-    dash-clerk-auth 1.0.2's logout handler runs ``window.Clerk.signOut()``
-    and reloads — client-side only. The server keeps trusting the signed
+    FIXED UPSTREAM IN 1.0.3 — this shim is now a deliberate duplicate, kept
+    for one release and retiring in 1.0.4. The package's POST is idempotent
+    (its changelog says so explicitly, so an app may keep its own handler
+    through the upgrade), and both handlers cannot both run on one click
+    anyway: this delegate takes the capture phase and calls
+    ``stopImmediatePropagation``. Retiring it early would be the riskier
+    move, because it is what actually shipped the fix to this host.
+
+    The defect, for the record. dash-clerk-auth 1.0.2's logout handler ran
+    ``window.Clerk.signOut()`` and reloaded — client-side only. The server keeps trusting the signed
     ``__dca_identity`` cookie (and the Flask session) it minted at sign-in
     for the rest of ``session_lifetime_days`` (default **7 days**): a
     signed-out browser still renders every auth-gated page — the pilot's
@@ -401,10 +427,12 @@ def _install_signout_delegation() -> None:
     a reload, and the server POST runs even when ClerkJS never loaded —
     which is exactly the stale-ghost case that needs it most.
 
-    The upstream fix is specced for dash-clerk-auth 1.0.3 (boilerplate's
-    kickoff/fleet/KICKOFF-clerk-avatar-release.md). Once the package
-    sequences this itself, this delegate degrades to a harmless duplicate
-    POST and can be retired a release later.
+    1.0.3 sequences exactly this upstream — Clerk sign-out, then the revoke
+    POST, then the reload, awaited — and additionally fires the POST on a
+    signed-in -> signed-out transition, which covers a sign-out performed in
+    another tab or on another host of the same Clerk instance. That last
+    part this shim does NOT do, which is the second reason to keep the
+    package's handler rather than replace it.
     """
     from dash import hooks as _dash_hooks
 

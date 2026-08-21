@@ -141,12 +141,40 @@ def create_header(data):
                                     ),
                                     dmc.Stack(
                                         [
+                                            # The wordmark is 13 characters at
+                                            # size lg/700, which is wide enough
+                                            # on a phone to push the right-hand
+                                            # group (GitHub, theme, the 44px
+                                            # avatar) into a second row. Below
+                                            # xs it gives way to the map glyph.
+                                            #
+                                            # visibleFrom is CSS, not a
+                                            # conditional render, and it has to
+                                            # stay that way: this id is read by
+                                            # assets/text_animation.js and is
+                                            # the dummy Output of the
+                                            # colour-scheme bridge callback
+                                            # below. Dropping the node would
+                                            # break the CARTO tile swap on
+                                            # phones and leave that callback
+                                            # pointing at nothing.
                                             dmc.Text(
                                                 "dash-leaflet2",
                                                 size="lg",
                                                 fw=700,
                                                 c="green",
                                                 id="dash-docs-title",
+                                                visibleFrom="xs",
+                                            ),
+                                            dmc.Text(
+                                                "🗺️",
+                                                size="lg",
+                                                hiddenFrom="xs",
+                                                # Decorative: the Anchor's
+                                                # aria-label carries the name,
+                                                # so this is not announced as
+                                                # "world map".
+                                                **{"aria-hidden": "true"},
                                             ),
                                             dmc.Text(
                                                 f"Leaflet {LEAFLET_VERSION}",
@@ -164,6 +192,11 @@ def create_header(data):
                             ),
                             href="/",
                             underline=False,
+                            # Without this the link's accessible name changes
+                            # with the viewport: `display: none` text is not
+                            # exposed, so below xs the name would collapse to
+                            # the emoji alone.
+                            **{"aria-label": "dash-leaflet2 — home"},
                         ),
                     ],
                     gap="md",

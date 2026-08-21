@@ -136,10 +136,28 @@ flexlayout-dash>=1.1.0
 #
 # The 1.0.3 build here is the one carrying the follow-up import fix: the avatar
 # helper inlined `quote(svg, safe="/:='? ")` inside an f-string, which is PEP
-# 701 syntax and a hard SyntaxError on 3.10/3.11 — an IMPORT failure, so it
-# would have taken the whole docs site down on this repo's own CI matrix, not
-# just sign-in. Verified by source inspection of the vendored tarball
-# (`encoded` is hoisted out of the f-string).
+# 701 syntax and a hard SyntaxError on 3.10/3.11. That is an IMPORT failure,
+# and the package declares a `[dash_hooks]` entry point Dash resolves at every
+# `Dash()` construction — so it would have taken the whole documentation site
+# down on this repo's own CI matrix (3.10/3.12/3.13), not just sign-in.
+#
+# This exact artifact is confirmed good, three ways rather than by timestamp
+# (the tarball's mtime is 23s BEFORE the fix commit, because the sequence was
+# build-then-commit — alarming to read, and not a problem):
+#
+#   sha256  2c6b40f4620afdc016580d75c01b7f7f6760f030b61d1d827c498bcb01da1944
+#           — byte-identical to the authoring repo's dist, and this is the
+#             hash of the blob committed here, not just the working file.
+#   source  `encoded` is hoisted out of the f-string.
+#   runtime the authoring repo compiled AND executed it under a real 3.11
+#           (`compileall -f` over every module, plus calling the avatar helper
+#           in isolation): output byte-identical to 3.12, so the fix is
+#           behaviourally neutral across versions, not merely parseable.
+#
+# Re-vendoring from the authoring repo's `main` is NOT yet safe: as of
+# 2026-08-21 the broken build is what main holds, and the import fix is still
+# waiting on a PR to land before v1.0.3 is tagged. Take the dist artifact whose
+# hash matches above, or wait for the tag.
 #
 # NOT changed on this bump, and a deliberate decision each application owns:
 # `session_lifetime_days` stays at 7 (lib/auth.py passes it explicitly now, so

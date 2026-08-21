@@ -85,7 +85,7 @@ def test_persistence_warning_fires_only_when_the_env_is_unset(
     """The reset-on-redeploy class must be LOUD, and quiet when fixed.
 
     The store path env rode render.yaml without reaching the live
-    service twice (stage-3 env diff; owner re-observed 2026-08-22) —
+    service twice (stage-3 env diff; owner re-observed 2026-08-21) —
     this boot line is the acceptance check that it landed.
     """
     monkeypatch.delenv("PAGE_VISIBILITY_FILE", raising=False)
@@ -105,7 +105,7 @@ def test_persistence_warning_fires_when_var_data_is_not_a_mount(
 
     An app can mkdir /var/data on the container filesystem and behave
     identically until the next deploy wipes it (the owner's observed
-    resets on 2026-08-22, WITH the env var present).
+    resets on 2026-08-21, WITH the env var present).
     """
     monkeypatch.setenv(
         "PAGE_VISIBILITY_FILE", "/var/data/page_visibility.json")

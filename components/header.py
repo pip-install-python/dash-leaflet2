@@ -48,7 +48,7 @@ def create_link(icon, href, label):
     """External icon link. ``label`` is REQUIRED: an icon-only link has no
     accessible name — screen readers announce "link" and AI agents can't
     tell what it does (the Lighthouse/Agentic-Browsing failure measured on
-    this host, 2026-08-22)."""
+    this host, 2026-08-21)."""
     return dmc.Anchor(
         dmc.ActionIcon(
             DashIconify(icon=icon, width=22),

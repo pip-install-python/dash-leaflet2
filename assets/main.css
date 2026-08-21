@@ -202,7 +202,7 @@ input:invalid {
     }
 }
 
-/* REMOVED (2026-08-22): a `.m_b8a05bbd { margin-top: 80px !important;
+/* REMOVED (2026-08-21): a `.m_b8a05bbd { margin-top: 80px !important;
    height: 63vh !important }` rule lived here — a Mantine INTERNAL hashed
    class (the Drawer content) pinned to fake the old floating-card drawer.
    With !important it silently overrode the network-standard full-height

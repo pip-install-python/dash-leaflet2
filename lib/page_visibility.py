@@ -135,7 +135,7 @@ def _persistence_warning() -> None:
     Blueprint env row reaches the live service only on a sync — the exact
     drift that had every control-board toggle silently resetting on every
     redeploy (stage-3 env diff found the var absent; owner re-observed the
-    resets 2026-08-22). With the variable unset, ``_STORE_PATH`` falls back
+    resets 2026-08-21). With the variable unset, ``_STORE_PATH`` falls back
     to ``page_visibility.json`` in the app directory, which a Docker deploy
     replaces wholesale. The absence of this line in a deploy log is the
     acceptance check that the variable actually landed on the service.

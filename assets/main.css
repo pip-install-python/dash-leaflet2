@@ -202,10 +202,14 @@ input:invalid {
     }
 }
 
-.m_b8a05bbd {
-    margin-top: 80px !important;
-    height: 63vh !important;
-}
+/* REMOVED (2026-08-22): a `.m_b8a05bbd { margin-top: 80px !important;
+   height: 63vh !important }` rule lived here — a Mantine INTERNAL hashed
+   class (the Drawer content) pinned to fake the old floating-card drawer.
+   With !important it silently overrode the network-standard full-height
+   drawer's inline docking styles, which is why this host's burger kept
+   floating after the port. Never target `.m_*` hashes for layout: they are
+   private, version-unstable, and they beat inline styles when marked
+   !important. Style the drawer through its component props instead. */
 
 div .m_46b77525 {
     margin-top: calc(0.5rem* var(--mantine-scale)) !important;

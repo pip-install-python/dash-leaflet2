@@ -44,16 +44,22 @@ def create_clerk_avatar():
     return create_clerk_menu(show_dropdown=True, dropdown_align="right")
 
 
-def create_link(icon, href):
+def create_link(icon, href, label):
+    """External icon link. ``label`` is REQUIRED: an icon-only link has no
+    accessible name — screen readers announce "link" and AI agents can't
+    tell what it does (the Lighthouse/Agentic-Browsing failure measured on
+    this host, 2026-08-22)."""
     return dmc.Anchor(
         dmc.ActionIcon(
             DashIconify(icon=icon, width=22),
             variant="subtle",
             size="lg",
             color="gray",
+            **{"aria-label": label},
         ),
         href=href,
         target="_blank",
+        **{"aria-label": label},
     )
 
 
@@ -117,6 +123,7 @@ def create_header(data):
                             size="lg",
                             color="gray",
                             hiddenFrom="md",
+                            **{"aria-label": "Open navigation menu"},
                         ),
                         dmc.Burger(
                             id="desktop-navbar-toggle",
@@ -169,6 +176,7 @@ def create_header(data):
                         create_link(
                             "radix-icons:github-logo",
                             "https://github.com/pip-install-python/dash-leaflet2",
+                            "View the source on GitHub",
                         ),
                         dmc.ActionIcon(
                             [
@@ -187,6 +195,7 @@ def create_header(data):
                             color="yellow",
                             id="color-scheme-toggle",
                             size="lg",
+                            **{"aria-label": "Toggle light / dark color scheme"},
                         ),
                         # Sign in / avatar. None when Clerk is unconfigured —
                         # DMC skips None children, so the header is unchanged.

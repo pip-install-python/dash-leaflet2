@@ -12,7 +12,7 @@ The Clerk avatar lives here too. `lib/auth.py` registers Clerk with
 itself initialises correctly.
 """
 import dash_mantine_components as dmc
-from dash import Input, Output, clientside_callback
+from dash import Input, Output, State, clientside_callback
 from dash_iconify import DashIconify
 
 from components.backend_badge import create_backend_badge
@@ -213,11 +213,29 @@ clientside_callback(
     Input("select-component", "value"),
 )
 
-# Mobile drawer open
+# Mobile drawer search → navigate (the header Select is hidden on phones;
+# the drawer's sticky search is the phone's jump-to-page entry point).
 clientside_callback(
-    """function(n_clicks) { return true }""",
+    """
+    function(value) {
+        if (value) {
+            return value
+        }
+        return window.dash_clientside.no_update
+    }
+    """,
+    Output("url", "href", allow_duplicate=True),
+    Input("mobile-select-component", "value"),
+    prevent_initial_call=True,
+)
+
+# The full-height drawer's overlay no longer covers the header, so the
+# hamburger stays reachable while it is open — a second tap must close it.
+clientside_callback(
+    """function(n_clicks, opened) { return !opened }""",
     Output("components-navbar-drawer", "opened"),
     Input("drawer-hamburger-button", "n_clicks"),
+    State("components-navbar-drawer", "opened"),
     prevent_initial_call=True,
 )
 

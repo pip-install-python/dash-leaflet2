@@ -80,6 +80,40 @@ def test_direct_injection_survives_when_the_file_never_moves(clean_store):
     assert page_visibility.tier_override("/injected") == "hidden"
 
 
+def test_persistence_warning_fires_only_when_the_env_is_unset(
+        monkeypatch, capsys):
+    """The reset-on-redeploy class must be LOUD, and quiet when fixed.
+
+    The store path env rode render.yaml without reaching the live
+    service twice (stage-3 env diff; owner re-observed 2026-08-22) —
+    this boot line is the acceptance check that it landed.
+    """
+    monkeypatch.delenv("PAGE_VISIBILITY_FILE", raising=False)
+    page_visibility._persistence_warning()
+    assert "will NOT survive a redeploy" in capsys.readouterr().out
+
+    monkeypatch.setenv(
+        "PAGE_VISIBILITY_FILE", "/var/data/page_visibility.json")
+    monkeypatch.setattr(os.path, "ismount", lambda _p: True)
+    page_visibility._persistence_warning()
+    assert capsys.readouterr().out == ""
+
+
+def test_persistence_warning_fires_when_var_data_is_not_a_mount(
+        monkeypatch, capsys):
+    """The env being right is HALF the story — the disk must exist too.
+
+    An app can mkdir /var/data on the container filesystem and behave
+    identically until the next deploy wipes it (the owner's observed
+    resets on 2026-08-22, WITH the env var present).
+    """
+    monkeypatch.setenv(
+        "PAGE_VISIBILITY_FILE", "/var/data/page_visibility.json")
+    monkeypatch.setattr(os.path, "ismount", lambda _p: False)
+    page_visibility._persistence_warning()
+    assert "not a mounted disk" in capsys.readouterr().out
+
+
 def test_own_persist_does_not_bounce_back(clean_store):
     """The writing worker records its own stamp — no self-reload churn.
 

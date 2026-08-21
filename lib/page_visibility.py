@@ -128,6 +128,46 @@ def _persist() -> None:
         logger.error("Could not persist %s: %s", _STORE_PATH, exc)
 
 
+def _persistence_warning() -> None:
+    """Loud when the store lives on the container filesystem.
+
+    render.yaml declares ``PAGE_VISIBILITY_FILE=/var/data/...``, but a
+    Blueprint env row reaches the live service only on a sync — the exact
+    drift that had every control-board toggle silently resetting on every
+    redeploy (stage-3 env diff found the var absent; owner re-observed the
+    resets 2026-08-22). With the variable unset, ``_STORE_PATH`` falls back
+    to ``page_visibility.json`` in the app directory, which a Docker deploy
+    replaces wholesale. The absence of this line in a deploy log is the
+    acceptance check that the variable actually landed on the service.
+    """
+    configured = os.environ.get("PAGE_VISIBILITY_FILE")
+    if not configured:
+        print(
+            "[visibility] WARNING: PAGE_VISIBILITY_FILE unset — control-board "
+            "toggles are writing to the app directory and will NOT survive a "
+            "redeploy. Set PAGE_VISIBILITY_FILE=/var/data/page_visibility.json "
+            "on the Render service (render.yaml declares it, but only a "
+            "Blueprint sync or a dashboard add makes it live)."
+        )
+        return
+    # The env being right is only HALF the persistence story: render.yaml
+    # also declares the disk, and disks materialize only via a Blueprint
+    # sync or a dashboard add. An app can mkdir /var/data on the container
+    # filesystem and everything works — until the next deploy wipes it,
+    # which is indistinguishable from the unset case without this check.
+    path = Path(configured)
+    if str(path).startswith("/var/"):
+        anchor = Path("/") / path.parts[1] / path.parts[2] \
+            if len(path.parts) > 2 else path.parent
+        if not os.path.ismount(str(anchor)):
+            print(
+                f"[visibility] WARNING: {anchor} is not a mounted disk on "
+                "this instance — the control-board store will vanish on the "
+                "next deploy. Attach the render.yaml disk (Blueprint sync, "
+                "or add it in the dashboard)."
+            )
+
+
 def _maybe_reload() -> None:
     """Pick up another worker's board writes; no-op when nothing changed.
 
@@ -153,6 +193,7 @@ def _maybe_reload() -> None:
 
 
 _load_overrides()
+_persistence_warning()
 
 
 # ---------------------------------------------------------------------------

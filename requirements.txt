@@ -121,51 +121,73 @@ flexlayout-dash>=1.1.0
 # and redeploy; /admin/control-board fails CLOSED without Clerk, so nothing is
 # left exposed by doing so.
 #
-# 1.0.3 — a SECURITY floor. Sign out did not reach the server: the package's
-# logout handler ran `window.Clerk.signOut()` and reloaded, which invalidates
-# `__session` and nothing else. Server-side identity resolves from the signed
-# `__dca_identity` cookie FIRST, so a signed-out browser kept being served
-# every gated page from that layer until the cookie aged out — up to
-# `session_lifetime_days`, seven days by default. On a shared machine the next
-# person inherited the previous user's access for a week. This site hit it
-# live on 2026-08-21 and shipped a local shim (lib/auth.py
-# `_install_signout_delegation`); 1.0.3 sequences it upstream — Clerk sign-out,
-# then `POST /api/auth/signout`, then reload, awaited so the reload cannot race
-# the Set-Cookie. The POST is idempotent, so the shim stays harmlessly through
-# this release and retires in the next one.
+# 1.0.4 — a SECURITY floor, and the one that closes the defect this site's own
+# certification caught: a satellite served its ADMIN CONTROL BOARD to a browser
+# that had already signed out on the primary.
 #
-# The 1.0.3 build here is the one carrying the follow-up import fix: the avatar
-# helper inlined `quote(svg, safe="/:='? ")` inside an f-string, which is PEP
-# 701 syntax and a hard SyntaxError on 3.10/3.11. That is an IMPORT failure,
-# and the package declares a `[dash_hooks]` entry point Dash resolves at every
-# `Dash()` construction — so it would have taken the whole documentation site
-# down on this repo's own CI matrix (3.10/3.12/3.13), not just sign-in.
+# 1.0.3 revoked the server session on a signed-in -> signed-out TRANSITION, but
+# that requires the tab to have observed the signed-in state first. A browser
+# that signs out on 2plot.ai and then simply navigates here never had one:
+# ClerkJS resolves signed-out immediately, while the server still holds
+# `__dca_identity` and has already rendered the page — gated content included —
+# off it. 1.0.4 adds fresh-load reconciliation: if ClerkJS resolves signed-out
+# while the server rendered the page signed-in, the client POSTs
+# `/api/auth/signout` and reloads. The server's own rendered state (the
+# `clerk-signed-in` class on <html>) is the only signal available, because
+# `__dca_identity` is HttpOnly and the page cannot read it.
 #
-# This exact artifact is confirmed good, three ways rather than by timestamp
-# (the tarball's mtime is 23s BEFORE the fix commit, because the sequence was
-# build-then-commit — alarming to read, and not a problem):
+# Also in 1.0.4: `POST /api/auth/session` and `/api/auth/signout` returned 422
+# on EVERY FastAPI deployment, for as long as they had existed —
+# `_mount_auth_routes` registered handlers whose `request` parameter was
+# unannotated, which FastAPI resolves as a required query field. Inert on this
+# host (production is Flask under Docker) and pinned anyway, because
+# `lib/backend.py` makes a backend switch one env var away and the failure mode
+# is silent: the injected script never inspects the result, so sign-out simply
+# stops revoking server-side.
 #
-#   sha256  2c6b40f4620afdc016580d75c01b7f7f6760f030b61d1d827c498bcb01da1944
-#           — byte-identical to the authoring repo's dist, and this is the
-#             hash of the blob committed here, not just the working file.
-#   source  `encoded` is hoisted out of the f-string.
-#   runtime the authoring repo compiled AND executed it under a real 3.11
-#           (`compileall -f` over every module, plus calling the avatar helper
-#           in isolation): output byte-identical to 3.12, so the fix is
-#           behaviourally neutral across versions, not merely parseable.
+# THE SHIM STAYS ONE MORE RELEASE. lib/auth.py's `_install_signout_delegation`
+# was written expecting to retire here, and deliberately does not: 1.0.4's
+# acceptance test IS sign-out behaviour, and removing the local handler in the
+# same change would make a failure ambiguous between "1.0.4 does not work" and
+# "the shim was load-bearing". They cannot collide — the shim is a click
+# handler, the new reconciliation runs once on load — and the POST is
+# idempotent. Retire it in the pass AFTER the acceptance test passes.
 #
-# Re-vendoring from the authoring repo's `main` is NOT yet safe: as of
-# 2026-08-21 the broken build is what main holds, and the import fix is still
-# waiting on a PR to land before v1.0.3 is tagged. Take the dist artifact whose
-# hash matches above, or wait for the tag.
+# 1.0.3 was the first half of this: sign out did not reach the server at all.
+# The logout handler ran `window.Clerk.signOut()` and reloaded, which
+# invalidates `__session` and nothing else, so a signed-out browser kept being
+# served every gated page from the `__dca_identity` layer until that cookie
+# aged out — up to `session_lifetime_days`, seven days by default. On a shared
+# machine the next person inherited the previous user's access for a week.
+# 1.0.3 also carried the import fix for the avatar helper, which had inlined
+# `quote(svg, safe="/:='? ")` inside an f-string: PEP 701 syntax, a hard
+# SyntaxError on 3.10/3.11, and therefore an IMPORT failure. The package
+# declares a `[dash_hooks]` entry point Dash resolves at every `Dash()`
+# construction, so on this repo's CI matrix (3.10/3.12/3.13) that would have
+# taken the whole documentation site down, not just sign-in.
+#
+# VENDORED ARTIFACT — verify the hash, never the filename or the mtime. There
+# was a stale first build of 1.0.4 (sha256 22117b20...) that must be rejected:
+#
+#   sha256  7a7c333af8da4739e944e3260f332a7f1a70dc3c4fd93ae9f10a197f14cf701a
+#           — byte-identical to the authoring repo's dist, and this is the hash
+#             of the blob committed here, not just of the working file.
+#
+# Take the dist artifact whose hash matches. The authoring repo's `main` is
+# no longer a trap — the fix branch merged 2026-08-21 (PR #5, `62071e4`), and
+# main now carries both the import fix and 1.0.4 — but the rule stands anyway:
+# a build is identified by its hash, because both times an artifact and its
+# commit were seconds apart in the WRONG order (build, verify, then commit),
+# which reads exactly like shipping a pre-fix build and is not.
 #
 # NOT changed on this bump, and a deliberate decision each application owns:
-# `session_lifetime_days` stays at 7 (lib/auth.py passes it explicitly now, so
-# the value is recorded rather than inherited). `__dca_identity` is a stateless
+# `session_lifetime_days` stays at 7 (lib/auth.py passes it explicitly, so the
+# value is recorded rather than inherited). `__dca_identity` is a stateless
 # signed token — a value captured before sign-out keeps verifying until its
 # max-age expires, because the server holds no revocation list. That window is
 # the knob; see lib/auth.py for why 7 is the choice here and what would change
-# it.
+# it. Note 1.0.4 narrows what that window costs: the ghost is now revoked on
+# the next page load rather than persisting for the cookie's life.
 #
 # 1.0.2 fixed the avatar race this host was exposed to (components/header.py
 # calls `create_clerk_menu`): the injected script resolved the menu with
@@ -192,7 +214,7 @@ flexlayout-dash>=1.1.0
 # Still not on PyPI — vendored the same way across every 2plot satellite, so
 # the tarball is the distribution channel.
 #   Used by: lib/auth.py, components/header.py, /admin/control-board
-./vendor/dash_clerk_auth-1.0.3.tar.gz
+./vendor/dash_clerk_auth-1.0.4.tar.gz
 # SECURITY FLOOR, and the reason dash-clerk-auth had to move first. This pin
 # is what `pip-audit` resolves; the vendored tarball's own cap is what gates
 # it. clerk-backend-api 5.x declares `cryptography>=45.0.0,<47.0.0`, holding

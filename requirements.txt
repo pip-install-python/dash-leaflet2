@@ -47,7 +47,7 @@ dash-iconify==0.1.2
 # resolver left to catch an incompatible upgrade, so a future `mistune` 4.0
 # would otherwise install silently and break the parser at import time.
 docutils!=0.21
-jsonpath>=0.82,<0.83
+jsonpath>=0.82.2,<0.83
 mistune>=3.0.1,<4.0.0
 python-frontmatter
 # 2.6.1 — and the .1 is a CACHE BUST as much as a feature.

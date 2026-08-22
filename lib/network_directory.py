@@ -43,11 +43,12 @@ from typing import Any, Dict, List
 # subdomain with no site is a dead link an agent will follow once and then
 # distrust the rest of the list for. The full docs fleet went live on paid
 # hosting 2026-08-19/20 — muicharts, flexlayout and llms joined in that
-# window, and this file's temporary divergence (pannellum/emojimart
-# commented out while NXDOMAIN) is resolved per its own instruction:
-# re-copied from the boilerplate, the canonical definition every satellite
-# syncs FROM, verbatim. Still deliberately absent until they deploy:
-# excalidraw.2plot.dev and modelviewer.2plot.dev.
+# window (the drift sweep of 2026-08-20 found seven different versions of
+# this list across nine repos; this copy is the canonical one and the fleet
+# syncs FROM here, verbatim). excalidraw.2plot.dev and modelviewer.2plot.dev
+# were deliberately absent until they deployed; both went live in the gate
+# wave (2026-08-21/22, verified via /healthz build identity) and joined in
+# 1.6.5. The fleet re-copy carries them to every satellite's directory.
 PEERS: List[Dict[str, str]] = [
     {
         "name": "2plot.ai",
@@ -109,11 +110,21 @@ PEERS: List[Dict[str, str]] = [
         "url": "https://email.2plot.dev",
         "description": "Email composition and delivery components.",
     },
+    {
+        "name": "dash-model-viewer",
+        "url": "https://modelviewer.2plot.dev",
+        "description": "3D model viewer with AR support, built on Google's model-viewer.",
+    },
+    {
+        "name": "dash-excalidraw",
+        "url": "https://excalidraw.2plot.dev",
+        "description": "Excalidraw virtual whiteboard and sketching canvas.",
+    },
 ]
 
 # pip-install-python.com is deliberately NOT here: the domain is retired
 # network-wide (the fleet's retire-pip-install-python-domain sweep), and
-# this repo's test_social_card pins its absence. A directory that keeps
+# leaflet's test_social_card pins its absence. A directory that keeps
 # pointing agents at a retired origin re-teaches them the identity the
 # network spent a release unlearning.
 AFFILIATED: List[Dict[str, str]] = [

@@ -107,7 +107,7 @@ requests>=2.31
 # dash-mui-charts powers the TreeViewPro tile browser on /tile-layers-pro. That
 # one control is an MUI X Pro component: without MUI_PRO_API_KEY in the env it
 # renders with a watermark, and the rest of the page is unaffected.
-dash-mui-charts>=1.2.3
+dash-mui-charts>=1.4.0
 
 # --- Docs-only showcase deps -----------------------------------------------
 # Neither is needed by the dash_leaflet2 package — only by the pages named
@@ -121,7 +121,7 @@ dash-mui-charts>=1.2.3
 # index ever lacks it, pip fails loudly at install rather than importing a
 # broken build at runtime.
 #   Used by: /emoji-iconify, /easy-button
-dash-emoji-mart>=0.0.5
+dash-emoji-mart>=0.2.1
 # flexlayout-dash: 1.1.0 renamed the import `dash_flex_layout` ->
 # `flexlayout_dash` and fixed a re-mount storm. The floor is load-bearing —
 # docs/walking-sim/example.py does `import flexlayout_dash as dfl`, which

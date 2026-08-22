@@ -50,6 +50,27 @@ docutils!=0.21
 jsonpath>=0.82,<0.83
 mistune>=3.0.1,<4.0.0
 python-frontmatter
+# 2.6.1 — and the .1 is a CACHE BUST as much as a feature.
+#
+# The Dockerfile installs deps in their own layer, keyed on requirements.txt's
+# BYTES. A commit that touches only lib/ is a cache hit, so pip never re-runs
+# and a `>=` floor cannot pull a newer release through the cached layer. That
+# is not a theory: the round-2 deploy shipped a lib-only change and stayed on
+# 2.6.0 while this file still said `>=2.6.0` — measured live, the prerender
+# div came back carrying `hidden`. Two sibling repos hit it before us
+# (pannellum found it, emojimart reproduced it). **Changing this number is
+# what makes the layer rebuild**, which is why the floor moves for a package
+# fix even when the old floor would technically have allowed it.
+#
+# Corollary, and the reason the CI asserts below now track this number: a
+# floor recorded in more than one place drifts, and the copies that drift are
+# the ones nothing installs from. Grep the version, not the file.
+#
+# 2.6.1 itself makes the prerender visible to non-JS consumers: 2.6.0 emitted
+# `<div id="dimll-prerender" ... hidden>` and relied on script to unhide it,
+# so a reader without JS got an empty box. Verified by direct comparison of
+# the two releases against this app.
+#
 # 2.6.0 is LOAD-BEARING here, not a routine bump: pages/markdown.py passes
 # `lastmod=` unconditionally, and that argument only exists from 2.6.0.
 # Two things arrive with it.
@@ -77,7 +98,7 @@ python-frontmatter
 # directive-leakage fix. `configure_access` (2.3) is what lib/access.py
 # hands the gate policy to. The [flask] extra is just flask>=2.0, already
 # present via Dash.
-dash-improve-my-llms[flask]>=2.6.0
+dash-improve-my-llms[flask]>=2.6.1
 python-dotenv>=1.0
 pydantic>=2.0
 requests>=2.31

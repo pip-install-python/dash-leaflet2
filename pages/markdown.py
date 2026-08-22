@@ -58,7 +58,7 @@ class Meta(BaseModel):
     # when the page's prose genuinely changes, in the SAME commit as the
     # prose. Never script it from file mtimes, which reset on every Docker
     # build and would re-invent the every-page-changed-today sitemap that
-    # 2.6.0 exists to end. The initial values here are each page's real
+    # the floor exists to end. The initial values here are each page's real
     # `git log -1 --format=%cs` date.
     #
     # The validator is not optional: YAML parses a bare `lastmod: 2026-07-28`

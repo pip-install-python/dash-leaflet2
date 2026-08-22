@@ -53,6 +53,7 @@ from dash import Dash, _dash_renderer, hooks
 
 # AI/LLM Integration & SEO via dash-improve-my-llms.
 from dash_improve_my_llms import (
+    __version__ as LLMS_PKG_VERSION,
     LLMSConfig,
     RobotsConfig,
     add_llms_routes,
@@ -83,7 +84,17 @@ BACKEND_INFO = get_backend_info(BACKEND)
 # DMC 2.x targets React 18.2; Dash 4 ships 18.3.1 — pin to keep DMC happy.
 _dash_renderer._set_react_version("18.2.0")
 
-print(f"[dash-leaflet2] v{APP_VERSION} on Dash {dash.__version__} · backend='{BACKEND}'")
+# The dash-improve-my-llms version is on this line because a deploy once
+# silently kept an old one. The Dockerfile caches the dependency layer on
+# requirements.txt's bytes, so a commit touching only lib/ never re-resolves
+# the floor — the container came up on 2.6.0 with the pin already saying it
+# was fine, and the only way anyone found out was by fetching the live HTML
+# and noticing the prerender still carried `hidden`. A version the boot log
+# states is a version a deploy check can read in one glance.
+print(
+    f"[dash-leaflet2] v{APP_VERSION} on Dash {dash.__version__} "
+    f"(dash-improve-my-llms {LLMS_PKG_VERSION}) · backend='{BACKEND}'"
+)
 
 # ----------------------------------------------------------------------------
 # Clerk satellite auth. MUST run BEFORE Dash(...) — register_clerk_auth installs

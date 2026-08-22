@@ -17,7 +17,7 @@ alarm.
 
 Three contracts:
 
-1. **Discovery finds this site's own icons**, from `assets/favicon_io/`, and
+1. **Discovery finds this site's own icons**, from `assets/favicon/`, and
    the crawler head emits them. Not zero, and not another host's art.
 2. **The sitemap tells the truth or says nothing.** `<lastmod>` is emitted
    verbatim from frontmatter and omitted when unset. No date may appear that
@@ -34,7 +34,7 @@ from pathlib import Path
 
 from conftest import BROWSER_UA, CRAWLER_UA, SAMPLE_PAGE
 
-ICON_DIR = "assets/favicon_io"
+ICON_DIR = "assets/favicon"
 
 
 def _hrefs(entries):
@@ -49,7 +49,9 @@ def test_discovery_finds_this_sites_own_icons(app):
     assert found, (
         f"Discovery found nothing. {ICON_DIR}/ is one of the package's covered "
         "directory names — if the folder was renamed, the crawler document "
-        "silently loses every icon, because discovery fails soft by design."
+        "silently loses every icon, because discovery fails soft by design. "
+        "This site used the nonstandard `favicon_io/` until 2026-08-22; the "
+        "package covered that name too, which is why the drift was invisible."
     )
     stray = [h for h in found if ICON_DIR not in h]
     assert not stray, f"icons discovered outside {ICON_DIR}/: {stray}"
@@ -71,12 +73,93 @@ def test_the_crawler_head_carries_them(app, client):
     )
 
 
-def test_the_icons_actually_resolve(client):
-    """A head full of 404s is worse than a head with no icons: it looks fixed."""
-    for name in ("favicon.ico", "favicon-32x32.png", "apple-touch-icon.png",
-                 "android-chrome-192x192.png"):
-        r = client.get(f"/{ICON_DIR}/{name}")
-        assert r.ok, f"{name} -> HTTP {r.status}"
+# The standard eight. `scripts/make_favicons.py` writes seven of them plus the
+# root-level assets/favicon.ico; site.webmanifest is hand-maintained text.
+STANDARD_SET = (
+    "favicon.ico",
+    "favicon-16x16.png",
+    "favicon-32x32.png",
+    "favicon-96x96.png",
+    "apple-touch-icon.png",
+    "android-chrome-192x192.png",
+    "android-chrome-512x512.png",
+    "site.webmanifest",
+)
+
+
+def test_the_standard_set_is_complete():
+    """Same eight files, same names, in every satellite.
+
+    The names are load-bearing beyond this repo: `templates/index.html` and
+    the package's discovery patterns both hardcode them, so a set that is
+    merely "close" produces a head of dead links rather than an error.
+    """
+    present = {p.name for p in Path(ICON_DIR).iterdir() if p.is_file()}
+    missing = [n for n in STANDARD_SET if n not in present]
+    assert not missing, f"missing from {ICON_DIR}/: {missing}"
+
+
+def test_every_href_resolves(client):
+    """EVERY href, not a sample — a head full of 404s is worse than a head
+    with no icons at all, because it looks fixed.
+
+    Covers the three places a path is written down: the generated set, the
+    hand-written links in templates/index.html, and the manifest's own icon
+    entries. They have drifted apart before.
+    """
+    import json
+    import re
+
+    hrefs = {f"/{ICON_DIR}/{name}" for name in STANDARD_SET}
+    hrefs.add("/assets/favicon.ico")  # the root redirect target
+
+    index = Path("templates/index.html").read_text()
+    hrefs.update(re.findall(r'(?:href|content)="(/assets/favicon[^"]*)"', index))
+
+    manifest = json.loads((Path(ICON_DIR) / "site.webmanifest").read_text())
+    hrefs.update(icon["src"] for icon in manifest.get("icons", []))
+
+    for href in sorted(hrefs):
+        assert client.get(href).ok, f"{href} does not resolve"
+
+
+def test_the_manifest_points_at_this_sites_own_files(client):
+    """A manifest whose icons 404 makes the install prompt silently
+    unavailable — the browser just never offers it, with nothing logged."""
+    import json
+
+    manifest = json.loads((Path(ICON_DIR) / "site.webmanifest").read_text())
+    assert manifest["name"] and manifest["short_name"], "manifest identity blank"
+    assert manifest.get("icons"), "manifest declares no icons"
+    stray = [i["src"] for i in manifest["icons"] if not i["src"].startswith(f"/{ICON_DIR}/")]
+    assert not stray, f"manifest icons outside {ICON_DIR}/: {stray}"
+
+
+def test_apple_touch_icon_is_opaque():
+    """iOS composites the icon's alpha onto ITS OWN background — black on
+    some surfaces, white on others — so a transparent apple-touch icon
+    renders differently everywhere it appears. scripts/make_favicons.py
+    flattens exactly this one file onto opaque white (every other size
+    keeps its alpha; browsers and Android handle it correctly).
+
+    Read the colour type straight out of the PNG header — stdlib only, no
+    Pillow in the test environment. IHDR is always the first chunk: colour
+    type is the byte at offset 25. 2 = RGB (opaque), 6 = RGBA. A palette
+    PNG (3) can smuggle transparency back in through a tRNS chunk, so pin
+    that absent too.
+    """
+    data = (Path(ICON_DIR) / "apple-touch-icon.png").read_bytes()
+    assert data[:8] == b"\x89PNG\r\n\x1a\n", "not a PNG?"
+    colour_type = data[25]
+    assert colour_type in (0, 2, 3), (
+        f"apple-touch-icon.png has colour type {colour_type} (an alpha "
+        "channel) — regenerate it with scripts/make_favicons.py, which "
+        "flattens this one icon onto opaque white."
+    )
+    assert b"tRNS" not in data, (
+        "apple-touch-icon.png carries a tRNS transparency chunk — iOS will "
+        "composite it onto an unpredictable background."
+    )
 
 
 def _declared_lastmods() -> set[str]:

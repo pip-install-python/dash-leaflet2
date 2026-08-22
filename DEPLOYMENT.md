@@ -449,7 +449,7 @@ passes `lastmod=` unconditionally, and that argument does not exist below it.
 **Icons come from discovery, not a declaration.** This app has never called
 `configure_seo`, so before 2.6.0 Googlebot received a crawler document with
 zero icons while browsers got six from `templates/index.html`. 2.6.0 scans the
-assets tree — `assets/favicon_io/` is one of its covered directory names — and
+assets tree — `assets/favicon/` is one of its covered directory names — and
 this site's own art becomes its crawler-head identity with nothing declared.
 Discovery fails **soft** (it returns nothing and logs at debug), so a renamed
 favicon directory would take the icons away in silence; `tests/test_seo_icons.py`
@@ -476,13 +476,24 @@ what a browser reads and this one is what a crawler reads. Until it did, the
 crawler document carried no `og:image` at all and typed every documentation
 page as a bare schema.org `WebPage`.
 
-> **Still pending: normalized favicon art.** The fleet's standard layout wants
-> source art at `cdn.2plot.ai/github_assets/favicons/leaflet.png` regenerated
-> through the boilerplate's `scripts/make_favicons.py` (not present in this
-> repo). Not blocking: discovery already serves the existing `favicon_io/` art,
-> which is this site's own and not the template's, and
-> `assets/favicon_io/site.webmanifest` already carries leaflet's name,
-> description and `#2f9e44` theme colour.
+> **The icon set is generated, not hand-assembled.** `assets/leaflet.png` is
+> the source mark; `python scripts/make_favicons.py assets/leaflet.png`
+> rewrites the standard eight under `assets/favicon/` plus the root-level
+> `assets/favicon.ico` that dash-improve-my-llms redirects to. Never edit a
+> generated PNG by hand — regenerate from the mark, or the next run silently
+> reverts it.
+>
+> Two rules the tests pin. **Every href must resolve**: the paths are written
+> down in three places — the generated set, `templates/index.html`, and
+> `site.webmanifest`'s own icon entries — and they have drifted apart before,
+> which produces a head of dead links that looks fixed.
+> **apple-touch-icon.png must be opaque**: iOS composites alpha onto its own
+> background, black on some surfaces and white on others, so a transparent one
+> renders differently everywhere it appears. The generator flattens that single
+> file onto white; every other size keeps its alpha.
+>
+> `site.webmanifest` is the half the generator deliberately does not touch —
+> `name`, `short_name` and `description` are per-app text.
 
 ### The person→agent handoff
 

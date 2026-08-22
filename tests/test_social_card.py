@@ -40,7 +40,7 @@ from lib.constants import (
     SITE_BRAND,
 )
 
-MANIFEST = REPO_ROOT / "assets" / "favicon_io" / "site.webmanifest"
+MANIFEST = REPO_ROOT / "assets" / "favicon" / "site.webmanifest"
 
 
 def _visible(html: str) -> str:
@@ -192,11 +192,11 @@ def test_the_manifest_is_linked_from_the_document(client):
     """Without the link element the manifest may as well not exist."""
     html = client.get("/").text
     assert 'rel="manifest"' in html, "no manifest link — no install prompt"
-    assert "/assets/favicon_io/site.webmanifest" in html
+    assert "/assets/favicon/site.webmanifest" in html
 
 
 def test_the_manifest_is_served(client):
-    response = client.get("/assets/favicon_io/site.webmanifest")
+    response = client.get("/assets/favicon/site.webmanifest")
     assert response.ok, f"the manifest 404s ({response.status})"
 
 
@@ -217,7 +217,7 @@ def test_every_manifest_icon_actually_resolves(client):
     """The failure that made the manifest inert.
 
     Icons were declared at `/android-chrome-192x192.png` — the site root —
-    while the files live under `/assets/favicon_io/`. A manifest whose icons
+    while the files live under `/assets/favicon/`. A manifest whose icons
     404 is not installable, and nothing reports it.
     """
     manifest = json.loads(MANIFEST.read_text())
@@ -241,7 +241,7 @@ def test_the_apple_touch_icon_is_declared_and_resolves(client):
 
 
 def test_the_favicon_resolves(client):
-    """Dash walks assets recursively, so the favicon_io subfolder is found."""
+    """Dash walks assets recursively, so the favicon subfolder is found."""
     html = client.get("/").text
     hrefs = re.findall(r'<link[^>]*rel="icon"[^>]*href="([^"]+)"', html)
     assert hrefs, "no favicon link"

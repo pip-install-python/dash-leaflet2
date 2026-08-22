@@ -84,7 +84,7 @@ python-frontmatter
 #
 # ICON AUTODISCOVERY. This app never calls `configure_seo`, so until 2.6.0
 # Googlebot got a crawler document with ZERO icons while browsers got six
-# from templates/index.html. 2.6.0 scans the assets tree — `favicon_io/` is
+# from templates/index.html. 2.6.0 scans the assets tree — `favicon/` is
 # one of its covered directory names — and this site's own art becomes its
 # crawler-head identity with no declaration. tests/test_seo_icons.py pins
 # both contracts; discovery WARNS rather than failing when it finds nothing,

@@ -79,7 +79,7 @@
          APP ICONS AND INSTALLABILITY
          ========================================================================
          The favicon placeholder further down emits ONE rel="icon" link
-         pointing at assets/favicon_io/favicon.ico (Dash walks the assets tree
+         pointing at assets/favicon/favicon.ico (Dash walks the assets tree
          recursively, so the subfolder is found). It emits nothing else, so
          everything an installable web app needs is declared here.
 
@@ -92,7 +92,7 @@
          offer rather than just a bookmarkable page. It shipped with EMPTY name
          and short_name fields and icon paths pointing at /android-chrome-*.png
          at the site root, where nothing is served — so no browser could ever
-         have offered the install. Fixed in assets/favicon_io/site.webmanifest.
+         have offered the install. Fixed in assets/favicon/site.webmanifest.
 
          Note there is no service worker: browsers show the install prompt for
          a manifest with a start_url, name and a 192px+ icon, which is what is
@@ -100,13 +100,16 @@
          would mean serving stale documentation, so it is deliberately absent.
          ======================================================================== -->
 
-    <link rel="icon" type="image/png" sizes="32x32" href="/assets/favicon_io/favicon-32x32.png">
-    <link rel="icon" type="image/png" sizes="16x16" href="/assets/favicon_io/favicon-16x16.png">
-    <link rel="apple-touch-icon" sizes="180x180" href="/assets/favicon_io/apple-touch-icon.png">
-    <link rel="manifest" href="/assets/favicon_io/site.webmanifest">
+    <link rel="icon" type="image/png" sizes="32x32" href="/assets/favicon/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/assets/favicon/favicon-16x16.png">
+    <link rel="icon" type="image/png" sizes="96x96" href="/assets/favicon/favicon-96x96.png">
+    <link rel="icon" type="image/png" sizes="192x192" href="/assets/favicon/android-chrome-192x192.png">
+    <link rel="icon" type="image/png" sizes="512x512" href="/assets/favicon/android-chrome-512x512.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="/assets/favicon/apple-touch-icon.png">
+    <link rel="manifest" href="/assets/favicon/site.webmanifest">
     <meta name="apple-mobile-web-app-title" content="dash-leaflet2">
     <meta name="msapplication-TileColor" content="#2f9e44">
-    <meta name="msapplication-TileImage" content="/assets/favicon_io/android-chrome-192x192.png">
+    <meta name="msapplication-TileImage" content="/assets/favicon/android-chrome-192x192.png">
 
     <!-- ========================================================================
          CANONICAL URL

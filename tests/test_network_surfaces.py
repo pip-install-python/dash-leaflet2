@@ -103,8 +103,26 @@ def test_robots_keeps_this_sites_deliberate_open_training_posture(client):
     assert "User-agent: ClaudeBot" not in lines
 
 
-def test_robots_keeps_the_admin_surface_out_of_the_index(client):
-    assert "Disallow: /admin/" in client.get("/robots.txt").text
+def test_robots_does_not_advertise_the_admin_surface(client):
+    """Inverted on 2026-08-23, deliberately — this used to assert the
+    opposite.
+
+    `Disallow: /admin/` reads like a protection and is the reverse: robots.txt
+    is public, so the line hands the admin path to every scraper that reads
+    it, and it stops nobody who ignores the file. The surface is protected by
+    auth (two independent checks, failing closed without Clerk) and kept out
+    of the index by `mark_hidden`, which excludes it from the sitemap and
+    /llms.txt rather than announcing it.
+    """
+    robots = client.get("/robots.txt").text
+    assert "/admin" not in robots, "robots.txt advertises the admin path"
+
+
+def test_the_admin_surface_is_still_excluded_from_the_index(client):
+    """The half that actually matters, and the reason dropping the Disallow
+    costs nothing: mark_hidden keeps it out of both machine catalogues."""
+    assert "/admin" not in client.get("/sitemap.xml").text
+    assert "/admin" not in client.get("/llms.txt").text
 
 
 def test_a_crawler_gets_prose_not_the_javascript_stub(client, page_paths):

@@ -12,7 +12,7 @@ lastmod: 2026-08-01
 
 .. toc::
 
-# dash-leaflet2 — Leaflet 2 maps for Dash
+## dash-leaflet2 — Leaflet 2 maps for Dash
 
 > **`dash-leaflet2`** wraps **Leaflet 2 core directly** — no react-leaflet — and
 > ships it as real Dash components. By [Pip Install Python](https://github.com/2plotai).

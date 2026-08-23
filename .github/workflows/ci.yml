@@ -122,7 +122,7 @@ jobs:
           # import. httpx backs starlette's TestClient.
           if [ "${{ matrix.backend }}" != "flask" ]; then
             pip install "dash[${{ matrix.backend }}]" httpx
-            pip install "dash-improve-my-llms[${{ matrix.backend }}]>=2.6.1"
+            pip install "dash-improve-my-llms[${{ matrix.backend }}]>=2.7.1"
           fi
           pip install pytest
 
@@ -141,7 +141,7 @@ jobs:
           # assert sat at 2.3.4 while the pin moved to 2.5.1 and then 2.6.0 —
           # a stale floor asserts nothing, and the deploy that silently ran an
           # old package is exactly what it exists to catch.
-          assert parts(pkg.__version__) >= (2, 6, 1), pkg.__version__
+          assert parts(pkg.__version__) >= (2, 7, 1), pkg.__version__
           # 21.x carried two request-smuggling CVEs (CVE-2024-6827,
           # CVE-2024-1135). markdown2dash's spurious <22 pin must not win.
           assert parts(gunicorn.__version__)[:2] >= (23, 0), gunicorn.__version__
@@ -278,7 +278,7 @@ jobs:
 
           v = version('dash-improve-my-llms')
           print('dash-improve-my-llms', v)
-          assert parts(v) >= (2, 6, 1), f'expected >=2.6.1, image has {v}'
+          assert parts(v) >= (2, 7, 1), f'expected >=2.7.1, image has {v}'
 
           # markdown2dash installs with --no-deps to dodge its gunicorn<22
           # pin; this assert is what proves the dodge kept working. 21.x

@@ -35,11 +35,32 @@ def test_app_title_is_the_brand(app):
 
 
 def test_home_prose_opens_with_the_brand():
-    """The home markdown's own H1, below the frontmatter."""
+    """The home markdown's first heading, below the frontmatter.
+
+    It is an H2 as of 2026-08-23, not an H1, and the identity guarantee is
+    unchanged: what this pins is that the first thing the home prose says is
+    the BRAND, not a nav label or a tagline.
+
+    The level moved because the heading had become a duplicate.
+    `_build_llms_doc` prepends `# {published name}` — which for "/" is this
+    same brand string, via `page_visibility.published_name` — and
+    dash-improve-my-llms injects its own header from the same identity. Three
+    copies of one title meant the crawler document served two `<h1>`s (see
+    tests/test_page_structure.py, which pins one per page across all 27). The
+    body's hand-written copy is the one that had to give: the other two are
+    generated from `SITE_BRAND` and cannot drift from it.
+    """
     body = (REPO_ROOT / "docs" / "home" / "home.md").read_text()
-    headings = [ln for ln in body.splitlines() if ln.startswith("# ")]
-    assert headings, "docs/home/home.md has no H1"
-    assert headings[0] == f"# {EXPECTED_BRAND}"
+    headings = [ln for ln in body.splitlines() if ln.lstrip().startswith("#")]
+    assert headings, "docs/home/home.md has no headings at all"
+    assert headings[0].lstrip("#").strip() == EXPECTED_BRAND, (
+        f"home's first heading is {headings[0]!r}, not the brand"
+    )
+    assert not headings[0].startswith("# "), (
+        "home's brand heading is an H1 again — it duplicates the document "
+        "preamble and the package's injected header, which is what made "
+        "every page serve two <h1>s to crawlers."
+    )
 
 
 def test_llms_index_h1_is_the_brand(client):

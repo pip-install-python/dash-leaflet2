@@ -17,7 +17,11 @@ from lib.directives.llms_copy import LlmsCopy
 from lib.directives.source import SC
 from lib.directives.toc import TOC
 from lib.gate_layouts import gated_layout
-from lib.page_visibility import register_default, register_llms_doc
+from lib.page_visibility import (
+    published_name,
+    register_default,
+    register_llms_doc,
+)
 from lib.versions import substitute_versions
 
 logger = logging.getLogger(__name__)
@@ -119,9 +123,20 @@ def _expand_source_directives(markdown_content: str) -> str:
     `/<page>/llms.txt`. Replacing the directive with the real file content
     is what makes the LLM output self-contained for the "paste into a chat
     window" audience.
+
+    FENCE-AWARE, and it has to be: a directive INSIDE a fenced code block is
+    documentation showing the syntax, not a directive to act on. Expanding
+    one injects a ```python fence inside the already-open fence, which CLOSES
+    it early — from there the inlined file renders as markdown and every
+    `# comment` line becomes an <h1>, so the page's machine lane serves
+    broken structure while the browser lane looks perfect (markdown2dash
+    parses fences properly). No page in THIS repo teaches the directive
+    today, so this is carried from the template as a guard rather than a
+    fix: the day someone documents `.. source::` in a fenced block, nothing
+    silently breaks. tests/test_page_structure.py pins the outcome.
     """
-    def replace(match: re.Match) -> str:
-        file_path = match.group(1).strip()
+    def expansion(directive_line: str) -> str:
+        file_path = _SOURCE_DIRECTIVE.match(directive_line).group(1).strip()
         try:
             full = Path(file_path)
             content = full.read_text()
@@ -134,12 +149,34 @@ def _expand_source_directives(markdown_content: str) -> str:
         except Exception as exc:
             return f'\n<!-- Error reading {file_path}: {exc} -->\n'
 
-    return _SOURCE_DIRECTIVE.sub(replace, markdown_content)
+    out: List[str] = []
+    fence = None  # the marker that opened the block we are inside, if any
+    for line in markdown_content.split('\n'):
+        head = line.lstrip()[:3]
+        if fence is None and head in ('```', '~~~'):
+            fence = head
+        elif fence is not None and head == fence:
+            fence = None
+        elif fence is None and _SOURCE_DIRECTIVE.match(line):
+            out.append(expansion(line))
+            continue
+        out.append(line)
+    return '\n'.join(out)
 
 
 def _build_llms_doc(name: str, description: str, expanded_markdown: str, path: str) -> str:
     """Wrap the expanded markdown with the heading/description preamble that
-    /llms.txt readers expect."""
+    /llms.txt readers expect.
+
+    ``name`` must be the PUBLISHED name, not the registered one. The package
+    injects its own `<h1>` header into the crawler document from the published
+    identity, and >= 2.7.0 dedups that against the document's opening h1 — so
+    the two have to be the same string or the page serves both. They were not
+    for "/" alone: the preamble said "Home" (the nav label) while the injected
+    header said the site brand, which is exactly the substitution
+    `lib.page_visibility.published_name` exists to make. See its docstring for
+    why "Home" must never become this site's published identity.
+    """
     parts: List[str] = [f"# {name}\n"]
     if description:
         parts.append(f"> {description}\n")
@@ -244,7 +281,8 @@ for file in files:
         metadata.endpoint,
         metadata.name,
         metadata.description,
-        _build_llms_doc(metadata.name, metadata.description, expanded, metadata.endpoint),
+        _build_llms_doc(published_name(metadata.endpoint, metadata.name),
+                        metadata.description, expanded, metadata.endpoint),
         # Same string dash.register_page got. Measured, not assumed: it does
         # NOT double the brand — the package composes its own
         # "<page> · <site>" only when no title is declared.

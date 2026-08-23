@@ -97,6 +97,82 @@ print(
 )
 
 # ----------------------------------------------------------------------------
+# Dependency floor — enforced, not advised.
+#
+# The boot LINE above (added after a deploy silently kept 2.6.0) says which
+# version is running. It does not say whether that version is good enough,
+# and a human reading a wall of boot output is not a check. This is.
+#
+# The failure it exists for is specific to this repo's deploy shape: the
+# Dockerfile caches the dependency layer on requirements.txt's bytes, so a
+# commit that moves only code cannot pull a new release, and the container
+# comes up on the old package with the pin looking correct. That has now
+# happened twice. Raising the floor number busts the cache; this check is
+# what refuses to serve if the bust did not take.
+#
+# ALLOW_STALE_DEPS=1 downgrades it to a warning for deliberate testing.
+# ----------------------------------------------------------------------------
+import sys  # noqa: E402
+
+LLMS_PKG_FLOOR = (2, 7, 1)
+ALLOW_STALE_DEPS = os.environ.get("ALLOW_STALE_DEPS", "0") == "1"
+
+
+def _version(text: str) -> tuple:
+    """("4.4.1rc0") -> (4, 4, 1). Trailing rc/dev segments are dropped."""
+    parts = []
+    for chunk in text.split(".")[:3]:
+        digits = ""
+        for char in chunk:
+            if not char.isdigit():
+                break
+            digits += char
+        if not digits:
+            break
+        parts.append(int(digits))
+    return tuple(parts)
+
+
+def _dependency_floor(message: str, fatal: bool) -> None:
+    """Print, or refuse to start. Either way, name the interpreter.
+
+    `sys.executable` is the fact that settles which environment is actually
+    serving, and it is the one nobody thinks to check first.
+    """
+    detail = (
+        f"{message}\n"
+        f"    running from: {sys.executable}\n"
+        "    fix: rebuild the image, or reinstall with "
+        "`pip install -r requirements.txt`.\n"
+        "    (set ALLOW_STALE_DEPS=1 to start anyway)"
+    )
+    if fatal and not ALLOW_STALE_DEPS:
+        raise RuntimeError("\n[dash-leaflet2] " + detail)
+    print("[dash-leaflet2] WARNING: " + detail)
+
+
+if LLMS_PKG_FLOOR > _version(LLMS_PKG_VERSION):
+    _dependency_floor(
+        f"dash-improve-my-llms {LLMS_PKG_VERSION} is below the "
+        f"{'.'.join(str(n) for n in LLMS_PKG_FLOOR)} floor in requirements.txt. "
+        "Below 2.7.1 the llms.txt v2 discovery relations (rel=alternate/"
+        "describedby + Link headers), the text/plain Accept ramp, and the "
+        "representation digest are missing. Below 2.7.0 every page serves a "
+        "DUPLICATE H1 to crawlers (the injected prerender header plus the doc "
+        "body's own — measured here on all 27 pages), the home footer doubles "
+        "its /llms.txt link, and a page that merely MENTIONS the prerender "
+        "marker loses its prerender entirely. Below 2.6.1 the universal "
+        "prerender ships `hidden`, so every visibility-respecting consumer "
+        "reads 'Loading...' instead of the page's prose. Below 2.6.0 the "
+        "sitemap goes back to lying: `lastmod=` is accepted into **kwargs and "
+        "SILENTLY IGNORED, so every date this repo stamped is swallowed. Below "
+        "2.5.1 the Tier-B SEO standard unwinds: no `configure_seo`, the "
+        "crawler <title> drops to the bare page name, and /favicon.ico serves "
+        "the app shell instead of an icon.",
+        fatal=True,
+    )
+
+# ----------------------------------------------------------------------------
 # Clerk satellite auth. MUST run BEFORE Dash(...) — register_clerk_auth installs
 # @dash.hooks callbacks that fire during app construction, so calling it later
 # silently does nothing. Fully dormant without the CLERK_* keys.
@@ -188,12 +264,33 @@ app._robots_config = RobotsConfig(
     # Note this diverges from the fleet fingerprint in
     # handoff/existing_subdomains.md, whose verification expects
     # `ClaudeBot -> Disallow`. The divergence is intentional, not drift.
+    #
+    # RE-REVIEWED 2026-08-23 (floor round, robots rider) and KEPT. The
+    # calculus has not changed and is specific to what this host is: an
+    # MIT-licensed component library's documentation, whose purpose is that
+    # someone building a Dash map finds this library. A model that learned
+    # dash-leaflet2 recommends it to a developer who will never see this
+    # site; that recommendation IS the distribution channel, and blocking
+    # training would trade it away for a licence term the MIT licence does
+    # not contain. A host with proprietary content should decide the other
+    # way — scripts/network_smoke.py encodes exactly that split, so the
+    # verification treats this as a stated position rather than a miss.
     block_ai_training=False,
     allow_ai_search=True,
     allow_traditional=True,
     crawl_delay=10,
-    # The admin control board is not documentation — keep it out of the index.
-    disallowed_paths=["/admin/"],
+    # DELIBERATELY EMPTY. `Disallow: /admin/` used to be here, and it was
+    # working against itself: robots.txt is a PUBLIC file, so the line
+    # published the admin path to every scraper that reads it — including
+    # the ones that treat a Disallow as a map — while providing no access
+    # control whatsoever. What actually protects that surface is auth:
+    # `/admin/control-board` gates itself twice (the layout re-checks on
+    # every render, the write callback re-checks before mutating) and fails
+    # CLOSED without Clerk. What keeps it out of the INDEX is
+    # `mark_hidden("/admin/control-board")` below, which also removes it
+    # from the sitemap and from /llms.txt — the honest mechanism, since it
+    # excludes rather than advertises.
+    disallowed_paths=[],
 )
 
 # The home page's registered `name` is this site's published identity, not a

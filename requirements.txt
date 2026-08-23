@@ -50,7 +50,18 @@ docutils!=0.21
 jsonpath>=0.82,<0.83
 mistune>=3.0.1,<4.0.0
 python-frontmatter
-# 2.6.1 — and the .1 is a CACHE BUST as much as a feature.
+# 2.7.1 — and as in every round, THE NUMBER CHANGING IS THE CACHE BUST.
+#
+# What 2.7.1 buys: llms.txt v2 discovery relations (rel=alternate/describedby
+# plus Link headers), the text/plain Accept ramp, and the representation
+# digest. What 2.7.0 buys, and this repo needed badly: the prerender H1 dedup.
+# Measured here before the bump — all 27 pages served TWO <h1>s to a crawler,
+# the injected prerender header plus the document's own, and the home page
+# served three. 2.7.0 also stops a page that merely MENTIONS the prerender
+# marker string from losing its prerender, and de-doubles the home footer's
+# /llms.txt link. run.py's LLMS_PKG_FLOOR refuses to boot below this.
+#
+# 2.6.1 — the .1 was a CACHE BUST as much as a feature.
 #
 # The Dockerfile installs deps in their own layer, keyed on requirements.txt's
 # BYTES. A commit that touches only lib/ is a cache hit, so pip never re-runs
@@ -98,7 +109,7 @@ python-frontmatter
 # directive-leakage fix. `configure_access` (2.3) is what lib/access.py
 # hands the gate policy to. The [flask] extra is just flask>=2.0, already
 # present via Dash.
-dash-improve-my-llms[flask]>=2.6.1
+dash-improve-my-llms[flask]>=2.7.1
 python-dotenv>=1.0
 pydantic>=2.0
 requests>=2.31

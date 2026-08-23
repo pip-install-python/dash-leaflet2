@@ -433,7 +433,7 @@ Clerk it is hidden, not merely unstyled.
 > the `/var/data` disk in production, so a toggle outlives a deploy; on an
 > ephemeral filesystem it would reset with every one.
 
-### Crawler identity and sitemap honesty (dash-improve-my-llms >= 2.6.1)
+### Crawler identity and sitemap honesty (dash-improve-my-llms >= 2.7.1)
 
 > **A package fix does not reach production until this file's bytes change.**
 > The Dockerfile installs dependencies in their own layer, keyed on
@@ -443,7 +443,7 @@ Clerk it is hidden, not merely unstyled.
 > looking correct. Raising the floor number *is* the cache bust. Confirm with
 > the boot line, which states the resolved version.
 
-The 2.6.1 floor in `requirements.txt` is load-bearing — `pages/markdown.py`
+The 2.7.1 floor in `requirements.txt` is load-bearing — `pages/markdown.py`
 passes `lastmod=` unconditionally, and that argument does not exist below it.
 
 **Icons come from discovery, not a declaration.** This app has never called

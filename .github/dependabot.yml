@@ -16,6 +16,20 @@ updates:
       interval: weekly
       day: monday
     open-pull-requests-limit: 5
+    # Version-update PRs are restricted to the network packages — the drift
+    # alarm this file exists for. Without this allow-list, dependabot also
+    # proposes FLOOR-RAISES for every other requirement (gunicorn >=23 →
+    # >=26, python-dotenv, pydantic, jsonpath...). Those floors encode
+    # minimum-compatibility knowledge — this repo's gunicorn floor IS the
+    # CVE fact, and its dash-improve-my-llms floor is the cache-bust
+    # mechanism — the resolver already installs latest under them, and a
+    # raise erases the floor's meaning while adding nothing. SECURITY
+    # updates are unaffected: they arrive through GitHub's separate
+    # security-update channel regardless of this list.
+    allow:
+      - dependency-name: "dash*"
+      - dependency-name: "plotly*"
+      - dependency-name: "markdown2dash"
     groups:
       dash-network:
         patterns:

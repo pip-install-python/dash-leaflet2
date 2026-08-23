@@ -22,7 +22,19 @@ ENV PYTHONUNBUFFERED=1 \
 
 WORKDIR /app
 
-# Install Python deps first so this layer is cached across app-code changes.
+# CACHE SEMANTICS — read this before shipping a dependency upgrade. This layer
+# re-runs ONLY when vendor/ or requirements.txt BYTES change. A `>=` floor can
+# NEVER pull a newer release through a cache hit: a code-only commit rebuilds
+# the app layers below while pip silently keeps whatever version the image was
+# first built with. That has bitten this repo twice — 2.6.1 and again at 2.7.1
+# — and both times the site looked fine, because a stale package degrades
+# quietly rather than failing.
+#
+# So ship every dependency upgrade as a floor bump in requirements.txt, and
+# grep the NUMBER, not the file: it also lives in run.py's LLMS_PKG_FLOOR and
+# in ci.yml's asserts. The bump IS the cache bust, and the boot floor turns a
+# stale image from a silent downgrade into a loud refusal to start.
+#
 # vendor/ must come along: requirements.txt installs dash-clerk-auth 1.0.5 from
 # a local tarball there (it is vendored across the 2plot network, not on PyPI).
 # dash-emoji-mart and flexlayout-dash used to live here too and now come from

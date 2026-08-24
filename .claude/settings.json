@@ -1,0 +1,22 @@
+{
+  "model": "opus",
+  "sandbox": {
+    "network": {
+      "allowedDomains": [
+        "leaflet.2plot.dev",
+        "2plot.ai",
+        "2plot.dev",
+        "api.github.com",
+        "pypi.org",
+        "files.pythonhosted.org"
+      ]
+    }
+  },
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:leaflet.2plot.dev)",
+      "WebFetch(domain:2plot.ai)",
+      "WebFetch(domain:2plot.dev)"
+    ]
+  }
+}

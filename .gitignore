@@ -52,6 +52,29 @@ satellite_traffic.jsonl
 .DS_Store
 .idea/
 .vscode/
-# Claude Code's per-project working directory: local settings, scratch writes
-# and screenshots. Nothing here is needed to build, run or deploy the project.
-.claude/
+
+# Session working documents are LOCAL BY CONVENTION, network-wide: sync
+# reports, handoffs, and kickoff briefs name hosts, topology, and process.
+# Two public fleet repos were caught tracking theirs and clerkhook's staged
+# handoff (naming the full satellite inventory) was one push from public
+# (2026-08-24). The ignore rule is the enforcement, here and in every fork.
+# This repo carried X402-SYNC-REPORT.md in .git/info/exclude, which is
+# LOCAL-ONLY — it protected this checkout and nobody else's clone.
+X402-SYNC-REPORT.md
+HANDOFF-*.md
+KICKOFF-*.md
+
+# The .claude/ development kit IS shipped — it is how every fork inherits
+# the network's behavioral contract, skills, and settings (the F1 fabric
+# build, 2026-08-24). Everything else in .claude/ stays local: session
+# scratch, screenshots, settings.local.json (per-seat model overrides),
+# vendored iteration copies. Allow-list, not blanket ignore — a dir-level
+# ignore cannot be re-included beneath, hence the /* form. The blanket
+# `.claude/` that used to sit here is why this repo's root CLAUDE.md
+# advertised `.claude/rules/` and a `/new-component` skill that no clone
+# has ever had: they live in the private R&D checkout and were ignored out
+# of the mirror.
+.claude/*
+!.claude/CLAUDE.md
+!.claude/settings.json
+!.claude/skills/

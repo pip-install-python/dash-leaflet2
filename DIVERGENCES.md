@@ -81,6 +81,13 @@ MIT licence does not contain. A host with proprietary content should
 decide the other way; `scripts/network_smoke.py` encodes the split so
 verification reads this as a stated position rather than a miss.
 
+This is the FLEET'S RECORDED EXCEPTION to the network-standard
+`block_ai_training=True`, and it is visible from outside: as of
+2026-08-26 `robots.txt` serves zero `Disallow` lines and names no
+GPTBot / ClaudeBot / CCBot group, and both `GPTBot/1.2` and
+`ClaudeBot/1.0` fetch `/` with a 200. A wire check that reads those
+as a miss is reading this divergence.
+
 `disallowed_paths=[]` matches the template's value today, but for a
 reason worth keeping written down: `Disallow: /admin/` used to be
 here and was working against itself — robots.txt is public, so the
@@ -185,6 +192,46 @@ not-applicable here by construction.
 a stale local copy can never be committed), `.compat/`, and
 `flask_session/`. The `.claude` allow-list and the session-document
 block match the template exactly.
+
+---
+
+## Byte-owned paths
+
+Paths this fork owns byte-for-byte. The F3b fan-out never overwrites
+a path listed here; everything else in the spec's `sync-verbatim`
+block is the template's to update mechanically. Prose above explains
+divergences; this block is the machine answer.
+
+Repo-relative paths, one per line, `#` comments, no `..`; exactly one
+block. An EMPTY block means "the template owns every sync-verbatim
+path here" — present so the absence is a statement. When the block
+exists it is authoritative; a fork without it gets the conservative
+mention heuristic (over-flags, never restores).
+
+Audited 2026-08-26 against the union of the three live specs'
+`sync-verbatim` blocks: the three kit skills, `tests/test_claude_kit.py`,
+`.github/dependabot.yml`, `tests/test_auth_demos.py`. Exactly one of
+them carries a byte-level claim in the prose above — divergence 3. The
+kit skills and the kit test are TEMPLATE-owned here and byte-identical
+to template HEAD (md5-verified this pass); this fork claims nothing on
+them, so they stay out and the fan-out keeps them current. Two nearby
+mentions are deliberately NOT entries: the fleet precedent
+"muischeduler's no-npm dependabot scope" describes another fork's file,
+and the `/new-component` skill named in the drift section lives in the
+private R&D checkout's `.claude/rules/`, not in the kit's `skills/`.
+
+*The cost of the one entry, written down so nobody rediscovers it:*
+a listed path is one the fan-out will never update either. Dependabot
+changes therefore land here BY HAND — starting with the 1.6.24
+pip-ecosystem removal that rides SYNC-1.6.22-1.6.27's block, which must
+be applied as an edit that keeps the npm entry, not as a byte-copy.
+
+```yaml byte-owned
+# Divergence 3: this repo builds a JS bundle, so its dependabot config
+# ADDS an npm ecosystem the template's copy does not have. The 1.6.24
+# rewrite is a whole-file byte-copy that would silently remove it.
+- .github/dependabot.yml
+```
 
 ---
 

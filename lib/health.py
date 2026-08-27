@@ -47,6 +47,7 @@ reported back as this app being slow.
 from __future__ import annotations
 
 import os
+import platform
 
 import dash
 
@@ -95,6 +96,15 @@ def health_payload(backend: str) -> dict:
         "base_url": BASE_URL,
         "backend": backend,
         "dash_version": dash.__version__,
+        # WHICH interpreter is actually serving. Before this field the repo
+        # could declare one Python in the Dockerfile and serve another, and
+        # nothing on the wire could contradict either — the drift was
+        # invisible to the battery by construction (ops-seat finding,
+        # 2026-08-25). scripts/network_smoke.py asserts this minor against
+        # the Dockerfile's FROM tag, so image and declaration can no longer
+        # part ways silently. render.yaml has no say here: this service is
+        # `runtime: docker`, so the image IS the declaration.
+        "python": platform.python_version(),
         "reporting": bool(os.getenv("CROSS_APP_WEBHOOK_SECRET")),
     }
 

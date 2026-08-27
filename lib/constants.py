@@ -10,6 +10,18 @@ HEADER_HEIGHT = 70
 APP_VERSION = "0.2.2"
 LEAFLET_VERSION = "2.0.0-alpha.1"
 
+# The DOCS SITE's Python floor — not the package's. Two different numbers,
+# deliberately: the dash_leaflet2 wheel declares `requires-python >=3.9`
+# (pyproject.toml) and CI's `Package · Python` matrix proves that claim,
+# while this site cannot run below 3.10 — `python-frontmatter` 1.3 imports
+# `typing.TypeGuard`, and the vendored `dash-clerk-auth` 1.0.5 declares
+# `requires-python >=3.10`. Stated ONCE here because it is a real dependency
+# fact that several encodings depend on (the ci.yml floor leg, and
+# tests/test_python_version.py, which reads it from this constant rather
+# than repeating the literal — a floor spelled out in four places is the
+# drift class that test exists to kill).
+DOCS_PYTHON_FLOOR = "3.10"
+
 # ---------------------------------------------------------------------------
 # Site identity — one string, every surface
 # ---------------------------------------------------------------------------

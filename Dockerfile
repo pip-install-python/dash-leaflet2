@@ -7,7 +7,15 @@
 # so no Node/webpack build is needed: this is a pure-Python image serving the
 # pre-built Dash app with gunicorn. node_modules/ is excluded via .dockerignore.
 # ---------------------------------------------------------------------------
-FROM python:3.12-slim
+# The fleet Python (template 1.6.27, spec item 5): ONE interpreter per fork,
+# everywhere it is encoded. MINOR tag, never a patch pin — a `3.X.Y-slim` FROM
+# never receives 3.X fix releases, so the patch pin is itself the security bug;
+# the minor tag tracks them through the registry. /healthz reports the serving
+# version and scripts/network_smoke.py asserts it against this line, so image
+# and declaration cannot part ways silently again. render.yaml carries no
+# PYTHON_VERSION on purpose: this service is `runtime: docker`, where nothing
+# reads it — see tests/test_python_version.py.
+FROM python:3.14-slim
 
 # PYTHONUNBUFFERED        -> stream logs straight to stdout (Render shows them live)
 # PYTHONDONTWRITEBYTECODE -> no .pyc clutter in the image

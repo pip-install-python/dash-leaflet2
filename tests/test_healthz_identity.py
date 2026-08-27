@@ -54,6 +54,41 @@ def test_it_names_which_satellite_answered(client):
     )
 
 
+def test_it_reports_which_interpreter_is_serving(client):
+    """Spec item 5's observability half — the field the battery has teeth on.
+
+    A fork can declare one Python in its Dockerfile and serve another for
+    months, because nothing on the wire can contradict either: the template
+    carried a patch-pinned 3.11.8 image, a 3.12 matrix and a 3.12.0
+    render.yaml simultaneously (ops-seat finding, 2026-08-25). This field is
+    what makes the serving interpreter visible;
+    `scripts/network_smoke.py::python_matches_declared` compares it to the
+    Dockerfile's FROM minor from a seat where the interpreter IS the deploy
+    artifact.
+
+    Deliberately NOT asserted here: that the value equals the fleet minor.
+    This suite legitimately runs on the CI window legs (3.10, 3.13) and on
+    whatever a developer has locally, where that assertion would be false by
+    design. Presence and shape are this pin's business; agreement is the
+    battery's, against a host.
+    """
+    import json
+    import re
+
+    payload = json.loads(client.get("/healthz").text)
+    served = payload.get("python")
+    assert served, (
+        "healthz carries no `python` field — the serving interpreter is "
+        "invisible, and the battery's python_matches_declared has nothing "
+        "to compare (spec SYNC-1.6.22-1.6.29 item 5)"
+    )
+    assert re.fullmatch(r"\d+\.\d+\.\d+", served), (
+        f"healthz python is {served!r} — expected a full X.Y.Z from "
+        "platform.python_version()"
+    )
+    assert served.split(".")[0] == "3", f"unexpected major in {served!r}"
+
+
 def test_build_is_reported_when_the_platform_provides_it(monkeypatch):
     """CD waits on this to confirm the artifact it shipped is the one serving.
 

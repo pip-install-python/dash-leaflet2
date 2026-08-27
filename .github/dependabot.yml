@@ -1,42 +1,34 @@
-# Version drift is the network's chronic disease — satellites were still
-# running a 2.0-era artifact the day 2.3.4 shipped, and nothing about a stale
-# host looks broken from the outside. This is the standing fix.
+# Copied from dash-documentation-boilerplate — with ONE deliberate addition,
+# the npm ecosystem below (DIVERGENCES.md §3). That addition is why this path
+# is listed in DIVERGENCES.md's `byte-owned` fence: the F3b fan-out skips it,
+# so template changes to this file land HERE BY HAND, as this one did.
 #
-# Copied from dash-documentation-boilerplate. The `dash-network` group is the
-# point: a package release lands as ONE reviewable pull request per repo
-# instead of five, which is the difference between a rollout and a chore.
+# Version updates for pip are OFF BY DESIGN (template 1.6.24, applied by hand
+# 2026-08-26). On range requirements dependabot can only propose FLOOR
+# RAISES, so the old `dash-network` allow-list group structurally produced
+# the exact PR class the allow-list existed to suppress — 18 of the fleet's
+# 38 open dependabot PRs were pip floor-raises. Floors encode
+# minimum-compatibility knowledge (a gunicorn floor IS the CVE fact; this
+# repo's dash-improve-my-llms floor is the Docker cache-bust mechanism), the
+# resolver already installs latest under them, and a raise erases the floor's
+# meaning while adding none. Floors move deliberately, through sync specs,
+# every encoding at once; drift detection — the group's stated purpose — is
+# already answered on the wire by the contract battery (healthz
+# `dash_version` against the floor).
 #
-# npm is here and not in the template because this repo also builds the
-# dash-leaflet2 component bundle from src/ts.
+# SECURITY updates are unaffected. They ride GitHub's security-update
+# channel — dependency graph + Dependabot alerts, enabled per repo in
+# Settings → Advanced Security — which needs no entry in this file:
+# "There is no interaction between the settings specified in the
+# dependabot.yml file and Dependabot security alerts" (GitHub docs,
+# code-security/concepts/supply-chain-security/dependabot-security-updates).
 version: 2
 updates:
-  - package-ecosystem: pip
-    directory: "/"
-    schedule:
-      interval: weekly
-      day: monday
-    open-pull-requests-limit: 5
-    # Version-update PRs are restricted to the network packages — the drift
-    # alarm this file exists for. Without this allow-list, dependabot also
-    # proposes FLOOR-RAISES for every other requirement (gunicorn >=23 →
-    # >=26, python-dotenv, pydantic, jsonpath...). Those floors encode
-    # minimum-compatibility knowledge — this repo's gunicorn floor IS the
-    # CVE fact, and its dash-improve-my-llms floor is the cache-bust
-    # mechanism — the resolver already installs latest under them, and a
-    # raise erases the floor's meaning while adding nothing. SECURITY
-    # updates are unaffected: they arrive through GitHub's separate
-    # security-update channel regardless of this list.
-    allow:
-      - dependency-name: "dash*"
-      - dependency-name: "plotly*"
-      - dependency-name: "markdown2dash"
-    groups:
-      dash-network:
-        patterns:
-          - "dash*"
-          - "plotly*"
-          - "markdown2dash"
-
+  # DIVERGENCE 3 — not in the template. This repo also builds the
+  # dash-leaflet2 component bundle from src/ts, so it carries a lockfile the
+  # template has no equivalent of. npm version updates are NOT the pip case:
+  # devDependencies are pinned, not floored, so a bump here is a real
+  # upgrade with a real diff, CI-gated like any other.
   - package-ecosystem: npm
     directory: "/"
     schedule:
@@ -48,6 +40,11 @@ updates:
         patterns:
           - "*"
 
+  # Runner/action bumps are mechanical and CI-gated; a human merges the
+  # group's PR when its CI is green — never a bot actor on main. (The
+  # 1.6.24 auto-merge workflow was retired in 1.6.25: a GITHUB_TOKEN merge
+  # gets zero workflow runs on the merge sha, so its deploy is never
+  # certified by CD.)
   - package-ecosystem: github-actions
     directory: "/"
     schedule:
@@ -57,6 +54,8 @@ updates:
         patterns:
           - "*"
 
+  # Docker base-image bumps stay manual: a Python major is a merits
+  # decision, never an auto-merge.
   - package-ecosystem: docker
     directory: "/"
     schedule:

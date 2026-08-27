@@ -72,6 +72,25 @@
     <meta property="og:image:alt" content="dash-leaflet2 — Leaflet 2 maps for Dash, at leaflet.2plot.dev">
     <meta name="twitter:image:alt" content="dash-leaflet2 — Leaflet 2 maps for Dash, at leaflet.2plot.dev">
 
+    <!-- twitter:card is the ONE deliberate duplicate in this file, and the
+         exception to rule 1 above. Dash emits every meta tag it owns with
+         `property=`, including the twitter:* set — but X/Twitter's card
+         parser reads `name=`, and IGNORES `property=`. So the browser
+         document carried `property="twitter:card"` and had never served a
+         valid card tag at all, while the crawler document (which
+         dash-improve-my-llms builds itself, with `name=`) served the correct
+         one. Two documents, two different identities — invisible from
+         inside the app, and exactly the drift class the smoke battery's
+         "crawler and browser agree on twitter:card" check exists to catch;
+         that check is what found this.
+
+         The static tag below sits BESIDE Dash's `property=` one rather than
+         replacing it: Dash's is not removable from here, it is harmless
+         (no parser reads it), and the duplicate-tag problem rule 1 describes
+         is about two tags a parser BOTH reads. Keep the value in step with
+         the crawler document's — tests/test_social_card.py pins both. -->
+    <meta name="twitter:card" content="summary_large_image">
+
     <!-- Mantine green, matching the brand. -->
     <meta name="theme-color" content="#2f9e44">
 

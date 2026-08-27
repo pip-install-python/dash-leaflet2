@@ -42,7 +42,18 @@ def wired(smoke, client, monkeypatch):
     the network from a unit test would make the suite depend on eleven other
     deployments being up.
     """
-    def fetch(url, user_agent=smoke.BROWSER_UA, accept=None):
+    def fetch(url, user_agent=smoke.BROWSER_UA, accept=None,
+              retries=None, timeout=None):
+        # `retries` and `timeout` are the 1.6.28 contract's kwargs (spec
+        # SYNC-1.6.22-1.6.29 item 6). They are accepted and IGNORED here:
+        # this seat has no network to be flaky and no host to be asleep, so
+        # honouring them would only slow the suite down. Accepting them is
+        # not optional though — `wake()` calls
+        # `fetch(url, retries=1, timeout=10)`, and a stub still written to
+        # the pre-1.6.2x `(url, user_agent, accept)` signature TypeErrors
+        # there. That is exactly what took the 1.6.28 fan-out red on 7 of 12
+        # forks; the script now degrades gracefully on a legacy stub, and
+        # this signature is why it never has to here.
         if url.startswith(BASE):
             path = url[len(BASE):] or "/"
             response = client.get(path, user_agent=user_agent, accept=accept)
@@ -288,3 +299,89 @@ def test_fetch_retries_network_errors_but_not_http_statuses(smoke, monkeypatch):
     status, _body, _ = smoke.fetch("https://leaflet.2plot.dev/nope")
     assert status == 404
     assert attempts["n"] == 0
+
+
+# ------------------------------------------------------- the wake-up ladder --
+# Ported with the wake loop itself (spec SYNC-1.6.22-1.6.29 item 6). The loop
+# is the one piece of this script that only ever runs against a cold host, so
+# it is the piece most likely to rot unnoticed: a typo here turns "the host
+# never woke" into "the host is up" and CD certifies a deploy that never
+# answered.
+
+
+def test_a_cold_host_wakes_and_the_probe_requires_ok_true(smoke, monkeypatch, capsys):
+    """A 200 is not enough — the loading page is also a 200.
+
+    A sleeping free-tier host answers its first visitor with the platform's
+    loading page, which is a perfectly good HTTP 200 carrying no `ok`. Any
+    check keyed on the status alone would call that awake and then fail every
+    real assertion against a host that was still booting.
+    """
+    calls = {"n": 0}
+
+    def fetch(url, user_agent=smoke.BROWSER_UA, accept=None,
+              retries=None, timeout=None):
+        calls["n"] += 1
+        if calls["n"] == 1:
+            return 200, "<html>loading…</html>", {}       # the platform's page
+        if calls["n"] == 2:
+            return 503, "", {}                            # still starting
+        return 200, '{"ok": true, "app": "leaflet"}', {}
+
+    monkeypatch.setattr(smoke, "fetch", fetch)
+    monkeypatch.setattr(smoke.time, "sleep", lambda _s: None)
+
+    assert smoke.wake("https://leaflet.2plot.dev") is True
+    assert calls["n"] == 3, "the loading page or the 503 was counted as awake"
+    assert "attempt 3" in capsys.readouterr().out
+
+
+def test_a_host_that_never_wakes_is_one_failure_not_a_cascade(smoke, monkeypatch, capsys):
+    """Sixty per-check failures against a host that never answered all say the
+    same thing and bury it. `main` reports exactly one and stops."""
+    monkeypatch.setattr(
+        smoke, "fetch",
+        lambda *a, **kw: (0, "TimeoutError: timed out", {}))
+    monkeypatch.setattr(smoke.time, "sleep", lambda _s: None)
+    monkeypatch.setattr(smoke, "WAKE_ATTEMPTS", 3)
+    monkeypatch.setattr(smoke, "failures", [])
+    monkeypatch.setattr(smoke, "warnings", [])
+    monkeypatch.setattr(smoke, "checks_run", 0)
+
+    assert smoke.wake("https://leaflet.2plot.dev") is False
+
+    exit_code = smoke.main("https://leaflet.2plot.dev")
+    out = capsys.readouterr().out
+    assert exit_code == 1, f"expected ONE failure, got {exit_code}"
+    assert "host answered /healthz" in out
+    assert "0/1 checks passed" in out, "checks ran against a host that never woke"
+
+
+def test_wake_survives_a_legacy_fetch_stub(smoke, monkeypatch, capsys):
+    """The 1.6.28 fan-out's actual failure mode, pinned so it cannot return.
+
+    `wake` calls `fetch(url, retries=1, timeout=10)`. A fork test still
+    monkeypatching the pre-1.6.2x `(url, user_agent, accept)` signature makes
+    that a TypeError — which took the live fan-out red on 7 of 12 forks, in
+    every test that touched the script rather than only the wake path. This
+    repo's own stub takes the new kwargs (see the `wired` fixture), so this
+    test builds a legacy one deliberately to prove the fallback still works.
+    """
+    def legacy_fetch(url, user_agent=smoke.BROWSER_UA, accept=None):
+        return 200, '{"ok": true}', {}
+
+    monkeypatch.setattr(smoke, "fetch", legacy_fetch)
+    monkeypatch.setattr(smoke.time, "sleep", lambda _s: None)
+
+    assert smoke.wake("https://leaflet.2plot.dev") is True
+
+
+def test_the_wake_ladder_is_env_tunable(smoke):
+    """CD widens the window from the workflow, without a code change — the
+    knob muischeduler's 1.2.4-vintage copy did not have."""
+    assert smoke.WAKE_ATTEMPTS >= 1 and smoke.WAKE_INTERVAL_S >= 0
+    assert smoke.RETRIES >= 1
+    source = (REPO_ROOT / "scripts" / "smoke_live.py").read_text(encoding="utf-8")
+    for knob in ("SMOKE_WAKE_ATTEMPTS", "SMOKE_FETCH_RETRIES",
+                 "SMOKE_WAKE_INTERVAL_S"):
+        assert f'os.getenv("{knob}")' in source, f"{knob} is not env-tunable"

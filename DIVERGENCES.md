@@ -64,8 +64,23 @@ and the `dash_leaflet2/metadata.json` / `.compat/` ignores.
 
 The inverse of muischeduler's no-npm scope, and for the same reason
 read the other way: this repo actually builds a JS bundle, so the
-build toolchain is a real dependency surface. `pip`,
-`github-actions` and `docker` match the template.
+build toolchain is a real dependency surface. `github-actions` and
+`docker` match the template.
+
+`pip` is now ABSENT here as well (template 1.6.24, applied by hand
+2026-08-26): on range requirements dependabot can only propose floor
+RAISES, and floors move through sync specs instead. So the npm block
+is the whole of this divergence.
+
+THE FENCE WAS PROVEN ON THIS PATH, and it is worth recording that it
+was not hypothetical. `SYNC-1.6.22-1.6.29`'s `sync-verbatim` block
+lists `.github/dependabot.yml`, every one of its adoption gates is
+satisfied here, and the F3b fan-out ran against this repo on
+2026-08-26 (PR #25, merged). It copied three files and SKIPPED this
+one — the npm ecosystem is still here because the `byte-owned` block
+below told the machine to leave it alone. Without the fence the copy
+would have landed and removed the npm block silently, since removal
+by byte-copy looks identical to an intended removal in a diff.
 
 ### 4. robots.txt is OPEN to AI training
 
@@ -99,7 +114,8 @@ CLOSED); what keeps it out of the index is
 ### 5. `/healthz` carries three fields the template's does not
 
 `version`, `base_url`, `reporting`, on top of the fleet-standard
-`ok` / `app` / `backend` / `dash_version` / `build` / `geo`. All three
+`ok` / `app` / `backend` / `dash_version` / `build` / `geo` /
+`python`. All three
 predate the template's health work and are kept because each answers
 a question the standard payload cannot:
 
@@ -195,6 +211,53 @@ block match the template exactly.
 
 ---
 
+### 13. The site CI matrix's legs are the FLOOR and the adjacent minor
+
+The template's Python window rolls: its two include legs are X.Y-1
+and X.Y-2 around the fleet Python. This repo's are **3.10 and 3.13**
+against a 3.14 image — the second is the template's shape, the first
+is not.
+
+3.10 is a real floor, not a preference: `python-frontmatter` 1.3
+imports `typing.TypeGuard`, and the vendored `dash-clerk-auth` 1.0.5
+declares `requires-python >=3.10`. A rolling window would stop
+exercising that floor the moment the fleet Python moved twice — which
+is precisely when a floor breaks quietly, because nothing else in the
+tree resolves `requirements.txt` at its lower bound.
+
+So `tests/test_python_version.py` here asserts what this fork
+actually means — one leg IS the declared floor, one leg is directly
+below the fleet Python — instead of the template's "within three of
+the fleet minor". Both halves are still pinned, so the window can
+neither collapse to one nor drift. The floor itself is stated ONCE,
+as `lib.constants.DOCS_PYTHON_FLOOR`, and the test reads it from
+there rather than repeating the literal.
+
+*Not to be confused with the PACKAGE lane.* `Package · Python` runs
+3.9–3.13, testing the `dash_leaflet2` wheel's own
+`requires-python >=3.9` against a bare `pip install dash`. That
+window is the package's business and is deliberately wider than the
+site's; `test_the_package_lane_is_out_of_scope_and_stays_wide` fails
+if anyone ever "aligns" it with the image. Two Pythons in one
+`ci.yml` is the shape spec 1.6.28 describes, and this is that shape.
+
+### 14. `scripts/smoke_live.py` asserts this host's open-training posture
+
+The template's copy has no equivalent: divergence 4 is this fork's,
+so the check that proves it on a live host is too. The block asserts
+`robots.txt` serves no `ClaudeBot` stanza and fingerprints the
+crawler rules the running artifact produces.
+
+This is why item 6 of `SYNC-1.6.22-1.6.29` was ported here as
+CONTRACT — the wake loop, the retry knobs and the SSL context, added
+to this fork's file — rather than by the byte-copy the spec
+recommends. A byte-copy would have deleted the assertion, and a
+deleted check does not fail; it just stops being true without
+telling anyone. The spec anticipates exactly this ("a fork that
+replaced the tool records the divergence and ports the contract
+half"); the record is this entry.
+
+
 ## Byte-owned paths
 
 Paths this fork owns byte-for-byte. The F3b fan-out never overwrites
@@ -222,9 +285,25 @@ private R&D checkout's `.claude/rules/`, not in the kit's `skills/`.
 
 *The cost of the one entry, written down so nobody rediscovers it:*
 a listed path is one the fan-out will never update either. Dependabot
-changes therefore land here BY HAND — starting with the 1.6.24
-pip-ecosystem removal that rides SYNC-1.6.22-1.6.27's block, which must
-be applied as an edit that keeps the npm entry, not as a byte-copy.
+changes therefore land here BY HAND. The first such change has now
+been made: template 1.6.24's pip-ecosystem removal, applied
+2026-08-26 as an edit that keeps the npm block rather than the
+whole-file byte-copy the spec's block would have performed. That is
+the standing cost of this entry, and the standing procedure for it —
+read the template's copy, port the intent, keep divergence 3.
+
+Re-audited 2026-08-26 against `SYNC-1.6.22-1.6.29`, which added
+`.github/dependabot.yml` and `tests/test_auth_demos.py` to the
+verbatim block. The audit's answer is unchanged: one entry.
+`tests/test_auth_demos.py` arrived from the fan-out and is
+template-owned here — this fork claims nothing on its bytes.
+`scripts/smoke_live.py` rode the block for exactly one round (1.6.28)
+and was pulled back out at 1.6.29; had it still been cargo it would
+have needed an entry, because this fork's copy carries a check the
+template's does not (the open-training assertion, divergence 4). It
+is contract-class now, so the fence stays at one path — but the near
+miss is the reason to re-run this audit every round rather than
+trusting the last one.
 
 ```yaml byte-owned
 # Divergence 3: this repo builds a JS bundle, so its dependabot config
@@ -260,6 +339,30 @@ decision. None of these are divergences.
   `test_page_structure.py` is the template's `test_pages.py` under
   this repo's name.)
 - **`scripts/audit_links.py` and `scripts/dev.sh`** are not ported.
+- **The Dockerfile has no `HEALTHCHECK`, and `CMD` binds a bare
+  `${PORT}`** rather than `${PORT:-8050}` (SYNC-1.6.10-1.6.16 item 5).
+  An empty `PORT` collapses the bind. This also makes
+  SYNC-1.6.17-1.6.21 item 2 UNSATISFIABLE until it is fixed: that item
+  asks CI to assert `{{.State.Health.Status}}`, which is `none` on an
+  image that declares no healthcheck — so `ci.yml` still polls
+  `{{.State.Running}}`. Item 5 has to land first; the two are one
+  change in practice.
+- **`cd.yml`'s build-match wait is under-sized in four ways**
+  (SYNC-1.6.10-1.6.16 item 4). It does compare `build == GITHUB_SHA`
+  against the body — the part that matters, and it certified the last
+  two deploys — but: the loop is 60 x 15s where the spec wants >=100;
+  `timeout-minutes: 20` where it wants >=30; a hookless deploy emits
+  `::notice::` where it wants `::warning::`; and the verify job's `if`
+  excludes `'cancelled'` but not `'skipped'` (muicharts' guard). A
+  floor bump busts the pip cache, so the round with the most to prove
+  is the one whose deploy is slowest — dash-email timed out on exactly
+  this class.
+- **`kickoff/` is missing from `.gitignore`.** The template's
+  session-document block carries it (its `.gitignore` line 169, in a
+  separate block above the `*-*.md` patterns, which is how this list
+  read as complete once before — batch-1's correction). Probed
+  2026-08-26: `kickoff/probe.md` is committable in this repo today.
+  Nothing is at risk right now because no `kickoff/` exists here.
 - **The root `CLAUDE.md` advertises `.claude/rules/` and a
   `/new-component` skill that no clone of this repo has ever had.**
   They exist in the private R&D checkout; the blanket `.claude/`

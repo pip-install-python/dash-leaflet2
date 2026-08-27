@@ -150,9 +150,21 @@ def test_the_card_is_hosted_off_the_app():
 
 
 def test_the_twitter_card_is_a_large_image(client):
-    assert _meta(client.get("/").text, "property", "twitter:card") == [
-        "summary_large_image"
-    ]
+    """Every declaration agrees on the value, AND the one X can actually read
+    is present.
+
+    X's card parser predates the OpenGraph convention: it reads `name=` and
+    ignores `property=`. Dash emits the whole twitter:* set with `property=`,
+    so before templates/index.html carried a static `name=` copy this
+    document declared a card no scraper could see — while the crawler
+    document (which dash-improve-my-llms builds itself, with `name=`)
+    declared it correctly. Found by the smoke battery's crawler/browser
+    identity-parity check, 2026-08-26."""
+    html = client.get("/").text
+    assert set(_meta(html, "property", "twitter:card")) == {"summary_large_image"}
+    assert 'name="twitter:card"' in html, (
+        "no name=twitter:card — Dash's property= copy is invisible to X"
+    )
 
 
 def test_no_meta_tag_dash_emits_is_also_declared_statically(client):
@@ -162,10 +174,19 @@ def test_no_meta_tag_dash_emits_is_also_declared_statically(client):
     template makes two of each, and the static one describes the SITE where
     Dash's describes the PAGE — redundant and less accurate at once. Which tag
     a scraper honours is undefined; in practice the later wins.
+
+    `twitter:card` is the DELIBERATE EXCEPTION (template 2.5.x SEO standard,
+    adopted here 2026-08-26). Dash declares it with `property=`, which X does
+    not read, so the static `name=` copy in index.html is not a duplicate in
+    the sense this rule cares about — it is the only declaration any scraper
+    can see. Both carry the same value, pinned by
+    `test_the_twitter_card_is_a_large_image` above. The rule holds for every
+    other tag here, where BOTH declarations are readable and the static one
+    would be the less accurate.
     """
     html = client.get(SAMPLE_PAGE).text
     for tag in ("description", "og:type", "og:title", "og:description",
-                "og:image", "twitter:card", "twitter:url", "twitter:title",
+                "og:image", "twitter:url", "twitter:title",
                 "twitter:description", "twitter:image"):
         found = _meta(html, "property", tag)
         assert len(found) <= 1, f"{tag} is declared {len(found)} times: {found}"

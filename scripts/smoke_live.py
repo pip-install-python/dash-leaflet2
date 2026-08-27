@@ -20,6 +20,7 @@ import os
 import re
 import sys
 import ssl
+import html as html_lib
 import time
 import urllib.error
 import urllib.request
@@ -57,7 +58,16 @@ STUB_MARKER = "This page contains interactive content that requires JavaScript"
 CHROME = re.compile(r'<[a-z]+ class="dv-banner')
 TIMEOUT = 30
 # Attempts per URL for NETWORK-level errors only — see `fetch`.
-RETRIES = 3
+#
+# Env-overridable since the 1.6.28 contract (spec SYNC-1.6.22-1.6.29 item 6):
+# these were hardcoded here, which is how muischeduler ran a 1.2.4-vintage
+# copy against a free-tier host with no way to widen the window from CD.
+# Generous by default on purpose — a free-tier cold start routinely takes
+# 60-90s, and the only cost of a wide window is paid when the host is
+# actually down, because a warm host passes the first probe.
+RETRIES = max(1, int(os.getenv("SMOKE_FETCH_RETRIES") or 3))
+WAKE_ATTEMPTS = max(1, int(os.getenv("SMOKE_WAKE_ATTEMPTS") or 24))
+WAKE_INTERVAL_S = max(0.0, float(os.getenv("SMOKE_WAKE_INTERVAL_S") or 10))
 
 
 def _ssl_context() -> ssl.SSLContext:
@@ -84,7 +94,11 @@ checks_run = 0
 
 
 def fetch(
-    url: str, user_agent: str = BROWSER_UA, accept: Optional[str] = None
+    url: str,
+    user_agent: str = BROWSER_UA,
+    accept: Optional[str] = None,
+    retries: Optional[int] = None,
+    timeout: float = TIMEOUT,
 ) -> Tuple[int, str, Dict[str, str]]:
     """Returns (status, body, headers).
 
@@ -105,12 +119,13 @@ def fetch(
         headers["Accept"] = accept
     request = urllib.request.Request(url, headers=headers)
     last: Exception | None = None
-    for attempt in range(RETRIES):
+    attempts = RETRIES if retries is None else max(1, retries)
+    for attempt in range(attempts):
         if attempt:
             time.sleep(2 * attempt)
         try:
             with urllib.request.urlopen(
-                request, timeout=TIMEOUT, context=SSL_CONTEXT
+                request, timeout=timeout, context=SSL_CONTEXT
             ) as response:
                 body = response.read().decode("utf-8", "replace")
                 return response.status, body, dict(response.headers)
@@ -166,10 +181,65 @@ def check(name: str, passed: bool, detail: str = "", fatal: bool = True) -> None
             print(f"::warning title=peer unreachable::{name} — {detail}")
 
 
+def wake(base: str) -> bool:
+    """Poll `/healthz` until the host actually answers.
+
+    A sleeping free-tier host greets its first visitor with the platform's
+    loading page or a hang, and the first visitor after a deploy is this
+    battery — so without this loop the opening checks fail on a perfectly
+    healthy site, and the CD log blames whichever check happened to run
+    first. Requiring `ok: true` rather than any 200 keeps the loading page
+    (and a CDN error page, which is also a 200) from counting as awake.
+
+    Each probe is single-shot with a short timeout: the loop IS the retry
+    ladder here, and per-probe printing is what makes a slow start readable
+    in the CD log rather than a silent multi-minute stall.
+    """
+    url = f"{base}/healthz"
+    for attempt in range(1, WAKE_ATTEMPTS + 1):
+        try:
+            status, body, _ = fetch(url, retries=1, timeout=10)
+        except TypeError:
+            # A legacy `fetch` stub — the pre-1.6.2x `(url, user_agent,
+            # accept)` signature — from a test that monkeypatches fetch
+            # without patching wake. The real fetch cannot raise TypeError
+            # (its signature takes these kwargs and everything inside its
+            # attempt loop is caught), so this branch can only be a stub's
+            # signature binding. Probe bare rather than take a whole suite
+            # down: the 1.6.28 fan-out went red on 7 of 12 forks exactly
+            # here (spec SYNC-1.6.22-1.6.29 item 6).
+            status, body, _ = fetch(url)
+        if status == 200 and re.search(r'"ok"\s*:\s*true', body):
+            print(f"  wake  attempt {attempt}/{WAKE_ATTEMPTS}: up")
+            return True
+        detail = f"HTTP {status}" if status else body[:80]
+        print(f"  wake  attempt {attempt}/{WAKE_ATTEMPTS}: {detail}", flush=True)
+        if attempt < WAKE_ATTEMPTS:
+            time.sleep(WAKE_INTERVAL_S)
+    return False
+
+
 def main(base: str) -> int:
     base = base.rstrip("/")
     host = urlparse(base).netloc
     print(f"Smoke-testing {base}\n")
+
+    # --- 0. Wake the host before asserting anything about it ---------------
+    print("Wake-up")
+    if not wake(base):
+        # ONE clear failure, not a cascade: sixty per-check failures against
+        # a host that never answered all say the same thing and bury it.
+        check(
+            "host answered /healthz",
+            False,
+            f"never woke after {WAKE_ATTEMPTS} probes ~{WAKE_INTERVAL_S:g}s "
+            "apart — nothing else was tested",
+        )
+        print(f"\n0/{checks_run} checks passed")
+        print("\nFailed:")
+        for name in failures:
+            print(f"  - {name}")
+        return min(len(failures), 125)
 
     # --- 1. The site is up, and llms.txt is the index it should be ---------
     print("Core surfaces")
@@ -259,6 +329,61 @@ def main(base: str) -> int:
             f"real content on {urlparse(url).path or '/'}",
             STUB_MARKER not in html,
             "served the JavaScript stub",
+        )
+
+    # --- 3c. Crawler/browser identity parity ------------------------------
+    # Every SEO defect measured across the fleet in 2026-08 was one bug in
+    # different clothes: the head a crawler received had drifted from the head
+    # a browser received — 4-7 icon links vs zero, "site | page" vs a bare
+    # page name, og:image vs nothing. Content may differ between the two
+    # documents (that is what the prerender is for); IDENTITY may not. This
+    # block is the single assertion that would have caught all of it.
+    print("\nCrawler/browser identity parity")
+
+    def identity(doc: str) -> Dict[str, object]:
+        # Icons compare as the SET of declared sizes, not a raw link count:
+        # Dash auto-injects one extra favicon link (with a cache-busting
+        # query) into the browser head, so counts differ by one forever while
+        # the actual identity — which sizes a consumer can pick from — is
+        # what the two heads must agree on.
+        icon_links = re.findall(
+            r'<link[^>]+rel="(?:icon|apple-touch-icon)"[^>]*>', doc)
+        # Unescape before comparing: one side may write an apostrophe as
+        # &#x27; and the other verbatim — same identity, different escaping.
+        unescape = html_lib.unescape
+        return {
+            "icon sizes": sorted(
+                {z for link in icon_links
+                 for z in re.findall(r'sizes="([^"]+)"', link)}
+            ),
+            "title": unescape(
+                (re.findall(r"<title>(.*?)</title>", doc, re.S) or [""])[0].strip()
+            ),
+            "og:image": sorted({
+                unescape(u) for u in re.findall(
+                    r'property="og:image"[^>]+content="([^"]*)"', doc)
+            }),
+            "twitter:card": sorted({
+                unescape(v) for v in re.findall(
+                    r'name="twitter:card"[^>]+content="([^"]*)"', doc)
+            }),
+        }
+
+    for url in [f"{base}/"] + page_urls[:3]:
+        path = urlparse(url).path or "/"
+        _status, crawler_html, _ = fetch(url, CRAWLER_UA)
+        _status, browser_html, _ = fetch(url, BROWSER_UA)
+        seen_c, seen_b = identity(crawler_html), identity(browser_html)
+        for field in ("icon sizes", "title", "og:image", "twitter:card"):
+            check(
+                f"{path}: crawler and browser agree on {field}",
+                seen_c[field] == seen_b[field] and seen_c[field] not in (0, "", []),
+                f"crawler={seen_c[field]!r} browser={seen_b[field]!r}",
+            )
+        check(
+            f"{path}: crawlers get an icon >=192px",
+            'sizes="192x192"' in crawler_html or 'sizes="512x512"' in crawler_html,
+            "no >=192px icon link in the crawler head — Google's preferred size",
         )
 
     # --- 4. Content negotiation on llms.txt -------------------------------

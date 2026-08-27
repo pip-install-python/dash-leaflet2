@@ -88,6 +88,16 @@ def wired(battery, client, monkeypatch):
     # test silently kept hitting the network.
     monkeypatch.setattr(battery, "fetch_raw", fetch_raw)
     monkeypatch.setattr(battery, "_RESULTS", [])
+    # This seat's interpreter is the DEVELOPER's, never a deploy artifact —
+    # the in-process app answers /healthz with whatever Python is running
+    # pytest, while the Dockerfile declares the fleet's. Comparing them here
+    # would fail on every machine that is not coincidentally on the fleet
+    # minor, and would be measuring the seat rather than the deploy. The
+    # seats that leave `python_matches_declared` armed are the ones whose
+    # interpreter IS the artifact: the docker container in CI (which asserts
+    # the image's own Python) and production in CD. The `python` FIELD's
+    # presence is still pinned here, and by tests/test_healthz_identity.py.
+    monkeypatch.setattr(battery, "declared_python_minor", lambda: None)
     battery.seen_agents = seen_agents
     return battery
 
@@ -164,3 +174,40 @@ def test_the_default_base_url_matches_the_container_port(battery):
         f"the battery defaults to port {port}; the image exposes something else"
     )
     assert f"PORT={port}" in dockerfile, "the image defaults to a different port"
+
+
+def test_every_urlopen_in_the_live_tools_carries_an_ssl_context():
+    """The source pin for SYNC-1.6.10-1.6.16 item 7, widened to both tools.
+
+    macOS Python ships without OS trust-store integration, so a bare
+    `urlopen` fails every https fetch with CERTIFICATE_VERIFY_FAILED. In
+    these scripts that does not read as a TLS problem — it reads as the host
+    being down: `network_smoke.fetch` re-raises after its retries, and
+    `smoke_live.fetch` returns status 0, so a healthy satellite is reported
+    unreachable and a seat goes looking at the deploy.
+
+    CI runs on Linux and is BLIND to this by construction, and the wired
+    tests monkeypatch the transport — only a source-level pin holds it. The
+    template pinned `smoke_live.py` upstream in `tests/test_auth_wiring.py`
+    (which this repo does not carry) and MISSED `network_smoke.py`, where
+    the same defect sat until 2026-08-27. Hence: both files, checked by AST
+    so a mention in a comment cannot satisfy it.
+    """
+    import ast
+
+    for name in ("network_smoke.py", "smoke_live.py"):
+        path = REPO_ROOT / "scripts" / name
+        tree = ast.parse(path.read_text(encoding="utf-8"))
+        calls = [
+            node for node in ast.walk(tree)
+            if isinstance(node, ast.Call)
+            and isinstance(node.func, ast.Attribute)
+            and node.func.attr == "urlopen"
+        ]
+        assert calls, f"{name}: no urlopen found — did the transport move?"
+        for call in calls:
+            kwargs = {kw.arg for kw in call.keywords}
+            assert "context" in kwargs, (
+                f"{name} line {call.lineno}: urlopen without context= — on "
+                "macOS every https fetch fails and the host reads as down"
+            )

@@ -27,6 +27,11 @@ services:
     # /healthz is the 2plot network convention (lib/health.py) and is excluded
     # from traffic counts, so it makes a cleaner check than /.
     healthCheckPath: /healthz
+    # `release` is written ONLY by CD (.github/workflows/cd.yml, job `deploy`:
+    # a fast-forward push of the run's sha after the CI matrix is green). A
+    # push to main is not a deploy, it is a candidate — Render reacting to
+    # THIS branch is the mechanism that makes that true (template 1.6.35).
+    branch: release
     autoDeploy: true
     envVars:
       # --- Core --------------------------------------------------------

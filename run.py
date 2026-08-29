@@ -58,6 +58,7 @@ from dash_improve_my_llms import (
     RobotsConfig,
     add_llms_routes,
     mark_hidden,
+    on_document_read,
     register_page_metadata,
 )
 
@@ -114,7 +115,7 @@ print(
 # ----------------------------------------------------------------------------
 import sys  # noqa: E402
 
-LLMS_PKG_FLOOR = (2, 7, 1)
+LLMS_PKG_FLOOR = (2, 8, 0)
 ALLOW_STALE_DEPS = os.environ.get("ALLOW_STALE_DEPS", "0") == "1"
 
 
@@ -155,6 +156,10 @@ if LLMS_PKG_FLOOR > _version(LLMS_PKG_VERSION):
     _dependency_floor(
         f"dash-improve-my-llms {LLMS_PKG_VERSION} is below the "
         f"{'.'.join(str(n) for n in LLMS_PKG_FLOOR)} floor in requirements.txt. "
+        "Below 2.8.0 there is no `classify()` and no `on_document_read`: the "
+        "tracker cannot delegate bot classification and no read row is ever "
+        "kept, so the ledger's `reads` table and rollup v4's vendors[] are "
+        "empty (ImportError at boot, not a silent degrade). "
         "Below 2.7.1 the llms.txt v2 discovery relations (rel=alternate/"
         "describedby + Link headers), the text/plain Accept ramp, and the "
         "representation digest are missing. Below 2.7.0 every page serves a "
@@ -446,6 +451,18 @@ ACCESS_ENABLED = _access.configure(force=True)
 # markdown loader gave it and the warning should stay at zero. If it starts
 # firing, a page has genuinely lost its prose — which is worth hearing about.
 add_llms_routes(app, LLMSConfig(warn_missing_llms_doc=True))
+
+# The ledger row (dimll 2.8.0): the package emits one event per corpus
+# document it serves and does no I/O with it; lib/analytics_tracker keeps it
+# as the `reads` table next to `visits`, joined by lib/traffic_rollup into the
+# v4 vendors[] block and shown to the owner on /admin/traffic. Registered
+# ONCE — the test suite imports run.py more than once per process and
+# `on_document_read` APPENDS, so a marker on the callback's owner guards the
+# second import (the package also dedups an identical callable; belt and
+# braces).
+if not getattr(tracker, "_read_hook_registered", False):
+    on_document_read(tracker.record_read)
+    tracker._read_hook_registered = True
 
 # The hub's announcement feed, rendered in the header of this site's llms.txt
 # viewer. Opt-in: with NETWORK_BULLETIN_URL unset the feature is simply off and

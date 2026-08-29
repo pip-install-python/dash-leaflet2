@@ -130,7 +130,7 @@ jobs:
           # import. httpx backs starlette's TestClient.
           if [ "${{ matrix.backend }}" != "flask" ]; then
             pip install "dash[${{ matrix.backend }}]" httpx
-            pip install "dash-improve-my-llms[${{ matrix.backend }}]>=2.7.1"
+            pip install "dash-improve-my-llms[${{ matrix.backend }}]>=2.8.0"
           fi
           pip install pytest
 
@@ -293,7 +293,7 @@ jobs:
 
           v = version('dash-improve-my-llms')
           print('dash-improve-my-llms', v)
-          assert parts(v) >= (2, 7, 1), f'expected >=2.7.1, image has {v}'
+          assert parts(v) >= (2, 8, 0), f'expected >=2.8.0, image has {v}'
 
           # markdown2dash installs with --no-deps to dodge its gunicorn<22
           # pin; this assert is what proves the dodge kept working. 21.x

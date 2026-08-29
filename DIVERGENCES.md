@@ -305,11 +305,60 @@ is contract-class now, so the fence stays at one path — but the near
 miss is the reason to re-run this audit every round rather than
 trusting the last one.
 
+Re-audited 2026-08-29 for `SYNC-1.6.22-1.6.35` (items 12 + 13), whose
+block adds `tests/test_analytics_classifier.py` and
+`tests/test_traffic_rollup_v4.py`. Both arrived here as byte copies of
+template HEAD and this fork claims nothing on their bytes, so the
+answer is unchanged: one entry. Item 12's other two tests
+(`test_read_ledger.py`, `test_traffic_page.py`) are contract-class
+upstream and were ported, not copied — they call this tree's conftest
+fixtures and `pages/control_board.py`. Item 13's
+`tests/test_cd_promotes_release.py` is likewise a port: it parses THIS
+fork's cd.yml, whose host string, wait sizing and comments are its own.
+
 ```yaml byte-owned
 # Divergence 3: this repo builds a JS bundle, so its dependabot config
 # ADDS an npm ecosystem the template's copy does not have. The 1.6.24
 # rewrite is a whole-file byte-copy that would silently remove it.
 - .github/dependabot.yml
+```
+
+---
+
+## Declared posture
+
+What this host SERVES, measured — not what the template ships. The hub
+used to keep this as a seeded table it could not re-measure; the fence
+(template 1.6.30, item 9) homes each posture in the repo that serves
+it. `tests/test_claude_kit.py` validates the SHAPE and holds `runtime`
+against `render.yaml`; no test can tell a stale 200 from a fresh one,
+so the values below carry the date they were taken.
+
+- **`ai_bots`** — measured 2026-08-29 against `https://leaflet.2plot.dev`
+  with `ClaudeBot/1.0`: `/`, `/llms.txt`, `/healthz`, `/robots.txt` and
+  `/sitemap.xml` all 200. That is **divergence 4** on the wire, not a
+  miss: this host ships `block_ai_training=False` because it is
+  documentation for an MIT-licensed component library whose
+  distribution channel is a model recommending `dash-leaflet2`. A
+  fleet host that blocks training answers 403 at `/` here.
+- **`healthz: full`** — and a superset at that; see divergence 5, which
+  adds `version`, `base_url` and `reporting` to the fleet-standard
+  payload.
+- **`runtime: docker`** — `render.yaml` builds the Dockerfile, so
+  `PYTHON_VERSION` is deliberately ABSENT there (spec 1.6.28 item 5:
+  on a Docker service nothing reads it, and a string that reads like
+  the platform's setting and can never be true is its own defect).
+- **`deploy: release-branch`** — since 2026-08-29 (template 1.6.35,
+  item 13). Render watches `release`; only `cd.yml`'s `deploy` job
+  writes it, fast-forward, after the CI matrix is green. `main` ahead
+  of `release` is an uncertified push pending, never drift. An absent
+  `deploy:` key would read as "this host still watches main".
+
+```yaml posture
+ai_bots: {"/": 200, "/llms.txt": 200, "/healthz": 200, "/robots.txt": 200, "/sitemap.xml": 200}
+healthz: full
+runtime: docker
+deploy: release-branch
 ```
 
 ---

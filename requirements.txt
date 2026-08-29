@@ -50,7 +50,20 @@ docutils!=0.21
 jsonpath>=0.82,<0.83
 mistune>=3.0.1,<4.0.0
 python-frontmatter
-# 2.7.1 — and as in every round, THE NUMBER CHANGING IS THE CACHE BUST.
+# 2.8.0 — and as in every round, THE NUMBER CHANGING IS THE CACHE BUST.
+#
+# What 2.8.0 buys, and it is the LEDGER floor: `classify()`, the one vendor
+# registry robots.txt is already rendered from, so lib/analytics_tracker can
+# delegate instead of carrying a fourth User-Agent list (the one it carried
+# filed ClaudeBot — Anthropic's TRAINING crawler — under "search", still named
+# the retired anthropic-ai / claude-web tokens, and counted every UA-less or
+# library client as a person); and `on_document_read`, one event per corpus
+# document served — tier, verdict, bytes, verified vendor — which
+# AnalyticsTracker.record_read keeps as the ledger's `reads` table and
+# lib/traffic_rollup folds into the v4 `vendors[]` block. Below the floor
+# neither name exists and run.py refuses to boot rather than degrade quietly.
+# 2.8.1 will write the resolved `policy` on every event; until then it is None
+# and the rollup groups it as "default". Nothing here waits on it.
 #
 # What 2.7.1 buys: llms.txt v2 discovery relations (rel=alternate/describedby
 # plus Link headers), the text/plain Accept ramp, and the representation
@@ -109,7 +122,7 @@ python-frontmatter
 # directive-leakage fix. `configure_access` (2.3) is what lib/access.py
 # hands the gate policy to. The [flask] extra is just flask>=2.0, already
 # present via Dash.
-dash-improve-my-llms[flask]>=2.7.1
+dash-improve-my-llms[flask]>=2.8.0
 python-dotenv>=1.0
 pydantic>=2.0
 requests>=2.31

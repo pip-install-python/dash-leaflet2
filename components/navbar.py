@@ -31,6 +31,10 @@ EXCLUDED_LINKS: set[str] = {
     # is hidden by default and revealed server-side to allowlisted accounts —
     # see `create_admin_section` below.
     "/admin/control-board",
+    # /admin/traffic is the same class: this host's own crawler ledger, behind
+    # the board's exact gate. It marks itself hidden at import (pages/traffic.py)
+    # rather than from run.py, so it is off every machine surface too.
+    "/admin/traffic",
 }
 
 # The control board's nav entry. Rendered into both the desktop navbar and the

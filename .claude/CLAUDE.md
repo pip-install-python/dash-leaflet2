@@ -155,8 +155,127 @@ they win.
 - `/healthz` build == HEAD is the deploy proof; a missing geo block
   on dimll ≥2.7 means the cache trap fired (unless DIVERGENCES.md
   says this host's healthz is deliberately minimal).
-- Probe with GET, not HEAD — HEAD responses omit the Link headers.
+- Always GET, never HEAD — and the mechanism, measured 2026-08-27
+  after two rounds of wrong diagnoses: on the ASGI backends HEAD is
+  answered by NOTHING AT ALL. Werkzeug derives a HEAD rule from
+  every GET rule; FastAPI's `APIRoute` does not, so a route declared
+  `@router.get(...)` returns 405, and every ASGI host in the network
+  was 405ing HEAD on every route — `/healthz`, `/robots.txt`,
+  `/sitemap.xml` included. Get the LAYER right (corrected 1.6.33,
+  after this text and two seats' drops all said "Starlette", and
+  three probes went looking in the wrong package):
+  `starlette.routing.Route` DOES add HEAD wherever GET is present —
+  `self.methods.add("HEAD")`, the same courtesy Werkzeug does — and
+  FastAPI's `APIRoute` is the one that takes `methods` literally.
+  A HEAD probe therefore tells you about
+  the router's method table and never about the document. GET is
+  never wrong, which is the whole reason to have one rule.
+  Do NOT "verify" the trap on one host and conclude HEAD is fine:
+  excalidraw measured twice and was right about its own Flask host
+  and wrong about the fleet. Do not verify it on `HEAD /` either —
+  a crawler-UA `HEAD /` is answered by the prerender middleware
+  before routing, so it returns 200 on a host that 405s everything
+  else, and that one case is how this repo's 1.6.31 in-process
+  probe cleared the app code. Earlier text here said the ASGI hosts
+  DROP the `Link` headers on HEAD: a 405 carries no `Link`, so the
+  observation was true and the diagnosis was not. Fixed in the
+  template at 1.6.32 (a HEAD→GET ASGI middleware, because the
+  package's own adapter declares its routes GET-only); the fleet's
+  two ASGI forks consume it as spec item 11, and the hub plus four
+  second-ring hosts had the same defect — if you serve a non-Flask
+  backend, assume you have it until you have probed a route that is
+  NOT `/`. The middleware stays after dimll 2.7.2 fixes the
+  package's own routes: `/` is Dash's page catch-all and every Dash
+  route is an `APIRoute` too.
+- Any throwaway Python probe a session writes against a production
+  host needs the certifi SSL context AND a retry guard. Fixing the
+  shipped tools does not cover the next ad-hoc script: the template
+  seat hit `CERTIFICATE_VERIFY_FAILED` in a hand-written CD watcher
+  one hour after shipping that exact fix inside both live tools,
+  and the ops seat hit it plus an `IncompleteRead` on a chunked
+  response in the same session. It is a seat habit, not a repo
+  contract, which is what this file is for.
 - Run-watchers keyed on a commit sha can match Dependabot's runs on
   the same sha — key on the workflow path (cd.yml) instead.
 - The browser lane and the machine lane are different documents;
   a fix proven on one is unproven on the other.
+- SUPERSESSION: cd.yml's build-match wait cannot tell "not deployed
+  yet" from "already replaced" — both look like a live build that
+  is not the sha it wants. A bot-merged PR (any GITHUB_TOKEN merge)
+  is one road in: it lands with ZERO workflow runs on the merge sha
+  (anti-recursion) yet still reaches production, because the deploy
+  hook builds branch HEAD — so an in-flight CD run ships the merge
+  while its own wait holds out for the superseded release sha
+  (observed live on 4a1d430, 2026-08-25). It is NOT the only road,
+  and taking the bot actor off main does not close the class: two
+  human pushes inside one deploy window, or hook dispatch lag,
+  produce exactly the same state. Since 1.6.25 the wait fails FAST
+  when the live build is a DESCENDANT of the wanted sha (compare
+  API) instead of going red at timeout — that is the diagnosis, and
+  it works whoever merged. The policy — actions PRs: human merge
+  when green, never a bot actor on main — removes the most common
+  road, not the trap.
+- Anonymous api.github.com is 60 requests/hour. With no `gh` and no
+  token, read a run ONCE after CI's own jobs report complete — a
+  blind 20 s poll loop spends the whole budget reading rate-limit
+  bodies as "not done yet" (modelviewer, 2026-08-26).
+- A GitHub API JSON body WITHOUT the field you asked for
+  (`workflow_runs` absent, not empty) is a rate-limit error body,
+  never an empty result — check the field exists before trusting
+  the answer.
+- `git fetch` before any audit: the fan-out pushes to these repos
+  now, and a checkout current yesterday is 2–3 merges behind
+  origin/main today (three pilot sessions, same day, 2026-08-26).
+- A failed STEP is not a failed RUN. A job with
+  `continue-on-error: true` (pip-audit here) reports its step red
+  and the RUN still concludes `success`; the reverse also bites —
+  a green-looking job list under a run whose conclusion is
+  `failure`. Read the run's `conclusion`, then the annotations;
+  never infer either one from the other.
+- Never round-trip JSON through zsh `echo` — it interprets the
+  `\n` inside a multi-line commit message and hands the parser
+  real control characters (a broken API read on the template, then
+  the same hour on the ops seat). Pipe curl straight into
+  `python3`, or use `printf '%s'`.
+- Repeated HTTP headers survive only if you keep them: both
+  `dict(resp.headers)` and `{k: v for k, v in resp.headers.items()}`
+  keep the LAST value per name, and dimll emits several `Link`
+  headers (muicharts, 2026-08-26). Iterate the items, or ask for
+  `resp.headers.get_all(name)`; in curl, `-D -` and read the raw
+  block.
+- Name the crawler UA when you probe the machine lane. Which
+  document a host serves is decided by the package's UA
+  classification, not by the absence of a UA: on the template
+  today, curl's default `curl/8.x` receives the SAME crawler
+  document as Googlebot (18,779 bytes, byte-identical) while a
+  Chrome UA gets the 148 KB app shell. One host (muicharts) reported
+  a UA-less probe classified the other way; treat that as
+  UNCONFIRMED — muischeduler filed the same observation and then
+  RETRACTED it (its report had the two documents swapped), leaving
+  one unreproduced sighting, and a trap carrying an unreproducible
+  fact spends somebody's afternoon. The advice does not depend on
+  it: either lane can be the one you did not mean to test, so send
+  `-A "<a real crawler UA>"` and confirm from the body which
+  document came back.
+- There is ONE classifier: `dash_improve_my_llms.classify()`. Never
+  add a User-Agent list to this app — the tracker had one for a year
+  (`lib/analytics_tracker.py`, until 1.6.34), it filed ClaudeBot as
+  *search* (it is Anthropic's training crawler; the package's registry
+  and this repo's own `run.py` comment both said so six lines from
+  where the list ignored them), it still named the retired
+  `anthropic-ai` / `claude-web` tokens, and it counted every UA-less or
+  library client as a human. Every host in the fleet reported those
+  numbers. A token the registry lacks is a pushback to the package
+  seat, not a list here; `tests/test_analytics_classifier.py` greps the
+  module for the old tokens and goes red if one comes back.
+- `build == HEAD` on `/healthz` means HEAD of **`release`**, not main
+  (1.6.35). Render deploys `release`; only cd.yml's `deploy` job writes
+  it, fast-forward, after the CI matrix is green. `main` ahead of
+  `release` is an uncertified push pending — its CD run is red or still
+  running — never "drift" and never a reason to deploy by hand or to
+  write `release` yourself (a non-fast-forward push fails the next run
+  on purpose). Compare the wire against `git rev-parse origin/release`;
+  the one measurement behind this: 2026-08-29 14:12Z, de0bcff pushed
+  to main, built by Render inside the minute, red in CD at 14:13Z,
+  served for ~6 minutes. A host whose DIVERGENCES.md posture fence has
+  no `deploy:` key still watches main — there the trap is the old one.

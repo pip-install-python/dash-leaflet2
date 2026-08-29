@@ -70,6 +70,37 @@ changed, and `pip install dash-leaflet2` is untouched by any of it.
 
 ### Changed
 
+- **`human_hits` will DROP and `bot_hits` will RISE on the day this ships, and
+  that is the number becoming true.** The visitor tracker carried its own
+  User-Agent list for a year; it filed ClaudeBot — Anthropic's *training*
+  crawler — under "search", still named the retired `anthropic-ai` /
+  `claude-web` tokens, and counted every UA-less or library client (`httpx`,
+  `Go-http-client`, `node-fetch`, an empty User-Agent) as a person. The list
+  is gone: classification now delegates to `dash-improve-my-llms`'
+  `classify()`, the same vendor registry `robots.txt` is already rendered
+  from, so what this site SAYS about a vendor and what it COUNTS finally
+  agree. Those clients move from human to crawler, so the hub's day-over-day
+  view will show a step. Nothing regressed; the old numbers were wrong.
+
+- **The site now keeps a read ledger, and can show it to its owner.** With
+  `dash-improve-my-llms` 2.8.0, the package hands over one event per corpus
+  document it serves — tier, verdict, bytes, verified vendor — which used to
+  be discarded at the app boundary. Those rows are kept as a second table in
+  the same analytics file (never summed into the visit counts), folded into
+  the hourly rollup as an additive `vendors[]` block, and rendered on the new
+  owner-only `/admin/traffic`: vendor × day, vendor → tier, and the paths each
+  vendor pulled. `verified` there means the request came from an IP range the
+  vendor publishes — Anthropic publishes none, so ClaudeBot reads `n/a`, which
+  is a property of the vendor and not a defect on this host.
+
+- **A push to `main` is no longer a deploy.** Render now watches a `release`
+  branch that only CD writes, fast-forward, after the full CI matrix is green;
+  `main` is where CI judges. Previously the platform built `main` directly, so
+  a red commit could be live minutes before its own CI run said so, and the
+  post-deploy verification could report green against the *previous* build.
+  `main` ahead of `release` now means an uncertified push is pending — never
+  drift, and never a reason to deploy by hand.
+
 - **One access system instead of two.** `tier:` and `visibility:` in a page's
   frontmatter were independent fields naming the same four values, so a page
   could declare one tier and be enforced at another, with a control-board row

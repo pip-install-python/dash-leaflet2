@@ -19,8 +19,9 @@ import re
 
 from conftest import BROWSER_ACCEPT, CRAWLER_UA, SAMPLE_PAGE, STUB_MARKER
 
-# run.py marks exactly one page hidden. `/admin` is the canary for the next.
-HIDDEN_PATHS = ("/admin/control-board", "/admin")
+# Both admin surfaces are hidden — the board from run.py, /admin/traffic from
+# its own module at import. `/admin` is the canary for the next one.
+HIDDEN_PATHS = ("/admin/control-board", "/admin/traffic", "/admin")
 
 
 def test_healthz_is_json_and_names_this_app(client):

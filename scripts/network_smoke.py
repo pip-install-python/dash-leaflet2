@@ -52,6 +52,28 @@ except Exception:  # running outside a repo checkout — keep the token intact
 UA = _INTERNAL_UA + " network-smoke"
 CRAWLER_UA = "Mozilla/5.0 (compatible; Googlebot/2.1) " + _INTERNAL_UA
 
+# A BROWSER User-Agent, and it exists because of dash-improve-my-llms 2.8.0.
+#
+# From 2.8.0 the document a host serves is decided by `classify()`, and this
+# tool's default `UA` — the bare internal token — lands on the CRAWLER lane
+# (measured: `classify(UA)["lane"] == "crawler"`). So every check here that
+# fetches `/` gets the crawler document, and any assertion about a BROWSER
+# document silently changes meaning at the floor bump. `installable_as_an_app`
+# was the one that noticed: the crawler document carries no `<link
+# rel="manifest">`, correctly, because a crawler cannot install an app — so
+# the check failed claiming this site is not installable, which was never
+# true. That would have gone red in CD against production, after the deploy.
+#
+# Same class as the trap sync item 12 documents for tests/test_proxy_scheme.py
+# ("either lane can be the one you did not mean to test"); it lands here
+# instead on a fork that has no such test. Built like CRAWLER_UA above — a
+# real UA with the internal token appended, so analytics still drops it at
+# write time and `classify` still reads the lane from the leading tokens.
+BROWSER_UA = (
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
+    "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 " + _INTERNAL_UA
+)
+
 # The body dash-improve-my-llms serves when a page has no prose registered.
 # Matched in full, deliberately: this app's own <noscript> block legitimately
 # says "requires JavaScript", and a substring check on that phrase reports a
@@ -435,8 +457,13 @@ def satellite_checks(base: str) -> None:
         It shipped with empty `name`/`short_name` and icon paths pointing at
         the site root, where nothing is served — so the install prompt was
         never possible, and nothing anywhere said so.
+
+        BROWSER_UA, not the default: a manifest link is a property of the
+        BROWSER document, and from dash-improve-my-llms 2.8.0 this tool's
+        internal UA is classified onto the crawler lane, which is served a
+        document with no manifest link at all. See the BROWSER_UA comment.
         """
-        _status, _, html = get("/")
+        _status, _, html = get("/", ua=BROWSER_UA)
         match = re.search(r'<link[^>]+rel="manifest"[^>]+href="([^"]+)"', html)
         expect(bool(match), "no manifest link — the app cannot be installed")
 

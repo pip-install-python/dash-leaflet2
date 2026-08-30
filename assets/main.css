@@ -527,3 +527,73 @@ img[alt=logo] { width: 100%; }
 header.mantine-AppShell-header {
     z-index: 150 !important;
 }
+
+/* ==========================================================================
+   Mobile fit (template 1.6.39) — nothing may push the document past the
+   viewport. Every rule here is stylesheet-only and uses PUBLIC Mantine class
+   names; never the hashed .m_* internals, which are version-coupled by
+   construction (a rule that stops matching after a bump fails silently).
+   ========================================================================== */
+
+/* Wide tables scroll in their own box. `.. kwargs::` prop tables — which this
+   site has on every component page — carry m2d-block-kwargs, NOT m2d-table,
+   so they need naming explicitly or they are the one table that never
+   matched. Element+class so it outranks Mantine's own width rule whatever
+   the load order. */
+table.m2d-table,
+table.m2d-block-kwargs {
+    display: block;
+    width: max-content;
+    max-width: 100%;
+    overflow-x: auto;
+}
+
+/* Code blocks scroll inside their own box wherever they sit. CodeHighlight's
+   <pre> already scrolls, but a flex parent with the default min-width:auto —
+   a Mantine List item wrapper, a Blockquote, a Stack — refuses to shrink
+   below the code's intrinsic width and drags the whole document wide. */
+.mantine-List-itemWrapper,
+.mantine-List-itemLabel,
+.mantine-List-item,
+.mantine-Blockquote-root,
+.mantine-Timeline-itemBody,
+.mantine-CodeHighlight-root,
+.mantine-CodeHighlightTabs-root {
+    min-width: 0;
+    max-width: 100%;
+}
+
+/* The wrapper is inline-flex and the label a block child: without min-width:0
+   on the LABEL too, it grows to the code's width. */
+.mantine-List-itemWrapper {
+    width: 100%;
+}
+
+.mantine-List-itemLabel {
+    flex: 1 1 auto;
+}
+
+/* Timeline bullets (/changelog): a Text in a no-wrap Group grows to its
+   longest unbreakable token and leaves its card. */
+.mantine-Timeline-root .mantine-Text-root,
+.mantine-Timeline-root .mantine-Code-root {
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+/* Inline code in prose: a long unbreakable token (a dotted module path, a
+   `new TileLayer(...)` chain) is the last thing that can push a page past the
+   viewport once blocks and tables scroll in their own boxes. Block code keeps
+   its pre formatting — this is inline only. */
+code.m2d-codespan,
+.mantine-Code-root:not(.mantine-CodeHighlight-code) {
+    overflow-wrap: anywhere;
+    white-space: normal;
+}
+
+.mantine-CodeHighlight-root pre,
+.mantine-CodeHighlightTabs-root pre,
+.mantine-AppShell-main pre {
+    overflow-x: auto;
+    max-width: 100%;
+}

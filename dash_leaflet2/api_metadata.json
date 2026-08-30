@@ -1,0 +1,2275 @@
+{
+ "components": [
+  {
+   "description": "AttributionControl adds an explicitly-controlled attribution box to the map. Place\nit as a child of `dl2.Map` with `attributionControl=False` to take over from the\nbundled default; both `position` and `prefix` are two-way (mutable from Python\ncallbacks). Pass `prefix=False` to hide the \"Leaflet\" link.",
+   "name": "AttributionControl",
+   "props": [
+    {
+     "default": "",
+     "description": "The ID used to identify this component in Dash callbacks.",
+     "name": "id",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "default": "",
+     "description": "Often-used CSS class name(s) for the root element.",
+     "name": "className",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "default": "'bottomright'",
+     "description": "Map control position. Default 'bottomright'. [MUTABLE]",
+     "name": "position",
+     "required": false,
+     "type": "one of 'topleft', 'topright', 'bottomleft', 'bottomright'"
+    },
+    {
+     "default": "",
+     "description": "HTML shown before the layer attributions. Default Leaflet's \"Leaflet\"\nlink. Pass `False` (or empty string) to hide the prefix entirely. [MUTABLE]",
+     "name": "prefix",
+     "required": false,
+     "type": "string | bool"
+    },
+    {
+     "default": "",
+     "description": "Inline style for the root element. For Map, this is where you set height.",
+     "name": "style",
+     "required": false,
+     "type": "dict"
+    }
+   ]
+  },
+  {
+   "description": "BaseLayer wraps a layer (typically a TileLayer) and registers it as a base layer in the\nparent LayersControl. Bases are mutually exclusive (radio). Place it as a child of\nLayersControl, with a single layer component (e.g. TileLayer) as its own child.",
+   "name": "BaseLayer",
+   "props": [
+    {
+     "default": "",
+     "description": "The ID used to identify this component in Dash callbacks.",
+     "name": "id",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "default": "false",
+     "description": "Initially selected base layer? Exactly one base is active at a time.",
+     "name": "checked",
+     "required": false,
+     "type": "bool"
+    },
+    {
+     "default": "",
+     "description": "The Leaflet layer (typically a dl2.TileLayer) controlled by this entry.",
+     "name": "children",
+     "required": false,
+     "type": "node"
+    },
+    {
+     "default": "",
+     "description": "Often-used CSS class name(s) for the root element.",
+     "name": "className",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "default": "'Base'",
+     "description": "Display name shown in the LayersControl (also the radio's identity).",
+     "name": "name",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "default": "",
+     "description": "Inline style for the root element. For Map, this is where you set height.",
+     "name": "style",
+     "required": false,
+     "type": "dict"
+    }
+   ]
+  },
+  {
+   "description": "Circle draws a circle with a radius in meters (it grows/shrinks with zoom). For a\nfixed-pixel circle use CircleMarker. Place it as a child of Map. Wraps Leaflet 2's Circle.",
+   "name": "Circle",
+   "props": [
+    {
+     "default": "",
+     "description": "The ID used to identify this component in Dash callbacks.",
+     "name": "id",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "default": "[51.505, -0.09]",
+     "description": "Center as [lat, lng]. [MUTABLE]",
+     "name": "center",
+     "required": false,
+     "type": "tuple"
+    },
+    {
+     "default": "",
+     "description": "Popup / Tooltip children.",
+     "name": "children",
+     "required": false,
+     "type": "node"
+    },
+    {
+     "default": "",
+     "description": "Often-used CSS class name(s) for the root element.",
+     "name": "className",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "default": "'#3388ff'",
+     "description": "Stroke color. [MUTABLE]",
+     "name": "color",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "default": "",
+     "description": "Fill color (defaults to stroke color). [MUTABLE]",
+     "name": "fillColor",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "default": "0.2",
+     "description": "Fill opacity, 0..1. [MUTABLE]",
+     "name": "fillOpacity",
+     "required": false,
+     "type": "number"
+    },
+    {
+     "default": "",
+     "description": "Times the circle has been clicked. [READONLY]",
+     "name": "n_clicks",
+     "required": false,
+     "type": "number"
+    },
+    {
+     "default": "100",
+     "description": "Radius in METERS (geographic). [MUTABLE]",
+     "name": "radius",
+     "required": false,
+     "type": "number"
+    },
+    {
+     "default": "",
+     "description": "Inline style for the root element. For Map, this is where you set height.",
+     "name": "style",
+     "required": false,
+     "type": "dict"
+    },
+    {
+     "default": "3",
+     "description": "Stroke width in pixels. [MUTABLE]",
+     "name": "weight",
+     "required": false,
+     "type": "number"
+    }
+   ]
+  },
+  {
+   "description": "CircleMarker draws a circle with a fixed pixel radius (it stays the same size at every\nzoom). For a metric radius use Circle. Place it as a child of Map. Wraps Leaflet 2's\nCircleMarker.",
+   "name": "CircleMarker",
+   "props": [
+    {
+     "default": "",
+     "description": "The ID used to identify this component in Dash callbacks.",
+     "name": "id",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "default": "[51.505, -0.09]",
+     "description": "Center as [lat, lng]. [MUTABLE]",
+     "name": "center",
+     "required": false,
+     "type": "tuple"
+    },
+    {
+     "default": "",
+     "description": "Popup / Tooltip children.",
+     "name": "children",
+     "required": false,
+     "type": "node"
+    },
+    {
+     "default": "",
+     "description": "Often-used CSS class name(s) for the root element.",
+     "name": "className",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "default": "'#3388ff'",
+     "description": "Stroke color. [MUTABLE]",
+     "name": "color",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "default": "",
+     "description": "Fill color (defaults to stroke color). [MUTABLE]",
+     "name": "fillColor",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "default": "0.2",
+     "description": "Fill opacity, 0..1. [MUTABLE]",
+     "name": "fillOpacity",
+     "required": false,
+     "type": "number"
+    },
+    {
+     "default": "",
+     "description": "Whether the circle captures pointer events (fires clicks, blocks the map click\nunderneath). Set false for a non-interactive decoration / context overlay so it\nnever intercepts clicks meant for the map. Construction-only. @default true",
+     "name": "interactive",
+     "required": false,
+     "type": "bool"
+    },
+    {
+     "default": "",
+     "description": "Times the marker has been clicked. [READONLY]",
+     "name": "n_clicks",
+     "required": false,
+     "type": "number"
+    },
+    {
+     "default": "10",
+     "description": "Radius in PIXELS (fixed; does not scale with zoom). [MUTABLE]",
+     "name": "radius",
+     "required": false,
+     "type": "number"
+    },
+    {
+     "default": "",
+     "description": "Inline style for the root element. For Map, this is where you set height.",
+     "name": "style",
+     "required": false,
+     "type": "dict"
+    },
+    {
+     "default": "3",
+     "description": "Stroke width in pixels. [MUTABLE]",
+     "name": "weight",
+     "required": false,
+     "type": "number"
+    }
+   ]
+  },
+  {
+   "description": "EasyButton adds a single-icon control to the map. Use it for quick map-level actions\n(open a panel, locate, zoom-home, etc.); the click is reported back to Dash as n_clicks.\nIcons come from Iconify (any of the 200k+ icons), e.g. \"mdi:emoticon-happy-outline\".\nPlace it as a child of dl2.Map.",
+   "name": "EasyButton",
+   "props": [
+    {
+     "default": "",
+     "description": "The ID used to identify this component in Dash callbacks.",
+     "name": "id",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "default": "",
+     "description": "Often-used CSS class name(s) for the root element.",
+     "name": "className",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "default": "'mdi:circle-medium'",
+     "description": "Iconify icon name, e.g. \"mdi:emoticon-happy-outline\" or \"mdi:crosshairs-gps\".",
+     "name": "icon",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "default": "18",
+     "description": "Icon size in pixels.",
+     "name": "iconSize",
+     "required": false,
+     "type": "number"
+    },
+    {
+     "default": "0",
+     "description": "Number of times the button has been clicked. [READONLY]",
+     "name": "n_clicks",
+     "required": false,
+     "type": "number"
+    },
+    {
+     "default": "0",
+     "description": "Number of times the button has been double-clicked. [READONLY]",
+     "name": "n_dblclicks",
+     "required": false,
+     "type": "number"
+    },
+    {
+     "default": "'topleft'",
+     "description": "\"topleft\" | \"topright\" | \"bottomleft\" | \"bottomright\".",
+     "name": "position",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "default": "",
+     "description": "Inline style for the root element. For Map, this is where you set height.",
+     "name": "style",
+     "required": false,
+     "type": "dict"
+    },
+    {
+     "default": "",
+     "description": "Tooltip text shown on hover.",
+     "name": "title",
+     "required": false,
+     "type": "string"
+    }
+   ]
+  },
+  {
+   "description": "EditControl renders a Leaflet draw/edit toolbar (native v2 \u2014 leaflet-draw is Leaflet\n1-only). Place it as a child of dl2.Map. Shapes are kept in an internal FeatureGroup and\nsurfaced via the `geojson` prop. The Edit section appears only when at least one shape\nexists. A contextual sub-toolbar appears while a tool is active (Finish / Delete last\npoint / Cancel during draw; Save / Cancel during edit; Clear all / Cancel during remove).",
+   "name": "EditControl",
+   "props": [
+    {
+     "default": "",
+     "description": "The ID used to identify this component in Dash callbacks.",
+     "name": "id",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "default": "",
+     "description": "The most recent action, dash-leaflet-shaped:\n  {layer_type: 'polygon', type: 'created'|'edited'|'deleted', n_actions: int}\nBumps every time something happens \u2014 useful as a sole Input for \"anything changed\". [READONLY]",
+     "name": "action",
+     "required": false,
+     "type": "dict"
+    },
+    {
+     "default": "",
+     "description": "The currently active edit/remove mode, or null. [READONLY]",
+     "name": "activeMode",
+     "required": false,
+     "type": "one of 'edit', 'remove'"
+    },
+    {
+     "default": "",
+     "description": "The currently active draw tool, or null. Emitted whenever a tool is activated or\ncleared \u2014 pages can use this to open a popover when the user clicks a draw icon\n(mirrors the `/easy-button` popover-on-button-click pattern). [READONLY]",
+     "name": "activeTool",
+     "required": false,
+     "type": "one of 'text', 'circle', 'marker', 'polyline', 'polygon', 'rectangle', 'circlemarker'"
+    },
+    {
+     "default": "",
+     "description": "Often-used CSS class name(s) for the root element.",
+     "name": "className",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "default": "",
+     "description": "Per-tool enable/disable for the Draw section, e.g. {rectangle: False, marker: True}.\nTools not listed default to enabled.",
+     "name": "draw",
+     "required": false,
+     "type": "objectOf"
+    },
+    {
+     "default": "",
+     "description": "Python -> control: setting this prop activates a draw tool or dispatches an action on\nthe currently active tool. Bump `n_clicks` to ensure the prop registers as changed.\nShape: {mode?: tool name, action?: 'finish'|'cancel'|'delete last point', n_clicks: int}.\n[MUTABLE]",
+     "name": "drawToolbar",
+     "required": false,
+     "type": "dict"
+    },
+    {
+     "default": "",
+     "description": "Per-mode enable/disable for the Edit section, e.g. {remove: False}. Modes not listed\ndefault to enabled. The Edit section only appears once at least one shape exists.",
+     "name": "edit",
+     "required": false,
+     "type": "objectOf"
+    },
+    {
+     "default": "",
+     "description": "Python -> control: enter edit/remove mode or dispatch save/cancel/clear-all. Bump\n`n_clicks` to ensure the prop changes. Shape:\n{mode?: 'edit'|'remove', action?: 'save'|'cancel'|'clear all', n_clicks: int}. [MUTABLE]",
+     "name": "editToolbar",
+     "required": false,
+     "type": "dict"
+    },
+    {
+     "default": "",
+     "description": "The most recent feature click. Only fires while `editMode === 'edit'` \u2014 clicks on\nfeatures in normal view mode do NOT emit this. The click is NOT propagated to the\nmap (we set `bubblingMouseEvents: false`) so a Map.clickData callback only fires\non empty-map clicks. Shape: {id, layerType, n_clicks}. [READONLY]",
+     "name": "featureClick",
+     "required": false,
+     "type": "dict"
+    },
+    {
+     "default": "",
+     "description": "Python -> control: update or remove a single feature by its _dl2_id. Bump\n`n_clicks` each call to ensure the prop registers as changed. Shape:\n  {id, style?, properties?, remove?, n_clicks}\n  - style:      Leaflet path style options to apply via setStyle (color, weight, fillOpacity, ...)\n  - properties: merged into the feature's properties (e.g. {name: \"Lighthouse\"})\n  - remove:     drop the feature from the FeatureGroup\n[MUTABLE]",
+     "name": "featureUpdate",
+     "required": false,
+     "type": "dict"
+    },
+    {
+     "default": "",
+     "description": "All currently drawn shapes as a GeoJSON FeatureCollection. [READONLY]",
+     "name": "geojson",
+     "required": false,
+     "type": "object"
+    },
+    {
+     "default": "",
+     "description": "Brief metadata for the most recent draw / delete event (legacy shape). [READONLY]",
+     "name": "lastAction",
+     "required": false,
+     "type": "object"
+    },
+    {
+     "default": "'metric'",
+     "description": "Unit system for the live drawing previews \u2014 drives the radius readout in the\ncircle tool and the area readout in the rectangle tool.\n\n- 'metric' (default): meters / kilometers for distance; m\u00b2 / hectares / km\u00b2 for area.\n- 'imperial' (US customary): feet / miles for distance; ft\u00b2 / acres / mi\u00b2 for area.\n\nEach formatter auto-picks the largest readable unit for the current magnitude\n(e.g. a 5 km radius reads \"5.00 km\"; a 50 m radius reads \"50 m\"). [MUTABLE]",
+     "name": "measurementSystem",
+     "required": false,
+     "type": "one of 'metric', 'imperial'"
+    },
+    {
+     "default": "",
+     "description": "Total shapes drawn since mount (decrements on delete). [READONLY]",
+     "name": "n_drawn",
+     "required": false,
+     "type": "number"
+    },
+    {
+     "default": "'topleft'",
+     "description": "Control position: \"topleft\" | \"topright\" | \"bottomleft\" | \"bottomright\".",
+     "name": "position",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "default": "{ color: '#2f9e44', weight: 3, fillOpacity: 0.2 }",
+     "description": "Path style applied to drawn vectors (color, weight, fillOpacity, ...).",
+     "name": "shapeOptions",
+     "required": false,
+     "type": "object"
+    },
+    {
+     "default": "false",
+     "description": "When true, every committed shape gets a permanent Leaflet tooltip showing its\nmeasured area (rectangle / circle / polygon) or length (polyline), formatted with\nthe configured `measurementSystem`. [READONLY]",
+     "name": "showMeasurementTooltips",
+     "required": false,
+     "type": "bool"
+    },
+    {
+     "default": "",
+     "description": "Inline style for the root element. For Map, this is where you set height.",
+     "name": "style",
+     "required": false,
+     "type": "dict"
+    }
+   ]
+  },
+  {
+   "description": "FeatureGroup is like LayerGroup but extends `leaflet.FeatureGroup` \u2014 it can\nemit a combined GeoJSON of its vector children and broadcasts a single\n`click` event no matter which child was clicked. Use it when grouping\nshapes you want to treat as one unit (typical companion for `EditControl`).\nWraps Leaflet 2's FeatureGroup.",
+   "name": "FeatureGroup",
+   "props": [
+    {
+     "default": "",
+     "description": "The ID used to identify this component in Dash callbacks.",
+     "name": "id",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "default": "",
+     "description": "Any number of layer children (Marker, Polygon, Circle, ...).",
+     "name": "children",
+     "required": false,
+     "type": "node"
+    },
+    {
+     "default": "",
+     "description": "Often-used CSS class name(s) for the root element.",
+     "name": "className",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "default": "",
+     "description": "Combined GeoJSON FeatureCollection of all children (vectors only). [READONLY]",
+     "name": "geojson",
+     "required": false,
+     "type": "object"
+    },
+    {
+     "default": "",
+     "description": "Number of times any child layer has been clicked. [READONLY]",
+     "name": "n_clicks",
+     "required": false,
+     "type": "number"
+    },
+    {
+     "default": "",
+     "description": "Number of times the group's children were modified. [READONLY]",
+     "name": "n_layers",
+     "required": false,
+     "type": "number"
+    },
+    {
+     "default": "",
+     "description": "Inline style for the root element. For Map, this is where you set height.",
+     "name": "style",
+     "required": false,
+     "type": "dict"
+    }
+   ]
+  },
+  {
+   "description": "FullScreenControl adds a single button to the map that toggles the map\ncontainer in/out of the browser's native fullscreen mode. Leaflet 2 doesn't\nship a fullscreen control \u2014 this maps the browser's `requestFullscreen()`\nAPI onto a small `Control` subclass, matching the dash-leaflet (and\n`Leaflet.fullscreen` plugin) API shape.",
+   "name": "FullScreenControl",
+   "props": [
+    {
+     "default": "",
+     "description": "The ID used to identify this component in Dash callbacks.",
+     "name": "id",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "default": "",
+     "description": "Often-used CSS class name(s) for the root element.",
+     "name": "className",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "default": "",
+     "description": "Whether the map is currently in fullscreen mode. [READONLY]",
+     "name": "fullscreen",
+     "required": false,
+     "type": "bool"
+    },
+    {
+     "default": "",
+     "description": "Number of times the button has been clicked. [READONLY]",
+     "name": "n_clicks",
+     "required": false,
+     "type": "number"
+    },
+    {
+     "default": "'topleft'",
+     "description": "\"topleft\" | \"topright\" | \"bottomleft\" | \"bottomright\". Default \"topleft\". [MUTABLE]",
+     "name": "position",
+     "required": false,
+     "type": "one of 'topleft', 'topright', 'bottomleft', 'bottomright'"
+    },
+    {
+     "default": "",
+     "description": "Inline style for the root element. For Map, this is where you set height.",
+     "name": "style",
+     "required": false,
+     "type": "dict"
+    },
+    {
+     "default": "'Full Screen'",
+     "description": "Tooltip text when entering fullscreen. Default \"Full Screen\".",
+     "name": "title",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "default": "'Exit Full Screen'",
+     "description": "Tooltip text when leaving fullscreen. Default \"Exit Full Screen\".",
+     "name": "titleCancel",
+     "required": false,
+     "type": "string"
+    }
+   ]
+  },
+  {
+   "description": "GeoJSON renders a GeoJSON object \u2014 typically fed from a Python callback via the `data`\nprop. Set `cluster=True` to collapse dense point sets via SuperCluster (the same backend\ndash-leaflet 1's clustering uses). Custom `pointToLayer` / `clusterToLayer` JS strings\nplus a `hideout` passthrough let you style features without round-tripping through Python.\nPlace it as a child of Map. Wraps Leaflet 2's GeoJSON layer.",
+   "name": "GeoJSON",
+   "props": [
+    {
+     "default": "",
+     "description": "The ID used to identify this component in Dash callbacks.",
+     "name": "id",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "default": "",
+     "description": "Popup / Tooltip children bound to the whole layer.",
+     "name": "children",
+     "required": false,
+     "type": "node"
+    },
+    {
+     "default": "",
+     "description": "Often-used CSS class name(s) for the root element.",
+     "name": "className",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "default": "",
+     "description": "`properties` of the most recently clicked feature. [READONLY]",
+     "name": "clickFeature",
+     "required": false,
+     "type": "object"
+    },
+    {
+     "default": "false",
+     "description": "Turn on supercluster-based point clustering. Markers within `superClusterOptions.radius`\npixels collapse into a single cluster bubble; zooming in expands them. Only point\ngeometries cluster; vector features (LineString, Polygon) are passed through unchanged.",
+     "name": "cluster",
+     "required": false,
+     "type": "bool"
+    },
+    {
+     "default": "",
+     "description": "JavaScript source for a function that builds the layer shown in place of a SuperCluster\ncluster. Signature: `(feature, latlng, index, ctx) => Layer`. The default is a small\nDivIcon with the cluster's point count.",
+     "name": "clusterToLayer",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "default": "",
+     "description": "A GeoJSON FeatureCollection / Feature / geometry object. [MUTABLE]",
+     "name": "data",
+     "required": false,
+     "type": "object"
+    },
+    {
+     "default": "",
+     "description": "Arbitrary pass-through data made available to `pointToLayer` / `clusterToLayer` as\n`ctx.hideout`. Use it to ship colour maps, label dictionaries, or threshold values\nfrom Python without re-evaluating the JS function. [MUTABLE]",
+     "name": "hideout",
+     "required": false,
+     "type": "objectOf"
+    },
+    {
+     "default": "",
+     "description": "Number of times any feature has been clicked. [READONLY]",
+     "name": "n_clicks",
+     "required": false,
+     "type": "number"
+    },
+    {
+     "default": "",
+     "description": "JavaScript source for a function that converts an individual point feature into a layer.\nSignature: `(feature, latlng, ctx) => Layer`, where `ctx = { hideout, leaflet, map }`.\nPass the function body as a string; it is wrapped in `new Function(...)` at construction\ntime. The default uses the bundled DEFAULT_ICON.",
+     "name": "pointToLayer",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "default": "false",
+     "description": "Reserved for future support \u2014 at max zoom, \"spiderfy\" overlapping markers into a\nring so each is individually selectable. Currently a no-op (clicking the cluster\nat maxZoom still triggers zoomToBoundsOnClick).",
+     "name": "spiderfyOnMaxZoom",
+     "required": false,
+     "type": "bool"
+    },
+    {
+     "default": "",
+     "description": "Path style applied to all vector features, e.g. {color, weight, fillOpacity}. [MUTABLE]\n\n\nInline style for the root element. For Map, this is where you set height.",
+     "name": "style",
+     "required": false,
+     "type": "object | dict"
+    },
+    {
+     "default": "",
+     "description": "Tuning for the underlying SuperCluster index: `{ radius, minPoints, maxZoom, minZoom, extent }`.\nDefaults: `{ radius: 80, minPoints: 2, maxZoom: 16, minZoom: 0, extent: 512 }`.\nSee https://github.com/mapbox/supercluster#options for the full list.",
+     "name": "superClusterOptions",
+     "required": false,
+     "type": "objectOf"
+    },
+    {
+     "default": "true",
+     "description": "If true, clicking a cluster fits the map to that cluster's children's bounds.\nDefault true.",
+     "name": "zoomToBoundsOnClick",
+     "required": false,
+     "type": "bool"
+    }
+   ]
+  },
+  {
+   "description": "ImageOverlay drapes a single static image over a geographic bounding box. With `editable`\nit gains a TextMarker-style transform control system: click to select, drag to move, a corner\nhandle to resize (scaling the bounds about the `anchor`), and a top handle to rotate (a visual\nCSS rotation pivoting at the `anchor`). The white anchor dot marks where the image is pinned.\n`bounds`, `rotation`, and `selected` round-trip back to Dash. Wraps Leaflet 2's ImageOverlay.",
+   "name": "ImageOverlay",
+   "props": [
+    {
+     "default": "",
+     "description": "The ID used to identify this component in Dash callbacks.",
+     "name": "id",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "default": "",
+     "description": "Alt-text / title for the image element.",
+     "name": "alt",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "default": "'center'",
+     "description": "Which point of the image is the rotation pivot + resize anchor + where the white anchor\ndot is drawn. One of center | top-left | top | top-right | left | right | bottom-left |\nbottom | bottom-right. @default \"center\". [MUTABLE]",
+     "name": "anchor",
+     "required": false,
+     "type": "one of 'center', 'left', 'right', 'bottom', 'top', 'top-left', 'top-right', 'bottom-left' \u2026"
+    },
+    {
+     "default": "[[0, 0], [0, 0]]",
+     "description": "Geographic bounds the image is stretched to, `[[south, west], [north, east]]`.\nTwo-way when `editable`: dragging / resizing writes it back. [MUTABLE]",
+     "name": "bounds",
+     "required": false,
+     "type": "objectOf"
+    },
+    {
+     "default": "",
+     "description": "Often-used CSS class name(s) for the root element.",
+     "name": "className",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "default": "",
+     "description": "Adds the `crossOrigin` attribute to the img element. Pass \"anonymous\" to make\nthe image load CORS-mode so canvas captures (map screenshots / html2canvas) can\nread the pixels. The host must answer with Access-Control-Allow-Origin or the\nimage fails to load entirely \u2014 leave unset for hosts you don't control.\n\"use-credentials\" and \"\" are also valid. Construction-time only.",
+     "name": "crossOrigin",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "default": "false",
+     "description": "Enable the on-map transform controls: click to select, then drag to move, drag the\ncorner handle to resize, and the top handle to rotate. @default false.",
+     "name": "editable",
+     "required": false,
+     "type": "bool"
+    },
+    {
+     "default": "false",
+     "description": "If true, the image is wrapped in an interactive layer that fires click events.\nForced on when `editable`.",
+     "name": "interactive",
+     "required": false,
+     "type": "bool"
+    },
+    {
+     "default": "",
+     "description": "Number of times the image has been clicked. [READONLY]",
+     "name": "n_clicks",
+     "required": false,
+     "type": "number"
+    },
+    {
+     "default": "",
+     "description": "Bumped on each drag-move / resize commit. [READONLY]",
+     "name": "n_transforms",
+     "required": false,
+     "type": "number"
+    },
+    {
+     "default": "1",
+     "description": "Layer opacity, 0..1. [MUTABLE]",
+     "name": "opacity",
+     "required": false,
+     "type": "number"
+    },
+    {
+     "default": "0",
+     "description": "Visual rotation in degrees, CW. Applied as a CSS transform pivoting at the `anchor`\n(Leaflet's ImageOverlay has no native geographic rotation, so the image's `bounds` stay\naxis-aligned and only the rendered pixels rotate). The rotate handle writes it back.\n[MUTABLE]",
+     "name": "rotation",
+     "required": false,
+     "type": "number"
+    },
+    {
+     "default": "",
+     "description": "Whether the transform chrome (outline + resize/rotate handles) is shown. Two-way:\nclicking the image selects it, a map-background click clears it. Only meaningful when\n`editable`. [MUTABLE]",
+     "name": "selected",
+     "required": false,
+     "type": "bool"
+    },
+    {
+     "default": "",
+     "description": "Inline style for the root element. For Map, this is where you set height.",
+     "name": "style",
+     "required": false,
+     "type": "dict"
+    },
+    {
+     "default": "''",
+     "description": "URL of the image. [MUTABLE]",
+     "name": "url",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "default": "",
+     "description": "Explicit z-index for the overlay pane. [MUTABLE]",
+     "name": "zIndex",
+     "required": false,
+     "type": "number"
+    }
+   ]
+  },
+  {
+   "description": "KeyboardControl installs a window-level keyboard listener that drives map\nrotation and pan. Place it as a child of <Map>. No DOM is rendered \u2014 it's a\npure side-effect component.\n*\nDefault behavior:\n  - Arrow keys rotate the map bearing (5\u00b0 / press by default)\n  - Cmd / Ctrl + Arrow keys pan the map (Leaflet's built-in arrow-key panning\n    is suppressed by `map.keyboard.disable()` so the two don't both fire)\n*\nThis makes the page feel like a flight sim: the arrows turn the camera, the\nmodifier is the \"manual pan\" escape hatch. Pages can flip the bindings by\npassing a custom `keymap`.\n*\nListens on `window`, not the map container \u2014 so a user pressing arrows while\nthe map div doesn't have focus still rotates. Pages with form inputs should\neither set `enabled=false` while the form is focused or override the keymap.",
+   "name": "KeyboardControl",
+   "props": [
+    {
+     "default": "",
+     "description": "The ID used to identify this component in Dash callbacks.",
+     "name": "id",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "default": "5",
+     "description": "Degrees of map bearing change per ArrowLeft / ArrowRight keypress.\nDefault 5.",
+     "name": "bearingStep",
+     "required": false,
+     "type": "number"
+    },
+    {
+     "default": "",
+     "description": "Often-used CSS class name(s) for the root element.",
+     "name": "className",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "default": "true",
+     "description": "Whether keyboard input is processed. When `false`, no key handler is\ninstalled. Useful for disabling controls while a modal/form is focused.\n[MUTABLE]",
+     "name": "enabled",
+     "required": false,
+     "type": "bool"
+    },
+    {
+     "default": "",
+     "description": "Direction map: each property holds the action ('rotate-cw', 'rotate-ccw',\n'pan-up', 'pan-down', 'pan-left', 'pan-right') triggered by a given\nkey + modifier combination. Defaults to:\n\n  ArrowLeft        \u2192 rotate-ccw  (turn camera left)\n  ArrowRight       \u2192 rotate-cw   (turn camera right)\n  ArrowUp          \u2192 rotate-ccw  (same \u2014 feels natural for flight sims)\n  ArrowDown        \u2192 rotate-cw\n  Cmd|Ctrl+ArrowLeft   \u2192 pan-left\n  Cmd|Ctrl+ArrowRight  \u2192 pan-right\n  Cmd|Ctrl+ArrowUp     \u2192 pan-up\n  Cmd|Ctrl+ArrowDown   \u2192 pan-down\n\nPages can override individual entries (e.g. flight sims that want\nArrowUp/Down to be throttle, not rotation) by passing a partial object.",
+     "name": "keymap",
+     "required": false,
+     "type": "objectOf"
+    },
+    {
+     "default": "",
+     "description": "The most recent key + action processed, as\n{ key, action, modifier, ts }. [READONLY]",
+     "name": "lastKey",
+     "required": false,
+     "type": "dict"
+    },
+    {
+     "default": "",
+     "description": "Number of pan keypresses processed. [READONLY]",
+     "name": "n_pans",
+     "required": false,
+     "type": "number"
+    },
+    {
+     "default": "",
+     "description": "Number of bearing changes emitted (each rotate keypress increments).\nUseful as the sole Input for \"did the user rotate?\". [READONLY]",
+     "name": "n_rotations",
+     "required": false,
+     "type": "number"
+    },
+    {
+     "default": "80",
+     "description": "Pixels of map pan per Cmd+Arrow / Ctrl+Arrow keypress. Default 80\n(matches Leaflet's own keyboard panOffset).",
+     "name": "panStep",
+     "required": false,
+     "type": "number"
+    },
+    {
+     "default": "",
+     "description": "Inline style for the root element. For Map, this is where you set height.",
+     "name": "style",
+     "required": false,
+     "type": "dict"
+    }
+   ]
+  },
+  {
+   "description": "LayerGroup bundles N layers so they can be added/removed together. Drop child\nlayers (Marker, Polygon, Circle, GeoJSON, ...) inside it; each is added to a\nshared `leaflet.LayerGroup` instead of the map directly. Place it as a child\nof `dl2.Map` \u2014 or of `dl2.Overlay` inside a LayersControl, to toggle the\nwhole group as one entry. Wraps Leaflet 2's LayerGroup.",
+   "name": "LayerGroup",
+   "props": [
+    {
+     "default": "",
+     "description": "The ID used to identify this component in Dash callbacks.",
+     "name": "id",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "default": "",
+     "description": "Any number of layer children (Marker, Polygon, Circle, GeoJSON, ...).",
+     "name": "children",
+     "required": false,
+     "type": "node"
+    },
+    {
+     "default": "",
+     "description": "Often-used CSS class name(s) for the root element.",
+     "name": "className",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "default": "",
+     "description": "Inline style for the root element. For Map, this is where you set height.",
+     "name": "style",
+     "required": false,
+     "type": "dict"
+    }
+   ]
+  },
+  {
+   "description": "LayersControl renders a Leaflet control that lets the user pick one of N base layers and\ntoggle M overlays. Place dl2.BaseLayer and dl2.Overlay as its children; LayersControl\nitself must be a child of dl2.Map.",
+   "name": "LayersControl",
+   "props": [
+    {
+     "default": "",
+     "description": "The ID used to identify this component in Dash callbacks.",
+     "name": "id",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "default": "",
+     "description": "Name of the active base layer. Two-way: reflects user choice + accepts callback. [MUTABLE]",
+     "name": "activeBase",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "default": "",
+     "description": "Names of currently visible overlays. Two-way. [MUTABLE]",
+     "name": "activeOverlays",
+     "required": false,
+     "type": "list of string"
+    },
+    {
+     "default": "",
+     "description": "BaseLayer + Overlay children.",
+     "name": "children",
+     "required": false,
+     "type": "node"
+    },
+    {
+     "default": "",
+     "description": "Often-used CSS class name(s) for the root element.",
+     "name": "className",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "default": "true",
+     "description": "If true, show only the toggle handle until the pointer enters.",
+     "name": "collapsed",
+     "required": false,
+     "type": "bool"
+    },
+    {
+     "default": "'topright'",
+     "description": "\"topright\" | \"topleft\" | \"bottomright\" | \"bottomleft\".",
+     "name": "position",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "default": "",
+     "description": "Inline style for the root element. For Map, this is where you set height.",
+     "name": "style",
+     "required": false,
+     "type": "dict"
+    }
+   ]
+  },
+  {
+   "description": "Map is the root Leaflet 2 map container. It owns the Leaflet map instance and\nprovides it to child layers (TileLayer, Marker) through React context. Set the\nheight via the `style` prop.",
+   "name": "Map",
+   "props": [
+    {
+     "default": "",
+     "description": "The ID used to identify this component in Dash callbacks.",
+     "name": "id",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "default": "true",
+     "description": "Whether Leaflet 2's built-in attribution control is added to the map.\nDefault True (matches Leaflet's default). Set False when you want to\nmount a `dl2.AttributionControl` child and control position / prefix\nyourself \u2014 same convention as dash-leaflet's `attributionControl=False`\n+ `dl.AttributionControl(...)` pairing. Constructor-only \u2014 changing it\nafter the map is built has no effect.",
+     "name": "attributionControl",
+     "required": false,
+     "type": "bool"
+    },
+    {
+     "default": "",
+     "description": "Map rotation in degrees (CW from north). 0 = north up. Implemented as a\nCSS `transform: rotate()` on the leaflet map pane \u2014 the same technique\n`leaflet-rotate` uses on Leaflet 1.x. Leaflet 2 has no native rotation,\nso we build it the same way.\n\n**Important caveat (CSS rotation, not coordinate-correct rotation):**\nTiles, markers, polygons, and zoom math are computed in Leaflet's\nun-rotated coordinate space and the whole pane is then rotated visually.\nThat works perfectly for read-only views and follow-camera flight/walk\nsims (you look at the map; the camera tracks the player). It breaks\nsubtly for INTERACTIVE drawing at non-zero bearing \u2014 a click lands at\nthe visually-rotated screen position, which is no longer the same\nlatlng Leaflet would resolve from the bare event coords. For drawing,\nkeep bearing = 0. A fully coordinate-correct rotation is a much larger\nproject (essentially porting leaflet-rotate's coord math to v2).\n\n[MUTABLE]",
+     "name": "bearing",
+     "required": false,
+     "type": "number"
+    },
+    {
+     "default": "true",
+     "description": "Shift-drag box-zoom selection. Default true. [MUTABLE]",
+     "name": "boxZoom",
+     "required": false,
+     "type": "bool"
+    },
+    {
+     "default": "[51.505, -0.09]",
+     "description": "Initial map center as [lat, lng]. Updating it from a callback re-centers\nthe map. [MUTABLE]",
+     "name": "center",
+     "required": false,
+     "type": "tuple"
+    },
+    {
+     "default": "",
+     "description": "Child layers (TileLayer, Marker, ...) rendered into this map.",
+     "name": "children",
+     "required": false,
+     "type": "node"
+    },
+    {
+     "default": "",
+     "description": "Often-used CSS class name(s) for the root element.",
+     "name": "className",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "default": "",
+     "description": "Data from the most recent map click: { latlng: [lat, lng] }. [READONLY]",
+     "name": "clickData",
+     "required": false,
+     "type": "dict"
+    },
+    {
+     "default": "true",
+     "description": "Double-click-to-zoom. Default true. [MUTABLE]",
+     "name": "doubleClickZoom",
+     "required": false,
+     "type": "bool"
+    },
+    {
+     "default": "true",
+     "description": "Mouse / pointer drag panning. Default true. [MUTABLE]",
+     "name": "dragging",
+     "required": false,
+     "type": "bool"
+    },
+    {
+     "default": "",
+     "description": "Python -> map: trigger a smooth viewport transition. The map calls the\nLeaflet 2 method indicated by `transition` and ignores the prop until\n`n_clicks` bumps again (matching `drawToolbar` / `editToolbar` / `featureUpdate`\n\u2014 needed so consecutive identical payloads still register as changes).\n\nShape:\n  {\n    transition: 'setView' | 'flyTo' | 'panTo' | 'fitBounds' | 'flyToBounds' | 'panInsideBounds',\n    center?: [lat, lng],          # for setView / flyTo / panTo\n    zoom?:   number,              # optional zoom target (setView / flyTo)\n    bounds?: [[s, w], [n, e]],    # for fitBounds / flyToBounds / panInsideBounds\n    options?: object,             # passed straight to the Leaflet method\n                                  # (duration, easeLinearity, animate, paddingTopLeft, ...)\n    n_clicks: int,\n  }\n\n`flyTo` / `flyToBounds` give the smooth glide-and-zoom motion; `setView`\nis instant; `panTo` glides without changing zoom. See the /flyto showcase. [MUTABLE]",
+     "name": "flyTo",
+     "required": false,
+     "type": "dict"
+    },
+    {
+     "default": "true",
+     "description": "Whether the map can be panned / zoomed with the keyboard (arrow keys + `+`/`-`).\nDefault true. [MUTABLE]",
+     "name": "keyboard",
+     "required": false,
+     "type": "bool"
+    },
+    {
+     "default": "",
+     "description": "Geographic bounds the map's view is constrained inside, as\n`[[south, west], [north, east]]`. Panning past the edges is bounced back.\n[MUTABLE]",
+     "name": "maxBounds",
+     "required": false,
+     "type": "tuple"
+    },
+    {
+     "default": "",
+     "description": "Maximum zoom level the user can zoom in to. When a TileLayer also sets\n`maxZoom`, Leaflet uses the *smaller* of the two. [MUTABLE]",
+     "name": "maxZoom",
+     "required": false,
+     "type": "number"
+    },
+    {
+     "default": "",
+     "description": "Minimum zoom level the user can zoom out to. When a TileLayer also sets\n`minZoom`, Leaflet uses the *larger* of the two (the most restrictive\nvalue wins). [MUTABLE]",
+     "name": "minZoom",
+     "required": false,
+     "type": "number"
+    },
+    {
+     "default": "",
+     "description": "Counter bumped on every `moveend` event (a pan / flyTo / fit completes).\n`n_moveend < n_movestart` means a transition is currently running. [READONLY]",
+     "name": "n_moveend",
+     "required": false,
+     "type": "number"
+    },
+    {
+     "default": "",
+     "description": "Counter bumped on every `movestart` event (a pan / flyTo / fit begins).\nPair with `n_moveend` to drive a \"flying\u2026\" indicator. [READONLY]",
+     "name": "n_movestart",
+     "required": false,
+     "type": "number"
+    },
+    {
+     "default": "true",
+     "description": "Pinch-to-zoom on touch devices. Default true. In Leaflet 1.x this was\ncalled `touchZoom`; in v2 it's `pinchZoom`. [MUTABLE]",
+     "name": "pinchZoom",
+     "required": false,
+     "type": "bool"
+    },
+    {
+     "default": "false",
+     "description": "If true, render all vector layers through the Canvas renderer (preferred\nfor dense point sets). [READONLY]",
+     "name": "preferCanvas",
+     "required": false,
+     "type": "bool"
+    },
+    {
+     "default": "true",
+     "description": "Mouse-wheel zoom. Default true. [MUTABLE]",
+     "name": "scrollWheelZoom",
+     "required": false,
+     "type": "bool"
+    },
+    {
+     "default": "",
+     "description": "Inline style for the root element. For Map, this is where you set height.",
+     "name": "style",
+     "required": false,
+     "type": "dict"
+    },
+    {
+     "default": "",
+     "description": "Mobile-safari tap-hold-to-contextmenu emulation. Defaults to true on\nmobile Safari only. [MUTABLE]",
+     "name": "tapHold",
+     "required": false,
+     "type": "bool"
+    },
+    {
+     "default": "",
+     "description": "Current view state, written back by the map on every moveend/zoomend as\n{ center: [lat, lng], zoom, bearing, bounds: { north, south, east, west } }.\nRead this in callbacks. [READONLY]",
+     "name": "viewport",
+     "required": false,
+     "type": "dict"
+    },
+    {
+     "default": "13",
+     "description": "Initial zoom level. Updating it from a callback changes the zoom. [MUTABLE]",
+     "name": "zoom",
+     "required": false,
+     "type": "number"
+    },
+    {
+     "default": "true",
+     "description": "Whether Leaflet's built-in +/- zoom buttons control is added. Default true.\nConstructor-only \u2014 changing it after the map is built has no effect.",
+     "name": "zoomControl",
+     "required": false,
+     "type": "bool"
+    }
+   ]
+  },
+  {
+   "description": "Marker displays an icon at a position and can host Popup/Tooltip children. The icon can\nbe the default pin, a custom image (`icon`), an `emoji`, or any Iconify icon (`iconify`,\ne.g. \"mdi:home\"). Draggable markers write their new `position` back to Dash. Wraps\nLeaflet 2's Marker. Place it as a child of Map.",
+   "name": "Marker",
+   "props": [
+    {
+     "default": "",
+     "description": "The ID used to identify this component in Dash callbacks.",
+     "name": "id",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "default": "",
+     "description": "Popup / Tooltip children bound to this marker.",
+     "name": "children",
+     "required": false,
+     "type": "node"
+    },
+    {
+     "default": "",
+     "description": "Often-used CSS class name(s) for the root element.",
+     "name": "className",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "default": "false",
+     "description": "Whether the marker can be dragged with the pointer. [MUTABLE]",
+     "name": "draggable",
+     "required": false,
+     "type": "bool"
+    },
+    {
+     "default": "",
+     "description": "A single emoji to use as the marker, e.g. \"\ud83d\udee5\ufe0f\".",
+     "name": "emoji",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "default": "",
+     "description": "Custom image icon as Leaflet Icon options, e.g. {iconUrl, iconSize:[w,h], iconAnchor:[x,y]}.",
+     "name": "icon",
+     "required": false,
+     "type": "object"
+    },
+    {
+     "default": "",
+     "description": "[x, y] icon anchor for emoji / iconify / iconOptions markers. Default bottom-center.",
+     "name": "iconAnchor",
+     "required": false,
+     "type": "tuple"
+    },
+    {
+     "default": "",
+     "description": "CSS color for monochrome iconify icons.",
+     "name": "iconColor",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "default": "",
+     "description": "Full Leaflet DivIcon options escape hatch ({html, className, iconSize, iconAnchor}).",
+     "name": "iconOptions",
+     "required": false,
+     "type": "object"
+    },
+    {
+     "default": "32",
+     "description": "Pixel size for emoji / iconify markers. Default 32.",
+     "name": "iconSize",
+     "required": false,
+     "type": "number"
+    },
+    {
+     "default": "",
+     "description": "An Iconify icon name, e.g. \"mdi:home\" or \"twemoji:sailboat\" (loads from the Iconify API).",
+     "name": "iconify",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "default": "",
+     "description": "Number of times the marker has been clicked. [READONLY]",
+     "name": "n_clicks",
+     "required": false,
+     "type": "number"
+    },
+    {
+     "default": "",
+     "description": "Number of times the marker has been dragged. [READONLY]",
+     "name": "n_drags",
+     "required": false,
+     "type": "number"
+    },
+    {
+     "default": "1",
+     "description": "Marker opacity, 0..1. [MUTABLE]",
+     "name": "opacity",
+     "required": false,
+     "type": "number"
+    },
+    {
+     "default": "",
+     "description": "Convenience popup text. For rich content, use a <Popup> child instead.",
+     "name": "popup",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "default": "[51.505, -0.09]",
+     "description": "Marker position as [lat, lng]. Updating it moves the marker; dragging writes it back. [MUTABLE]",
+     "name": "position",
+     "required": false,
+     "type": "tuple"
+    },
+    {
+     "default": "false",
+     "description": "When `true`, the marker icon rotates together with the map \u2014 useful for\nvehicles, aircraft, walking characters, compass arrows, anything whose\norientation is tied to the world. The icon's visual screen rotation is\n`bearing + rotationAngle`.\n\nWhen `false` (default), the icon stays in a fixed screen orientation\nregardless of map bearing \u2014 useful for pins, labels, and the typical\n\"marker should always look upright\" case. The icon's visual screen\nrotation is just `rotationAngle`.\n\nImplementation: when `false` we apply `rotationAngle - bearing` to the\nicon, which cancels the map pane's rotation contribution. When `true` we\napply `rotationAngle` and let the pane's CSS rotation carry the icon.",
+     "name": "rotateWithMap",
+     "required": false,
+     "type": "bool"
+    },
+    {
+     "default": "0",
+     "description": "Marker rotation in degrees (CW from north). Useful for vehicle / aircraft /\ncharacter sprites that need to point in a direction. Applied via a CSS\n`rotate` on the icon DOM. [MUTABLE]",
+     "name": "rotationAngle",
+     "required": false,
+     "type": "number"
+    },
+    {
+     "default": "",
+     "description": "Inline style for the root element. For Map, this is where you set height.",
+     "name": "style",
+     "required": false,
+     "type": "dict"
+    },
+    {
+     "default": "",
+     "description": "Convenience tooltip text. For rich content, use a <Tooltip> child instead.",
+     "name": "tooltip",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "default": "0",
+     "description": "z-index offset relative to other markers. [MUTABLE]",
+     "name": "zIndexOffset",
+     "required": false,
+     "type": "number"
+    }
+   ]
+  },
+  {
+   "description": "MiniMap adds a small overview map in a corner of the main map. The overview tracks\nthe main map's center + zoom (with a configurable offset) and draws a rectangle showing\nthe main viewport. Click the corner toggle to collapse/expand. Place it as a child of\ndl2.Map.\n*\nNative Leaflet 2 \u2014 `leaflet-minimap` (the Leaflet 1 plugin) does not run on v2.",
+   "name": "MiniMap",
+   "props": [
+    {
+     "default": "",
+     "description": "The ID used to identify this component in Dash callbacks.",
+     "name": "id",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "default": "{\n        color: '#3388ff',\n        weight: 1,\n        fillColor: '#3388ff',\n        fillOpacity: 0.15,\n        interactive: false,\n    }",
+     "description": "Leaflet path options for the aiming rectangle that shows the main map's viewport\nbounds on the minimap. Defaults to a translucent blue stroke.",
+     "name": "aimingRectOptions",
+     "required": false,
+     "type": "object"
+    },
+    {
+     "default": "''",
+     "description": "Attribution shown by the inner minimap. Empty by default \u2014 the main map already attributes.",
+     "name": "attribution",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "default": "",
+     "description": "When set to `[lat, lng]`, the inner minimap anchors on this point instead of\ntracking the main map's center. The aiming rectangle still reflects the main\nmap's bounds \u2014 so the rectangle drifts off-minimap if the main map is panned\nfar from the fixed point. Pass `null` (or omit) to follow the main map. Useful\nfor \"return-home\" style affordances, where the minimap pins on a player /\nmarker and clicking it (see `n_clicks`) snaps the main map back to them. [MUTABLE]",
+     "name": "centerFixed",
+     "required": false,
+     "type": "tuple"
+    },
+    {
+     "default": "",
+     "description": "Often-used CSS class name(s) for the root element.",
+     "name": "className",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "default": "150",
+     "description": "Expanded height in pixels. Default 150.",
+     "name": "height",
+     "required": false,
+     "type": "number"
+    },
+    {
+     "default": "",
+     "description": "Whether the minimap starts (or currently is) minimized. Two-way: setting it from a\nPython callback collapses/expands the minimap; the user clicking the toggle button\nalso writes it back. [MUTABLE]",
+     "name": "minimized",
+     "required": false,
+     "type": "bool"
+    },
+    {
+     "default": "0",
+     "description": "Number of times the user has clicked anywhere on the inner minimap (excluding\nthe corner expand/collapse toggle). Increments per click \u2014 pair with\n`prevent_initial_call=True` to use the minimap as a button. [READONLY]",
+     "name": "n_clicks",
+     "required": false,
+     "type": "number"
+    },
+    {
+     "default": "'bottomright'",
+     "description": "Control position: 'topleft' | 'topright' | 'bottomleft' | 'bottomright'. Default 'bottomright'.",
+     "name": "position",
+     "required": false,
+     "type": "one of 'topleft', 'topright', 'bottomleft', 'bottomright'"
+    },
+    {
+     "default": "",
+     "description": "Inline style for the root element. For Map, this is where you set height.",
+     "name": "style",
+     "required": false,
+     "type": "dict"
+    },
+    {
+     "default": "true",
+     "description": "Show the [\u2921] toggle button. Default true.",
+     "name": "toggleDisplay",
+     "required": false,
+     "type": "bool"
+    },
+    {
+     "default": "'https://tile.openstreetmap.org/{z}/{x}/{y}.png'",
+     "description": "Tile URL template for the inner minimap basemap. Defaults to OSM.",
+     "name": "url",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "default": "150",
+     "description": "Expanded width in pixels. Default 150.",
+     "name": "width",
+     "required": false,
+     "type": "number"
+    },
+    {
+     "default": "-5",
+     "description": "Zoom-level offset from the main map (negative = zoomed out further than the main).\nDefault -5: a 150x150 minimap shows the main map's neighbourhood.",
+     "name": "zoomLevelOffset",
+     "required": false,
+     "type": "number"
+    }
+   ]
+  },
+  {
+   "description": "Overlay wraps any layer and registers it as a toggleable overlay in the parent\nLayersControl (checkbox). Place it as a child of LayersControl, with a single layer\ncomponent as its own child.",
+   "name": "Overlay",
+   "props": [
+    {
+     "default": "",
+     "description": "The ID used to identify this component in Dash callbacks.",
+     "name": "id",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "default": "false",
+     "description": "Initially checked? Overlays are independent.",
+     "name": "checked",
+     "required": false,
+     "type": "bool"
+    },
+    {
+     "default": "",
+     "description": "The Leaflet layer (TileLayer, GeoJSON, Marker, ...) controlled by this entry.",
+     "name": "children",
+     "required": false,
+     "type": "node"
+    },
+    {
+     "default": "",
+     "description": "Often-used CSS class name(s) for the root element.",
+     "name": "className",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "default": "'Overlay'",
+     "description": "Display name shown in the LayersControl (also the checkbox's identity).",
+     "name": "name",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "default": "",
+     "description": "Inline style for the root element. For Map, this is where you set height.",
+     "name": "style",
+     "required": false,
+     "type": "dict"
+    }
+   ]
+  },
+  {
+   "description": "Polygon draws a filled, closed shape from a list of [lat, lng] points. Place it as a\nchild of Map. Wraps Leaflet 2's Polygon.",
+   "name": "Polygon",
+   "props": [
+    {
+     "default": "",
+     "description": "The ID used to identify this component in Dash callbacks.",
+     "name": "id",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "default": "",
+     "description": "Popup / Tooltip children.",
+     "name": "children",
+     "required": false,
+     "type": "node"
+    },
+    {
+     "default": "",
+     "description": "Often-used CSS class name(s) for the root element.",
+     "name": "className",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "default": "'#3388ff'",
+     "description": "Stroke color. [MUTABLE]",
+     "name": "color",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "default": "",
+     "description": "Fill color (defaults to stroke color). [MUTABLE]",
+     "name": "fillColor",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "default": "0.2",
+     "description": "Fill opacity, 0..1. [MUTABLE]",
+     "name": "fillOpacity",
+     "required": false,
+     "type": "number"
+    },
+    {
+     "default": "",
+     "description": "Times the polygon has been clicked. [READONLY]",
+     "name": "n_clicks",
+     "required": false,
+     "type": "number"
+    },
+    {
+     "default": "1",
+     "description": "Stroke opacity, 0..1. [MUTABLE]",
+     "name": "opacity",
+     "required": false,
+     "type": "number"
+    },
+    {
+     "default": "[]",
+     "description": "Ring vertices as a list of [lat, lng] points (auto-closed). [MUTABLE]",
+     "name": "positions",
+     "required": false,
+     "type": "list of tuple"
+    },
+    {
+     "default": "",
+     "description": "Inline style for the root element. For Map, this is where you set height.",
+     "name": "style",
+     "required": false,
+     "type": "dict"
+    },
+    {
+     "default": "3",
+     "description": "Stroke width in pixels. [MUTABLE]",
+     "name": "weight",
+     "required": false,
+     "type": "number"
+    }
+   ]
+  },
+  {
+   "description": "Polyline draws a multi-segment line from a list of [lat, lng] points. Place it as a\nchild of Map. Wraps Leaflet 2's Polyline.",
+   "name": "Polyline",
+   "props": [
+    {
+     "default": "",
+     "description": "The ID used to identify this component in Dash callbacks.",
+     "name": "id",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "default": "",
+     "description": "Popup / Tooltip children.",
+     "name": "children",
+     "required": false,
+     "type": "node"
+    },
+    {
+     "default": "",
+     "description": "Often-used CSS class name(s) for the root element.",
+     "name": "className",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "default": "'#3388ff'",
+     "description": "Stroke color. [MUTABLE]",
+     "name": "color",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "default": "",
+     "description": "Dash pattern, e.g. \"5,10\". [MUTABLE]",
+     "name": "dashArray",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "default": "",
+     "description": "Whether the line captures pointer events (fires clicks, blocks the map click\nunderneath). Set false for a non-interactive decoration / context overlay so it\nnever intercepts clicks meant for the map. Construction-only. @default true",
+     "name": "interactive",
+     "required": false,
+     "type": "bool"
+    },
+    {
+     "default": "",
+     "description": "Times the line has been clicked. [READONLY]",
+     "name": "n_clicks",
+     "required": false,
+     "type": "number"
+    },
+    {
+     "default": "1",
+     "description": "Stroke opacity, 0..1. [MUTABLE]",
+     "name": "opacity",
+     "required": false,
+     "type": "number"
+    },
+    {
+     "default": "[]",
+     "description": "Vertices as a list of [lat, lng] points. [MUTABLE]",
+     "name": "positions",
+     "required": false,
+     "type": "list of tuple"
+    },
+    {
+     "default": "",
+     "description": "Inline style for the root element. For Map, this is where you set height.",
+     "name": "style",
+     "required": false,
+     "type": "dict"
+    },
+    {
+     "default": "3",
+     "description": "Stroke width in pixels. [MUTABLE]",
+     "name": "weight",
+     "required": false,
+     "type": "number"
+    }
+   ]
+  },
+  {
+   "description": "Popup shows content in a balloon bound to its parent layer (Marker, Polygon, ...).\nChildren are rendered through a React portal, so any Dash component works as popup\ncontent. Wraps Leaflet 2's Popup.",
+   "name": "Popup",
+   "props": [
+    {
+     "default": "",
+     "description": "The ID used to identify this component in Dash callbacks.",
+     "name": "id",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "default": "",
+     "description": "If true, opening a popup closes other popups. Leaflet defaults to true; set False\nto allow multiple popups open simultaneously.",
+     "name": "autoClose",
+     "required": false,
+     "type": "bool"
+    },
+    {
+     "default": "",
+     "description": "Popup content \u2014 any Dash/HTML children, rendered live via a React portal.",
+     "name": "children",
+     "required": false,
+     "type": "node"
+    },
+    {
+     "default": "",
+     "description": "Often-used CSS class name(s) for the root element.",
+     "name": "className",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "default": "true",
+     "description": "Show the close (\u00d7) button.",
+     "name": "closeButton",
+     "required": false,
+     "type": "bool"
+    },
+    {
+     "default": "",
+     "description": "If true, clicking the map closes the popup. Leaflet defaults to true; set False\nfor form popups that should stay open while the user is interacting.",
+     "name": "closeOnClick",
+     "required": false,
+     "type": "bool"
+    },
+    {
+     "default": "300",
+     "description": "Max width in pixels.",
+     "name": "maxWidth",
+     "required": false,
+     "type": "number"
+    },
+    {
+     "default": "50",
+     "description": "Min width in pixels.",
+     "name": "minWidth",
+     "required": false,
+     "type": "number"
+    },
+    {
+     "default": "",
+     "description": "Controlled open state \u2014 when set, the popup follows this prop (True \u2192 open,\nFalse \u2192 closed) instead of waiting for a click on the parent layer. [MUTABLE]",
+     "name": "opened",
+     "required": false,
+     "type": "bool"
+    },
+    {
+     "default": "",
+     "description": "Inline style for the root element. For Map, this is where you set height.",
+     "name": "style",
+     "required": false,
+     "type": "dict"
+    }
+   ]
+  },
+  {
+   "description": "Rectangle draws an axis-aligned box from geographic bounds. Place it as a child of Map.\nWraps Leaflet 2's Rectangle.",
+   "name": "Rectangle",
+   "props": [
+    {
+     "default": "",
+     "description": "The ID used to identify this component in Dash callbacks.",
+     "name": "id",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "default": "[[0, 0], [0, 0]]",
+     "description": "Geographic bounds as [[south, west], [north, east]]. [MUTABLE]",
+     "name": "bounds",
+     "required": false,
+     "type": "tuple"
+    },
+    {
+     "default": "",
+     "description": "Popup / Tooltip children.",
+     "name": "children",
+     "required": false,
+     "type": "node"
+    },
+    {
+     "default": "",
+     "description": "Often-used CSS class name(s) for the root element.",
+     "name": "className",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "default": "'#3388ff'",
+     "description": "Stroke color. [MUTABLE]",
+     "name": "color",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "default": "",
+     "description": "Fill color (defaults to stroke color). [MUTABLE]",
+     "name": "fillColor",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "default": "0.2",
+     "description": "Fill opacity, 0..1. [MUTABLE]",
+     "name": "fillOpacity",
+     "required": false,
+     "type": "number"
+    },
+    {
+     "default": "",
+     "description": "Times the rectangle has been clicked. [READONLY]",
+     "name": "n_clicks",
+     "required": false,
+     "type": "number"
+    },
+    {
+     "default": "",
+     "description": "Inline style for the root element. For Map, this is where you set height.",
+     "name": "style",
+     "required": false,
+     "type": "dict"
+    },
+    {
+     "default": "3",
+     "description": "Stroke width in pixels. [MUTABLE]",
+     "name": "weight",
+     "required": false,
+     "type": "number"
+    }
+   ]
+  },
+  {
+   "description": "ScaleControl shows a metric and/or imperial scale bar in a map corner.\nWraps Leaflet 2's built-in `Control.Scale` (lives on the Control namespace\nbut not exported by the ESM \u2014 we reach in through `Control.Scale`).",
+   "name": "ScaleControl",
+   "props": [
+    {
+     "default": "",
+     "description": "The ID used to identify this component in Dash callbacks.",
+     "name": "id",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "default": "",
+     "description": "Often-used CSS class name(s) for the root element.",
+     "name": "className",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "default": "false",
+     "description": "Show imperial (mi/ft) bar. Default false.",
+     "name": "imperial",
+     "required": false,
+     "type": "bool"
+    },
+    {
+     "default": "100",
+     "description": "Maximum bar width in pixels. Default 100.",
+     "name": "maxWidth",
+     "required": false,
+     "type": "number"
+    },
+    {
+     "default": "true",
+     "description": "Show metric (km/m) bar. Default true.",
+     "name": "metric",
+     "required": false,
+     "type": "bool"
+    },
+    {
+     "default": "'bottomleft'",
+     "description": "\"topleft\" | \"topright\" | \"bottomleft\" | \"bottomright\". Default \"bottomleft\". [MUTABLE]",
+     "name": "position",
+     "required": false,
+     "type": "one of 'topleft', 'topright', 'bottomleft', 'bottomright'"
+    },
+    {
+     "default": "",
+     "description": "Inline style for the root element. For Map, this is where you set height.",
+     "name": "style",
+     "required": false,
+     "type": "dict"
+    },
+    {
+     "default": "false",
+     "description": "Only redraw the bar when the map stops moving. Default false.",
+     "name": "updateWhenIdle",
+     "required": false,
+     "type": "bool"
+    }
+   ]
+  },
+  {
+   "description": "TextMarker is editable, draggable, styleable text placed on the map like a Marker. Give it\na `position` and `text`; drag to move, double-click to edit, and (when `selected`) use the\non-canvas resize / rotate handles and the contextual toolbar to restyle it. Position, text,\nrotation, font size, and color all round-trip back to Dash. When `position` is omitted the\nlabel spawns at the center of the current viewport. Place it as a child of dl2.Map.",
+   "name": "TextMarker",
+   "props": [
+    {
+     "default": "",
+     "description": "The ID used to identify this component in Dash callbacks.",
+     "name": "id",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "default": "'center'",
+     "description": "Which point of the text box sits on `position`. One of center | top-left | top |\ntop-right | left | right | bottom-left | bottom | bottom-right. @default \"center\".",
+     "name": "anchor",
+     "required": false,
+     "type": "one of 'center', 'left', 'right', 'bottom', 'top', 'top-left', 'top-right', 'bottom-left' \u2026"
+    },
+    {
+     "default": "'transparent'",
+     "description": "Box background behind the text (\"transparent\" for none). Editable from the toolbar. [MUTABLE]",
+     "name": "backgroundColor",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "default": "6",
+     "description": "Corner radius of the background pill in px. @default 6.",
+     "name": "borderRadius",
+     "required": false,
+     "type": "number"
+    },
+    {
+     "default": "",
+     "description": "Often-used CSS class name(s) for the root element.",
+     "name": "className",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "default": "'#111827'",
+     "description": "Text color (any CSS color / Mantine var). Editable from the toolbar. [MUTABLE]",
+     "name": "color",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "default": "true",
+     "description": "Whether the label can be dragged to a new position. @default true.",
+     "name": "draggable",
+     "required": false,
+     "type": "bool"
+    },
+    {
+     "default": "true",
+     "description": "Whether double-click enters inline text edit. @default true.",
+     "name": "editable",
+     "required": false,
+     "type": "bool"
+    },
+    {
+     "default": "'system-ui, sans-serif'",
+     "description": "Font family stack, e.g. \"Inter, system-ui, sans-serif\". [MUTABLE]",
+     "name": "fontFamily",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "default": "24",
+     "description": "Font size in screen px (the resize handle changes this). [MUTABLE]",
+     "name": "fontSize",
+     "required": false,
+     "type": "number"
+    },
+    {
+     "default": "'normal'",
+     "description": "Font style: \"normal\" | \"italic\". [MUTABLE]",
+     "name": "fontStyle",
+     "required": false,
+     "type": "one of 'normal', 'italic'"
+    },
+    {
+     "default": "600",
+     "description": "Font weight (400 / 600 / 700 / \"bold\" \u2026). [MUTABLE]",
+     "name": "fontWeight",
+     "required": false,
+     "type": "string | number"
+    },
+    {
+     "default": "",
+     "description": "Number of times the label has been clicked. [READONLY]",
+     "name": "n_clicks",
+     "required": false,
+     "type": "number"
+    },
+    {
+     "default": "",
+     "description": "Number of times the label has been dragged. [READONLY]",
+     "name": "n_drags",
+     "required": false,
+     "type": "number"
+    },
+    {
+     "default": "",
+     "description": "Bumped on each committed text edit (fires a Dash Input even for identical text). [READONLY]",
+     "name": "n_edits",
+     "required": false,
+     "type": "number"
+    },
+    {
+     "default": "1",
+     "description": "Caption opacity, 0..1 \u2014 fade the whole label in/out (e.g. keyframed transitions).\n@,default,1 [MUTABLE]",
+     "name": "opacity",
+     "required": false,
+     "type": "number"
+    },
+    {
+     "default": "6",
+     "description": "Box padding in px (only visible when `backgroundColor` is set). [MUTABLE]",
+     "name": "padding",
+     "required": false,
+     "type": "number"
+    },
+    {
+     "default": "",
+     "description": "Text anchor as [lat, lng]. Dragging the label writes it back. When omitted, the\nlabel is created at the current center of the map viewport (and that position is\nemitted back so Python has it). [MUTABLE]",
+     "name": "position",
+     "required": false,
+     "type": "tuple"
+    },
+    {
+     "default": "",
+     "description": "The zoom level at which `fontSize` is the literal screen px (only used when\n`scaleWithZoom`). Defaults to the map's zoom when the label is created. [MUTABLE]",
+     "name": "referenceZoom",
+     "required": false,
+     "type": "number"
+    },
+    {
+     "default": "false",
+     "description": "When true the label rotates together with a rotated map (`Map.bearing`); when false\n(default) it stays upright on screen regardless of map bearing \u2014 like a Marker.",
+     "name": "rotateWithMap",
+     "required": false,
+     "type": "bool"
+    },
+    {
+     "default": "0",
+     "description": "Rotation in degrees, CW from upright. The rotate handle changes this. [MUTABLE]",
+     "name": "rotation",
+     "required": false,
+     "type": "number"
+    },
+    {
+     "default": "false",
+     "description": "Geographic sizing. When false (default) the label is a constant screen-size HUD caption:\n`fontSize` is literal screen px at every zoom (like a Tooltip). When true the label scales\nwith the map \u2014 its on-screen size grows/shrinks by 2^(zoom \u2212 referenceZoom) so it keeps a\nfixed *ground* footprint as the camera flies (like a polygon's edge). [MUTABLE]",
+     "name": "scaleWithZoom",
+     "required": false,
+     "type": "bool"
+    },
+    {
+     "default": "",
+     "description": "Show selection chrome (resize / rotate handles + the style toolbar). Two-way: clicking\nthe label sets it true and a map-background click clears it, so a host can also drive\nselection from the outside. [MUTABLE]",
+     "name": "selected",
+     "required": false,
+     "type": "bool"
+    },
+    {
+     "default": "true",
+     "description": "Whether the contextual style toolbar is shown while selected. @default true.",
+     "name": "showToolbar",
+     "required": false,
+     "type": "bool"
+    },
+    {
+     "default": "",
+     "description": "Inline style for the root element. For Map, this is where you set height.",
+     "name": "style",
+     "required": false,
+     "type": "dict"
+    },
+    {
+     "default": "'Text'",
+     "description": "The caption string. Double-click the label to edit it inline; the committed text\n(on blur / Enter) is written back with `n_edits` bumped. [MUTABLE]",
+     "name": "text",
+     "required": false,
+     "type": "string"
+    }
+   ]
+  },
+  {
+   "description": "TileLayer loads and displays a raster tile basemap. Place it as a child of\nMap. Wraps Leaflet 2's TileLayer.",
+   "name": "TileLayer",
+   "props": [
+    {
+     "default": "",
+     "description": "The ID used to identify this component in Dash callbacks.",
+     "name": "id",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "default": "'&copy; OpenStreetMap contributors'",
+     "description": "Attribution HTML shown in the bottom-right of the map.",
+     "name": "attribution",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "default": "",
+     "description": "Geographic bounds outside of which no tiles are requested, as\n`[[south, west], [north, east]]`. Same as Leaflet's `LatLngBounds`. Cheaper\nthan server-side 404s for out-of-area requests.",
+     "name": "bounds",
+     "required": false,
+     "type": "tuple"
+    },
+    {
+     "default": "",
+     "description": "Often-used CSS class name(s) for the root element.",
+     "name": "className",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "default": "",
+     "description": "Adds the `crossOrigin` attribute to every tile img element. Pass \"anonymous\"\nto make tile loads CORS-mode so canvas captures (map screenshots /\nhtml2canvas) can read the pixels. The tile host must answer with\nAccess-Control-Allow-Origin or the tiles fail to load entirely \u2014 leave\nunset for hosts you don't control. \"use-credentials\" and \"\" are also\nvalid. Construction-time only.",
+     "name": "crossOrigin",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "default": "false",
+     "description": "If true, request tiles at 2x resolution on hi-DPI displays (loads twice\nas many tiles but renders sharper).",
+     "name": "detectRetina",
+     "required": false,
+     "type": "bool"
+    },
+    {
+     "default": "",
+     "description": "URL of an image shown in place of any tile that fails to load. A 1x1\ntransparent PNG data URL is the common \"hide broken tiles\" trick.",
+     "name": "errorTileUrl",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "default": "",
+     "description": "Maximum zoom level that the tile source actually has tiles for. Leaflet\nupscales tiles from this zoom when the map zooms in past it (instead of\n404-ing). Useful for overlays whose cache caps below the map's max zoom \u2014\ne.g. USGS Hydro is only cached to z16; set `maxNativeZoom=16` and the\nz16 tile will be shown at z17/z18.",
+     "name": "maxNativeZoom",
+     "required": false,
+     "type": "number"
+    },
+    {
+     "default": "19",
+     "description": "Maximum zoom level for this tile layer.",
+     "name": "maxZoom",
+     "required": false,
+     "type": "number"
+    },
+    {
+     "default": "0",
+     "description": "Minimum zoom level at which this tile layer is visible. Below this zoom\nLeaflet stops requesting tiles entirely (no 404 thrash on out-of-range\nhistorical / harbor-cropped pyramids). Default 0.",
+     "name": "minZoom",
+     "required": false,
+     "type": "number"
+    },
+    {
+     "default": "1",
+     "description": "Layer opacity, 0..1. [MUTABLE]",
+     "name": "opacity",
+     "required": false,
+     "type": "number"
+    },
+    {
+     "default": "",
+     "description": "Inline style for the root element. For Map, this is where you set height.",
+     "name": "style",
+     "required": false,
+     "type": "dict"
+    },
+    {
+     "default": "",
+     "description": "Subdomains substituted into the URL `{s}` placeholder. Accepts an array\nlike `['a','b','c']` or a string `'abc'` (each character is a subdomain).",
+     "name": "subdomains",
+     "required": false,
+     "type": "string | list of string"
+    },
+    {
+     "default": "false",
+     "description": "If true, inverts Y coordinates so this layer works with TMS-shaped tile\npyramids (Leaflet defaults to XYZ).",
+     "name": "tms",
+     "required": false,
+     "type": "bool"
+    },
+    {
+     "default": "'https://tile.openstreetmap.org/{z}/{x}/{y}.png'",
+     "description": "Tile URL template, e.g. \"https://tile.openstreetmap.org/{z}/{x}/{y}.png\".\nUpdating it swaps the basemap. [MUTABLE]",
+     "name": "url",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "default": "",
+     "description": "Explicit z-index for the tile layer's DOM pane. Higher = renders on top.\nUseful when stacking multiple tile layers and DOM mount order alone is\ninsufficient. [MUTABLE]",
+     "name": "zIndex",
+     "required": false,
+     "type": "number"
+    }
+   ]
+  },
+  {
+   "description": "TileSelector adds a toggle button to the map. While active, the cursor becomes a\ncrosshair, a dashed outline tracks the tile under the cursor at the current map zoom,\nand clicking a tile adds/removes it from the multi-select. Holding Shift while dragging\ncaptures every tile inside the resulting box. Selections persist across zooms (each\ntile is keyed by z/x/y). Place it as a child of dl2.Map.",
+   "name": "TileSelector",
+   "props": [
+    {
+     "default": "",
+     "description": "The ID used to identify this component in Dash callbacks.",
+     "name": "id",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "default": "",
+     "description": "Often-used CSS class name(s) for the root element.",
+     "name": "className",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "default": "'#fa5252'",
+     "description": "Color of the hover outline.",
+     "name": "hoverColor",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "default": "'topleft'",
+     "description": "\"topleft\" | \"topright\" | \"bottomleft\" | \"bottomright\".",
+     "name": "position",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "default": "'#228be6'",
+     "description": "Stroke + fill color of selected-tile rectangles (and the box-drag preview).",
+     "name": "selectedColor",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "default": "[]",
+     "description": "Currently selected tiles, each `{z, x, y, url, bounds: [s, w, n, e]}`. Two-way:\nclicks + shift-drag add/remove tiles (component \u2192 Python); Python callbacks can\nalso push (e.g. a Clear button writes `[]`). [MUTABLE]",
+     "name": "selectedTiles",
+     "required": false,
+     "type": "list of dict"
+    },
+    {
+     "default": "",
+     "description": "Inline style for the root element. For Map, this is where you set height.",
+     "name": "style",
+     "required": false,
+     "type": "dict"
+    },
+    {
+     "default": "'https://tile.openstreetmap.org/{z}/{x}/{y}.png'",
+     "description": "Tile URL template \u2014 same `{s}/{z}/{x}/{y}` form as a TileLayer URL.",
+     "name": "tileUrl",
+     "required": false,
+     "type": "string"
+    }
+   ]
+  },
+  {
+   "description": "Tooltip shows a small label on hover (or permanently), bound to its parent layer\n(Marker, Polygon, ...). Children render through a React portal, so any Dash component\nworks as content. Wraps Leaflet 2's Tooltip.",
+   "name": "Tooltip",
+   "props": [
+    {
+     "default": "",
+     "description": "The ID used to identify this component in Dash callbacks.",
+     "name": "id",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "default": "",
+     "description": "Tooltip content \u2014 any Dash/HTML children, rendered live via a React portal.",
+     "name": "children",
+     "required": false,
+     "type": "node"
+    },
+    {
+     "default": "",
+     "description": "Often-used CSS class name(s) for the root element.",
+     "name": "className",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "default": "'auto'",
+     "description": "Placement: \"right\" | \"left\" | \"top\" | \"bottom\" | \"center\" | \"auto\".",
+     "name": "direction",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "default": "0.9",
+     "description": "Tooltip opacity, 0..1.",
+     "name": "opacity",
+     "required": false,
+     "type": "number"
+    },
+    {
+     "default": "false",
+     "description": "If true, the tooltip stays open instead of showing only on hover.",
+     "name": "permanent",
+     "required": false,
+     "type": "bool"
+    },
+    {
+     "default": "",
+     "description": "Inline style for the root element. For Map, this is where you set height.",
+     "name": "style",
+     "required": false,
+     "type": "dict"
+    }
+   ]
+  }
+ ],
+ "generated": "2026-08-30"
+}

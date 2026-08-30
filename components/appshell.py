@@ -1,9 +1,11 @@
 import dash_mantine_components as dmc
-from dash import Output, Input, clientside_callback, dcc, page_container, State
+from dash import Output, Input, callback, clientside_callback, dcc, page_container, State
 
+from components.footer import FOOTER_HEIGHT, create_footer
 from components.header import create_header
 from components.navbar import create_navbar, create_navbar_drawer
-from lib.constants import PRIMARY_COLOR
+from lib.aside import aside_config
+from lib.constants import HEADER_HEIGHT, PRIMARY_COLOR
 
 
 def create_appshell(data):
@@ -181,22 +183,26 @@ def create_appshell(data):
                     create_navbar_drawer(data),
                     dmc.AppShellMain(
                         children=page_container,
-                        style={"minHeight": "calc(100vh - 70px)"}  # Full height minus header
+                        # dvh, not vh: a collapsing mobile URL bar otherwise
+                        # leaves a dead gap under the footer.
+                        style={"minHeight": f"calc(100dvh - {HEADER_HEIGHT + FOOTER_HEIGHT}px)"}
                     ),
+                    create_footer(),
                 ],
                 id="m2d-appshell",
-                header={"height": 70},
+                header={"height": HEADER_HEIGHT},
+                footer={"height": FOOTER_HEIGHT},
                 padding="xl",
                 navbar={
                     "width": 280,
                     "breakpoint": "md",  # Collapse on medium screens and below
                     "collapsed": {"mobile": True},
                 },
-                aside={
-                    "width": 280,
-                    "breakpoint": "xl",
-                    "collapsed": {"desktop": False, "mobile": True},
-                },
+                # Collapsed wherever the page renders no `.. toc::` — the
+                # callback below re-evaluates it per navigation (lib/aside.py).
+                # Before this the column was reserved on every page, so
+                # /changelog, /api and home rendered with an empty right gutter.
+                aside=aside_config("/"),
                 withBorder=True,
             ),
         ],
@@ -307,3 +313,14 @@ clientside_callback(
     Input("url", "pathname"),
     State("desktop-navbar-collapsed", "data"),
 )
+
+
+@callback(
+    Output("m2d-appshell", "aside"),
+    Input("url", "pathname"),
+)
+def _collapse_aside_without_toc(pathname):
+    """Full width for pages that render no aside (template 1.6.39):
+    /changelog, /api, home, the admin pages. The docs pages keep their TOC
+    column, and with it the ad slot that rides inside it."""
+    return aside_config(pathname)

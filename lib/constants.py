@@ -223,10 +223,79 @@ def internal_ua(caller: str = "") -> str:
     return f"{INTERNAL_UA} {caller}" if caller else INTERNAL_UA
 
 
-# 2plot network links, surfaced in the README and the docs footer/header.
+# The legal entity behind every site in the network — the footer's copyright
+# line, and JSON-LD `publisher` where a host declares one.
+PUBLISHER = "Pip Install Python LLC"
+
+# ONE constant for the repository. The header's GitHub icon, JSON-LD `sameAs`
+# and anything else naming this repo all read it (template 1.6.38): a fork sets
+# it once. muischeduler's icon pointed at the profile while its sameAs named
+# the repo — two truths, one of them wrong.
 GITHUB_URL = "https://github.com/pip-install-python/dash-leaflet2"
-DISCORD_URL = "https://discord.gg/WEnZR35mrK"
-YOUTUBE_URL = "https://www.youtube.com/channel/UC6Bmo0t0ZUpU_xKBYW0bJuQ"
+SAME_AS = [GITHUB_URL]
+
+# The owner's profile — the FOOTER's GitHub link (the repo is the top bar's).
+GITHUB_PROFILE_URL = "https://github.com/pip-install-python"
+
+# Network-wide community links — identical on every host (owner, 2026-08-30).
+# These replaced this repo's own older Discord invite and channel-id YouTube
+# URL: the network standardised on one server and the @2plotai handle, and a
+# fork keeping its own pair is how a footer link outlives the server it points
+# at. The subscribe variant is what the footer's YouTube icon uses.
+DISCORD_URL = "https://discord.gg/e5s5uHWUHH"
+YOUTUBE_URL = "https://www.youtube.com/@2plotai"
+YOUTUBE_SUBSCRIBE_URL = YOUTUBE_URL + "?sub_confirmation=1"
+DMC_URL = "https://www.dash-mantine-components.com/"
+
+# ---------------------------------------------------------------------------
+# Navigation contract (template 1.6.38) — the parts of the sidebar/top bar
+# that are IDENTICAL on every host come from template code and this block; the
+# app's own sections come from each docs page's frontmatter. A fork edits THIS
+# block and its frontmatter, never components/navbar.py.
+# ---------------------------------------------------------------------------
+
+# This site's own sections, in sidebar order — the dash-leaflet2 NAV map, which
+# predates the contract and is exactly the freedom it grants. Every
+# docs/<slug>/<slug>.md declares one of these as `category:`; a category not
+# listed here follows the listed ones alphabetically. Keep the names short:
+# they are sidebar titles.
+CATEGORY_ORDER = [
+    "Start here",
+    "v2 capabilities",
+    "Layers",
+    "Markers",
+    "Controls (compiled dl2.*)",
+    "Rotation & Sims",
+    "Dash integration",
+]
+
+# The upstream project this component library wraps. Rendered as the last
+# Resources link. Leaflet 2 is the whole reason this package exists — see the
+# root CLAUDE.md: `dash-leaflet` is frozen on react-leaflet → Leaflet 1.9 and
+# this one wraps v2 core directly.
+UPSTREAM = {"name": "Leaflet 2", "url": "https://leafletjs.com/",
+            "icon": "mdi:leaf"}
+
+# Dash component packages whose props the generated /api page documents.
+# Empty → /api is not registered. The header's version badge reads the first
+# entry's version.
+API_PACKAGES: list = ["dash_leaflet2"]
+
+
+def resources() -> list:
+    """The sidebar's Resources section: THIRD-PARTY ONLY (owner, 2026-08-30).
+
+    `dmc` and the upstream project. The owner's own links (repo, Discord,
+    YouTube) live in the top bar and the footer, never here; no
+    community.plotly.com; no 2plot.dev — the network is the Other Apps menu.
+    """
+    items = [
+        {"label": "dmc", "url": DMC_URL, "icon": "ic:baseline-design-services"},
+    ]
+    if UPSTREAM:
+        items.append({"label": UPSTREAM["name"], "url": UPSTREAM["url"],
+                      "icon": UPSTREAM.get("icon", "mdi:open-in-new")})
+    return items
 
 # This will be populated by pages/markdown.py when loading documentation files
 NAME_CONTENT_MAP = {}

@@ -258,6 +258,51 @@ replaced the tool records the divergence and ports the contract
 half"); the record is this entry.
 
 
+### 15. `/api` reads a COMMITTED props extract, not `metadata.json`
+
+Template 1.6.38's `lib/api_reference.py` reads the component package's
+`metadata.json` — which, on a pip-installed Dash component package,
+sits next to `__init__.py`. In this repo that file is a 27 MB
+react-docgen BUILD artifact: `.gitignore` excludes it (divergence 12)
+and `MANIFEST.in` excludes it from the wheel. It is an input to
+`dash-generate-components`, never a runtime file.
+
+So on Render — which clones this repo and builds the Dockerfile —
+`metadata.json` does not exist, and the template's code would have
+rendered an empty `/api` while every local check passed, because
+locally the file IS there. Measured both ways before and after.
+
+`scripts/build_api_metadata.py` distils it to
+`dash_leaflet2/api_metadata.json` (26 components, 302 props, 78 KB),
+which IS committed; `load_package` prefers `metadata.json` when
+present so a developer who has just re-run `npm run build:backends`
+sees new props immediately. That file also carries `generated`, the
+date the props last changed — which is `/api`'s sitemap `lastmod`,
+written by the thing that regenerates the content so the two can
+never drift, and committed so a Docker rebuild cannot reset it the
+way an mtime would.
+
+*Consequence for a sync:* `lib/api_reference.py` is NOT byte-identical
+to the template's and cannot become cargo here until upstream has a
+fallback of its own. Everything else in that file is verbatim.
+
+### 16. Two generated pages register through `register_llms_doc`
+
+`/changelog` and `/api` arrive from template 1.6.38 leaving a
+module-level `LLMS_DOC` for the package to discover. That publishes
+the prose but sends no `lastmod`, so both pages entered the sitemap
+dateless — which `tests/test_seo_icons.py` fails here and nowhere
+upstream, because the template has no such test. Both now register
+through `lib.page_visibility.register_llms_doc`, like every docs page
+here, which also brings them under the control board's per-page
+llms.txt toggle instead of silently skipping them.
+
+`/changelog` additionally needed its date parser widened: this repo's
+CHANGELOG has always written `## [0.2.2] — 2026-08-05` with an EM
+DASH, and the template's regex accepts only an ASCII hyphen, so it
+matched every version and dropped every date — a Timeline with no
+dates on it. The pattern now takes `-`, `–` or `—`.
+
 ## Byte-owned paths
 
 Paths this fork owns byte-for-byte. The F3b fan-out never overwrites
@@ -334,13 +379,24 @@ it. `tests/test_claude_kit.py` validates the SHAPE and holds `runtime`
 against `render.yaml`; no test can tell a stale 200 from a fresh one,
 so the values below carry the date they were taken.
 
-- **`ai_bots`** — measured 2026-08-29 against `https://leaflet.2plot.dev`
-  with `ClaudeBot/1.0`: `/`, `/llms.txt`, `/healthz`, `/robots.txt` and
-  `/sitemap.xml` all 200. That is **divergence 4** on the wire, not a
-  miss: this host ships `block_ai_training=False` because it is
-  documentation for an MIT-licensed component library whose
-  distribution channel is a model recommending `dash-leaflet2`. A
-  fleet host that blocks training answers 403 at `/` here.
+- **`ai_bots`** — re-measured 2026-08-30T14:25Z against
+  `https://leaflet.2plot.dev` for BOTH vendor UAs the fleet checks:
+  `ClaudeBot/1.0` and `GPTBot/1.2` each answer 200 on `/`, `/llms.txt`
+  and `/healthz` (six lines, all 200); `robots.txt` serves zero
+  `Disallow` lines and names no training UA at all. That is
+  **divergence 4** on the wire, not a miss: this host ships
+  `block_ai_training=False` because it is documentation for an
+  MIT-licensed component library whose distribution channel is a model
+  recommending `dash-leaflet2`.
+
+  As of template 1.6.37 this is no longer a divergence in POSTURE —
+  the fleet default flipped to allow, and the tool became per-vendor
+  policy rather than per-class blocking. What remains recorded here is
+  that this host got there first and has the wire history to show it.
+  IN-PROCESS AND WIRE AGREE, all six: the app answers 200 itself, so
+  there is no edge wall in front of this host either (the template's
+  drop assumed a Cloudflare rule; the owner has since confirmed the
+  feature is Enterprise-only on this plan and no zone rule exists).
 - **`healthz: full`** — and a superset at that; see divergence 5, which
   adds `version`, `base_url` and `reporting` to the fleet-standard
   payload.
@@ -376,12 +432,15 @@ decision. None of these are divergences.
   registers would report the same false negative.
 - **`components/appshell.py` hardcodes `70`** where the template uses
   `HEADER_HEIGHT` from `lib/constants.py`.
-- **No `lib/directives/headings.py`.**
 - **Missing template test modules**: `test_auth_wiring.py`,
   `test_config.py`, `test_control_board.py`, `test_css_hygiene.py`,
-  `test_docs_content.py`, `test_excluded_links_hidden.py`,
-  `test_llms_routes.py`, `test_network_directory.py`,
-  `test_proxy_scheme.py`, `test_runtime_imports.py`. (This repo has
+  `test_docs_content.py`, `test_llms_routes.py`,
+  `test_network_directory.py`, `test_proxy_scheme.py`,
+  `test_runtime_imports.py`. (`test_excluded_links_hidden.py` and
+  `test_nav_contract.py` arrived with the 1.6.38 navigation contract;
+  `lib/directives/headings.py` came with it too, so both are off this
+  list. `test_admin_nav.py` was REWRITTEN against the new admin
+  mechanism rather than retired — see below.) (This repo has
   five the template does not: `test_admin_nav.py`,
   `test_healthz_identity.py`, `test_network_surfaces.py`,
   `test_page_structure.py`, `test_page_visibility_reload.py` —

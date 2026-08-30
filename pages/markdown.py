@@ -9,9 +9,11 @@ import frontmatter
 from markdown2dash import Admonition, BlockExec, Divider, Image, create_parser
 from pydantic import BaseModel, field_validator
 
+from lib import aside
 from lib.ad_client import inject_ad_into_aside
 from lib.constants import OG_IMAGE_URL, PAGE_TITLE_PREFIX, NAME_CONTENT_MAP
 from lib import page_tiers
+from lib.directives.headings import patch_renderer
 from lib.directives.kwargs import Kwargs
 from lib.directives.llms_copy import LlmsCopy
 from lib.directives.source import SC
@@ -42,6 +44,11 @@ class Meta(BaseModel):
     package: str = "dash-leaflet2"
     category: Optional[str] = None
     icon: Optional[str] = None
+    # Sidebar position within its category (template 1.6.38); ties break on
+    # name. Absent on every page here on purpose: the sidebar has always
+    # rendered each category alphabetically, and 1000-then-name reproduces
+    # that exactly — so the contract arrives without reordering 27 pages.
+    order: int = 1000
     # Baseline access tier: public | auth | admin | hidden. Omitted → the
     # deployment default (PAGE_DEFAULT_TIER / PAGE_DEFAULT_VISIBILITY). The
     # control board's overrides always win over whatever is declared here.
@@ -187,6 +194,13 @@ def _build_llms_doc(name: str, description: str, expanded_markdown: str, path: s
     return "\n".join(parts)
 
 
+# Headings containing inline code/emphasis crash markdown2dash's renderer and,
+# when they don't, get an id their own TOC anchor doesn't match; and inline
+# `![alt](src)` images raise on the DMC child list because markdown2dash
+# defines no `image` renderer at all. Must run BEFORE create_parser()
+# instantiates the renderer. See lib/directives/headings.py.
+patch_renderer()
+
 directives = [Admonition(), BlockExec(), Divider(), Image(), Kwargs(), LlmsCopy(), SC(), TOC()]
 parse = create_parser(directives)
 
@@ -205,6 +219,11 @@ for file in files:
 
     # Store raw markdown content in NAME_CONTENT_MAP for the LLM copy button.
     NAME_CONTENT_MAP[metadata.name] = content
+
+    # Pages with a `.. toc::` fill the aside; the shell collapses it for
+    # every other page (lib/aside.py, template 1.6.39 — full-width /changelog).
+    if ".. toc::" in content:
+        aside.register(metadata.endpoint)
 
     layout = parse(content)
 
@@ -260,6 +279,7 @@ for file in files:
         layout=gated_layout(metadata.endpoint, metadata.name, layout),
         category=metadata.category,
         icon=metadata.icon,
+        order=metadata.order,
     )
 
     # Feed the expanded markdown into dash-improve-my-llms so /<page>/llms.txt

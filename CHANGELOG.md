@@ -68,7 +68,40 @@ changed, and `pip install dash-leaflet2` is untouched by any of it.
   reader — sessions resolve locally — and resolves to "gated" for anyone
   else, never to publishing restricted prose and never to a dead site.
 
+### Added
+
+- **A `/changelog` page** — this file, rendered as a timeline, and served to
+  agents as its own llms.txt.
+
+- **An `/api` page** — every `dl2.*` component's props, types, defaults and
+  descriptions in one table per component, generated from the package's own
+  build metadata rather than written by hand, so it cannot drift from the
+  code. The same tables are served as Markdown to agents.
+
+- **An "Other Apps" menu in the top bar**, listing the 2plot network's primary
+  sites from the shared registry, and a footer carrying the copyright, the
+  GitHub profile, Discord and YouTube.
+
 ### Changed
+
+- **The sidebar is built from each page's frontmatter, not a hand-kept list.**
+  Section names and their order are unchanged — Start here, v2 capabilities,
+  Layers, Markers, Controls, Rotation & Sims, Dash integration — and so is
+  every page's position within them. What changed is that adding a page no
+  longer means editing the navbar: it declares its `category:` and appears.
+  Home and Changelog sit above the sections, API and Resources below them.
+
+- **Resources is now third-party only** — Dash Mantine Components and Leaflet
+  itself. The GitHub, Discord and YouTube links moved to the top bar and the
+  footer, where they are not repeated three times.
+
+- **The admin pages are no longer in anyone else's page.** `/admin/traffic`
+  and `/admin/control-board` used to be rendered into every visitor's
+  navigation and hidden with CSS; now they are added per request, only for an
+  administrator. An anonymous visitor's page contains no admin link at all.
+
+- **Long code blocks and wide prop tables no longer stretch the page on a
+  phone.** They scroll inside their own box instead.
 
 - **`human_hits` will DROP and `bot_hits` will RISE on the day this ships, and
   that is the number becoming true.** The visitor tracker carried its own

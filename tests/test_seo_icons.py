@@ -163,6 +163,21 @@ def test_apple_touch_icon_is_opaque():
 
 
 def _declared_lastmods() -> set[str]:
+    """Every date this site DECLARES, from the source that declares it.
+
+    The docs pages declare theirs in frontmatter. The two GENERATED pages
+    (template 1.6.38's /changelog and /api) have no frontmatter to put one
+    in, so each derives its date from the artefact whose change IS the
+    page's change — and both are read here from those same sources, never
+    from the sitemap, so this test can still catch an invented date.
+
+      /changelog -> the newest DATED release heading in CHANGELOG.md
+      /api       -> `generated` in the committed props extract, written by
+                    scripts/build_api_metadata.py when the props change
+
+    Neither is an mtime: both are committed values that move only when the
+    content moves, which is the rule the root CLAUDE.md states.
+    """
     dates = set()
     for md in Path("docs").glob("**/*.md"):
         if md.name == "SKILL.md":
@@ -174,6 +189,21 @@ def _declared_lastmods() -> set[str]:
         m = re.search(r'^lastmod:\s*"?(\d{4}-\d{2}-\d{2})"?\s*$', head, re.MULTILINE)
         if m:
             dates.add(m.group(1))
+
+    from pages.changelog import newest_release_date
+
+    changelog_date = newest_release_date()
+    assert changelog_date, "CHANGELOG.md has no dated release heading"
+    dates.add(changelog_date)
+
+    from lib.api_reference import slim_generated_on
+
+    api_date = slim_generated_on("dash_leaflet2")
+    assert api_date, (
+        "dash_leaflet2/api_metadata.json has no `generated` date — run "
+        "`python scripts/build_api_metadata.py`"
+    )
+    dates.add(api_date)
     return dates
 
 

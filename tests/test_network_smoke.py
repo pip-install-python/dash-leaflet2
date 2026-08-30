@@ -211,3 +211,21 @@ def test_every_urlopen_in_the_live_tools_carries_an_ssl_context():
                 f"{name} line {call.lineno}: urlopen without context= — on "
                 "macOS every https fetch fails and the host reads as down"
             )
+
+
+def test_the_batterys_default_ua_is_browser_lane_and_still_internal():
+    """1.6.40 (muischeduler's finding, and this repo's independently): at
+    dimll >= 2.8 a UA without a browser engine token is crawler-lane, so a
+    default-UA check reads the crawler document. The default names the
+    browser lane FIRST and keeps the internal token (a substring match) so
+    the tracker still drops it; CRAWLER_UA stays the other lane."""
+    from dash_improve_my_llms import classify
+
+    from lib.constants import INTERNAL_UA_TOKEN
+    from scripts import network_smoke as ns
+
+    assert classify(ns.UA)["lane"] == "browser"
+    assert ns.UA.startswith("Mozilla/5.0") and "AppleWebKit" in ns.UA
+    assert INTERNAL_UA_TOKEN in ns.UA and ns.UA.endswith("network-smoke")
+    assert classify(ns.CRAWLER_UA)["lane"] == "crawler"
+    assert INTERNAL_UA_TOKEN in ns.CRAWLER_UA

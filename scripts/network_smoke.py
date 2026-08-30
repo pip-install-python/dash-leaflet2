@@ -49,30 +49,29 @@ try:
     from lib.constants import INTERNAL_UA as _INTERNAL_UA
 except Exception:  # running outside a repo checkout — keep the token intact
     _INTERNAL_UA = "2plot-internal/1.0 (+https://2plot.ai/docs/satellite-analytics)"
-UA = _INTERNAL_UA + " network-smoke"
-CRAWLER_UA = "Mozilla/5.0 (compatible; Googlebot/2.1) " + _INTERNAL_UA
-
-# A BROWSER User-Agent, and it exists because of dash-improve-my-llms 2.8.0.
+# The default UA names the BROWSER lane first (template 1.6.40; muischeduler's
+# finding on its item-12 port, and independently this repo's on its own): at
+# dash-improve-my-llms >= 2.8 a UA with no browser engine token is classified
+# crawler-lane, so a bare internal token made every default-UA check read the
+# prerendered crawler document — a manifest-link or og:image check goes red the
+# moment a floor moves, in CD's verify job. The internal token stays IN the
+# string, after the engine token: INTERNAL_UA_TOKEN is a substring match, so
+# the far side's internal-traffic exclusion still holds. CRAWLER_UA is the
+# other lane and is deliberately untouched.
 #
-# From 2.8.0 the document a host serves is decided by `classify()`, and this
-# tool's default `UA` — the bare internal token — lands on the CRAWLER lane
-# (measured: `classify(UA)["lane"] == "crawler"`). So every check here that
-# fetches `/` gets the crawler document, and any assertion about a BROWSER
-# document silently changes meaning at the floor bump. `installable_as_an_app`
-# was the one that noticed: the crawler document carries no `<link
-# rel="manifest">`, correctly, because a crawler cannot install an app — so
-# the check failed claiming this site is not installable, which was never
-# true. That would have gone red in CD against production, after the deploy.
-#
-# Same class as the trap sync item 12 documents for tests/test_proxy_scheme.py
-# ("either lane can be the one you did not mean to test"); it lands here
-# instead on a fork that has no such test. Built like CRAWLER_UA above — a
-# real UA with the internal token appended, so analytics still drops it at
-# write time and `classify` still reads the lane from the leading tokens.
+# This repo fixed the symptom first, per-check, on `installable_as_an_app`
+# (the check that noticed: the crawler document carries no `<link
+# rel="manifest">`, correctly, because a crawler cannot install an app). The
+# template's shape is better and replaces it — the DEFAULT was the wrong lane,
+# so fixing one caller left every other default-UA check one browser-document
+# assertion away from the same red.
 BROWSER_UA = (
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
-    "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 " + _INTERNAL_UA
+    "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 "
+    + _INTERNAL_UA + " network-smoke"
 )
+UA = BROWSER_UA
+CRAWLER_UA = "Mozilla/5.0 (compatible; Googlebot/2.1) " + _INTERNAL_UA
 
 # The body dash-improve-my-llms serves when a page has no prose registered.
 # Matched in full, deliberately: this app's own <noscript> block legitimately
@@ -458,12 +457,11 @@ def satellite_checks(base: str) -> None:
         the site root, where nothing is served — so the install prompt was
         never possible, and nothing anywhere said so.
 
-        BROWSER_UA, not the default: a manifest link is a property of the
-        BROWSER document, and from dash-improve-my-llms 2.8.0 this tool's
-        internal UA is classified onto the crawler lane, which is served a
-        document with no manifest link at all. See the BROWSER_UA comment.
+        Reads the BROWSER document — which is now simply the default UA
+        (1.6.40); a manifest link is a property of that document and of no
+        other. See the BROWSER_UA comment above for why the default moved.
         """
-        _status, _, html = get("/", ua=BROWSER_UA)
+        _status, _, html = get("/")
         match = re.search(r'<link[^>]+rel="manifest"[^>]+href="([^"]+)"', html)
         expect(bool(match), "no manifest link — the app cannot be installed")
 

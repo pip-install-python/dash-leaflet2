@@ -297,6 +297,7 @@ def resources() -> list:
                       "icon": UPSTREAM.get("icon", "mdi:open-in-new")})
     return items
 
+
 # This will be populated by pages/markdown.py when loading documentation files
 NAME_CONTENT_MAP = {}
 PROPS_TO_EXCLUDE = [

@@ -145,9 +145,31 @@ def _http_checks(res: Results, run_mod, dash_mod) -> None:
         return
     res.add("http", "test client available", True, type(server).__name__)
 
+    # Every request here names the BROWSER lane, and it has to.
+    #
+    # From dash-improve-my-llms 2.8.0 the document a host serves is decided by
+    # `classify()`, and a request with NO User-Agent — which is what a bare
+    # test client sends — is classified crawler-lane. The pages this site
+    # marks hidden (`/admin/control-board`, `/admin/traffic`) then correctly
+    # answer 404, because that is exactly what `mark_hidden` is for; and this
+    # loop, which asserts "every registered page path returns 200", read that
+    # as two broken routes. Measured at 2.8.0: no-UA 404 / browser-UA 200 on
+    # both, 200 either way on a public page.
+    #
+    # The lane is the point: this block's own comment says a Dash SPA returns
+    # the same index HTML for every path, which is a statement about the
+    # BROWSER document and about nothing else. Same class as the trap sync
+    # item 12 documents for tests/test_proxy_scheme.py and item 17 for the
+    # network battery's default UA — the third surface in this repo where a
+    # UA-less probe silently changed meaning at the 2.8 floor.
+    BROWSER_UA = (
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
+        "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+    )
+
     def get(url: str, group: str, expect=(200,), label: str | None = None):
         try:
-            resp = client.get(url)
+            resp = client.get(url, headers={"User-Agent": BROWSER_UA})
             code = resp.status_code
             ok = code in expect
             res.add(group, label or url, ok, f"HTTP {code}")

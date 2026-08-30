@@ -303,6 +303,34 @@ DASH, and the template's regex accepts only an ASCII hyphen, so it
 matched every version and dropped every date — a Timeline with no
 dates on it. The pattern now takes `-`, `–` or `—`.
 
+### 17. `network_smoke.py`'s manifest check sends a BROWSER UA — AHEAD of the template, retires at 1.6.40
+
+Not a permanent difference: a fix this repo made first, recorded so a
+sync does not revert it in the window before upstream ships the same
+one. The ops seat has 1.6.40 staged with the identical shape (Chrome
+tokens first, internal token appended), and it confirms note 53
+independently; when it lands this entry goes and the file returns to
+byte-parity.
+
+What it fixes, measured on the real dash-improve-my-llms 2.8.0
+(2026-08-30): the tool's default `UA` is the bare internal token, and
+from 2.8.0 `classify()` puts that on the CRAWLER lane —
+`classify(UA)["lane"] == "crawler"`. So every check fetching `/` gets
+the crawler document, and `installable_as_an_app` failed on "no
+manifest link", because a crawler document carries none — correctly, a
+crawler cannot install an app. The site was never uninstallable.
+
+Why it matters more than a test fix: this is a LIVE tool, run by
+`cd.yml`'s verify job against production AFTER the promote. On a fork
+with no `tests/test_proxy_scheme.py` — this one — CI never sees it, so
+the first sighting would have been a red CD run on a deploy that had
+already shipped. Same class as the trap sync item 12 documents for
+that test file; it simply lands somewhere CI cannot reach.
+
+`scripts/smoke_live.py` needs no equivalent change and has none: its
+`fetch` already defaults to a browser UA and names `CRAWLER_UA`
+explicitly per check.
+
 ## Byte-owned paths
 
 Paths this fork owns byte-for-byte. The F3b fan-out never overwrites

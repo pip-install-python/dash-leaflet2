@@ -76,3 +76,25 @@ app.layout = html.Div(className="leaflet2-map", **{"data-demo": "home"},
 .. source::docs/home/example.py
     :defaultExpanded: false
     :withExpandedButton: true
+
+### The helpers every example imports
+
+Each example page publishes its own source, and those examples import three
+small modules that live beside them in the repository. They are page
+furniture rather than library API — `dash-leaflet2` itself needs none of
+them — but an example lifted from this site will not run without them, so
+they are published here once rather than repeated on all 27 pages:
+
+- **`dl2_shared`** — `info_panel`, the titled `Paper` the demos put their
+  controls and readouts in, and `map_div`, the mount point the showcase
+  JavaScript builds a map into.
+- **`dl2_tiles`** — the named basemaps (`POSITRON`, `VOYAGER`, `SATELLITE`,
+  …) and `register_theme_swap`, which is what makes every map follow the
+  site's light/dark toggle.
+- **`dl2_locations`** — the cities the demos centre on, each with a
+  `center` and helpers for placing things a known distance from it.
+
+.. source::dl2_shared.py, dl2_tiles.py, dl2_locations.py
+    :caption: The three modules the examples import
+    :defaultExpanded: false
+    :withExpandedButton: true

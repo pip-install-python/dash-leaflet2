@@ -179,7 +179,18 @@ def _expand_source_directives(markdown_content: str) -> str:
         return opts
 
     def expansion(directive_line: str, opts: dict) -> str:
-        file_path = _SOURCE_DIRECTIVE.match(directive_line).group(1).strip()
+        raw = _SOURCE_DIRECTIVE.match(directive_line).group(1).strip()
+        # MULTI-FILE, because the browser lane has always supported it:
+        # `SC.render` splits the title on ", " and renders one TAB per file.
+        # The machine lane did not, so `.. source::a.py, b.py` gave a reader
+        # three tabs and an agent `<!-- Error: File not found: "a.py, b.py" -->`.
+        # One directive must mean one thing in both lanes.
+        paths = [q.strip() for q in raw.split(",") if q.strip()]
+        if len(paths) > 1:
+            return "".join(_one_file(q, opts) for q in paths)
+        return _one_file(paths[0], opts)
+
+    def _one_file(file_path: str, opts: dict) -> str:
         region = opts.get('region') or None
         caption = opts.get('caption') or None
         try:

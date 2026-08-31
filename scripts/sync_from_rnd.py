@@ -92,6 +92,31 @@ MIRROR_OWNED = {
     "pages/control_board.py",
     "components/appshell.py",
     "components/navbar.py",
+    # ---- the 2plot template's surfaces (sync item 18, 2026-08-31) ----------
+    # These arrived from dash-documentation-boilerplate, not from R&D, and
+    # the network's sync specs are what keep them current. An R&D copy would
+    # be a fork of a fork.
+    #
+    # ONE OF THEM IS NOT HYPOTHETICAL. `lib/directives/source.py` has ALREADY
+    # diverged: this copy carries the CodeHighlight a11y fix item 16 requires
+    # (`copyLabel` / `copiedLabel` — the copy button's accessible name, named
+    # by the audit), and R&D's copy has neither line. Before this entry a
+    # pull reverted that fix. It would have gone RED rather than unnoticed —
+    # tests/test_nav_contract.test_code_highlight_copy_button_has_a_name
+    # reads exactly this file — but a red test after the fact is a worse
+    # place to learn it than a pull that never touches the file.
+    #
+    # The other six have no R&D counterpart today, so they are unprotected
+    # rather than threatened: `walk_source` iterates the SOURCE tree and
+    # never unlinks, so nothing deletes them. Listed anyway, because the day
+    # R&D grows a file at one of these paths it would win silently.
+    "lib/directives/source.py",
+    "lib/directives/headings.py",
+    "lib/api_reference.py",
+    "lib/aside.py",
+    "components/footer.py",
+    "pages/api.py",
+    "pages/changelog.py",
 }
 
 # Never traversed at all.

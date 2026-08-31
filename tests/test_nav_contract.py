@@ -37,19 +37,39 @@ def _calls(src: str, name: str):
 # ------------------------------------------------------------- a11y --
 
 
+# Every directory that renders UI components. `lib/directives/` joined
+# `components/` because the directives ARE renderers — `SC` returns a
+# CodeHighlightTabs, LlmsCopy returns a copy control — so an icon-only
+# button added there would have been checked by nothing. There is none
+# today; this is a forward guard, and cheap.
+A11Y_UI_DIRS = ("components", "lib/directives")
+
+
 @pytest.mark.parametrize("control", ["dmc.Burger", "dmc.ActionIcon"])
 def test_every_icon_only_control_in_components_has_a_name(control):
     """Requirement 9: the audits named the unlabelled Burger and copy
-    button. Every Burger/ActionIcon in components/ carries aria-label."""
+    button. Every Burger/ActionIcon in a UI directory carries aria-label."""
     unlabelled = []
-    for path in sorted((REPO / "components").glob("*.py")):
-        for call in _calls(path.read_text(), control):
-            if "aria-label" not in call:
-                unlabelled.append(f"{path.name}: {call[:60]}…")
+    scanned = 0
+    for folder in A11Y_UI_DIRS:
+        for path in sorted((REPO / folder).glob("*.py")):
+            scanned += 1
+            for call in _calls(path.read_text(), control):
+                if "aria-label" not in call:
+                    unlabelled.append(f"{folder}/{path.name}: {call[:60]}…")
     assert unlabelled == [], unlabelled
+    # Not a silent skip: a glob that stopped matching would make this pass
+    # by scanning nothing, which is the failure mode a grep-shaped pin has.
+    assert scanned >= 2, f"only {scanned} module(s) scanned across {A11Y_UI_DIRS}"
 
 
 def test_code_highlight_copy_button_has_a_name():
+    """The copy button is icon-only; without these it is announced as
+    nothing. This ALSO happens to be the pin that would catch a
+    `sync_from_rnd.py` pull reverting the file — R&D's copy has neither
+    line — so it is the reason that revert would be loud rather than
+    silent. `lib/directives/source.py` is MIRROR_OWNED as of this change,
+    which stops the revert; this stays as the belt to that brace."""
     src = (REPO / "lib" / "directives" / "source.py").read_text()
     assert "copyLabel=" in src and "copiedLabel=" in src
 

@@ -106,13 +106,23 @@ def test_no_page_nests_a_list_inside_a_children_list(registry):
 def test_a_docs_page_really_carries_its_parsed_content(registry, monkeypatch):
     """The positive control. The walk alone passes on a page that is empty
     for any OTHER reason — the same symptom the defect produces. A real
-    docs page (derived from the registry: the first page that registered a
-    TOC) must render real depth and contain its own heading."""
+    docs page (derived from the registry) must render real depth and
+    contain its own heading.
+
+    Derived from the REGISTRY alone (clerkhook, 2026-08-31): this control
+    used to name `lib.aside.ASIDE_PATHS`, which a lockdown fork has no
+    module for — the docstring already claimed the registry, and the
+    import was the half that did not travel. First registered docs path,
+    admin and `/` excluded."""
     monkeypatch.setenv("ALLOW_UNGATED_ADMIN", "0")
-    from lib.aside import ASIDE_PATHS
 
     by_path = {p.get("path"): p for p in registry.values()}
-    page = by_path[sorted(ASIDE_PATHS)[0]]
+    docs = sorted(
+        p for p in by_path
+        if p and p != "/" and not p.startswith("/admin/")
+    )
+    assert docs, "no docs page registered; the positive control has nothing to prove"
+    page = by_path[docs[0]]
     layout = _resolve(page["layout"])
 
     nodes: list = []
@@ -136,11 +146,9 @@ def test_a_docs_page_really_carries_its_parsed_content(registry, monkeypatch):
 def test_the_markdown_page_builder_concatenates_rather_than_nesting():
     """The source pin, because the walk only sees the pages that exist
     today. `parse()` returns a LIST; the builders must flatten it."""
-    # PORTED to this fork's composition sites. There is no pages/home.py
-    # here — home is a docs markdown page (docs/home/home.md), so
-    # pages/markdown.py is the ONE builder that turns markdown into a
-    # layout and the only place this class can arise. It concatenates
-    # (`section + layout`) rather than nesting; that is what this pins.
+    # PORTED to this fork's composition sites: there is no pages/home.py
+    # here — home is a docs markdown page — so pages/markdown.py is the one
+    # builder that turns markdown into a layout.
     for fname, parser_name in (("pages/markdown.py", "parse"),):
         src = (REPO_ROOT / fname).read_text()
         tree = ast.parse(src)

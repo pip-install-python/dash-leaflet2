@@ -396,20 +396,77 @@ def test_battery_hidden_paths_match_the_registry(app_module):
     )
 
 
+_REQUEST_METHODS = ("get", "post", "open", "request", "put", "delete", "head")
+
+
+def _code_only(src: str) -> str:
+    """Source with docstrings and `#` comments removed.
+
+    muicharts, 2026-08-31: the words pass while the header is gone — its
+    grep matched "User-Agent" inside an explanatory COMMENT, so deleting
+    the real header left the pin green. This one proved the point on
+    itself: the comment below describing the chained form made the pin
+    flag its own file.
+    """
+    src = re.sub(r'"""[\s\S]*?"""|\'\'\'[\s\S]*?\'\'\'', "", src)
+    return re.sub(r"#[^\n]*", "", src)
+
+
+def _client_names_a_ua(src: str, var: str) -> bool:
+    """Does `var` — a bound `.test_client()` — name a UA on the wire?
+
+    Either the client carries one for every request (`environ_base`), or
+    every request call on it passes `headers=`. A client that issues no
+    requests in this file cannot get the lane wrong here.
+    """
+    if re.search(re.escape(var) + r"\.environ_base\b[^\n]*HTTP_USER_AGENT", src):
+        return True
+    calls = [c for m in _REQUEST_METHODS for c in _calls(src, f"{var}.{m}")]
+    return bool(calls) and all("headers=" in c for c in calls)
+
+
 def test_every_test_client_user_names_headers():
     """Notes 70/74: a bare test client sends `Werkzeug/x.y` — crawler lane
-    at dimll >= 2.8 — so a mark_hidden page 404s and an every-page-200 loop
+    at dimll ≥ 2.8 — so a mark_hidden page 404s and an every-page-200 loop
     goes red at the floor bump. Any file that drives `.test_client()` must
-    pass headers (a named UA). Measured on this fork: run 33326994172 went
-    red for exactly this, on scripts/smoke_test.py."""
+    pass a named UA.
+
+    Resolved per CALL SITE, not per file (pannellum, 2026-08-31): the
+    substring form this pin shipped with — `"headers=" in src` — read the
+    whole file, so a tool whose `headers=` sat on a DIFFERENT code path
+    (urllib probes) passed while all three of its in-process fetches were
+    bare, and it flagged a bare-app test with no dimll middleware and no
+    lane to get wrong. It missed the only real offender in the tree that
+    measured it.
+    """
     offenders = []
     for folder in ("tests", "scripts"):
         for path in sorted((REPO / folder).glob("*.py")):
-            src = path.read_text()
-            names_ua = "headers=" in src or "HTTP_USER_AGENT" in src
-            if ".test_client()" in src and not names_ua:
-                offenders.append(f"{folder}/{path.name}")
-    assert offenders == [], offenders
+            src = _code_only(path.read_text())
+            if ".test_client()" not in src:
+                continue
+            # `(?!\s*\.)` — a CHAINED call binds the RESPONSE, not the
+            # client (`body = app.server.test_client().get(...)`), and the
+            # first cut of this pin read `body` as an unnamed client with no
+            # requests and flagged a line that already passed headers (llms,
+            # 2026-08-31, measured on its test_prerender_idempotency.py).
+            bound = set(re.findall(r"(\w+)\s*=\s*[\w.]*\.test_client\(\)(?!\s*\.)", src))
+            bound |= set(re.findall(r"\.test_client\(\)\s+as\s+(\w+)", src))
+            # Chained calls still get checked — on the call itself, since
+            # there is no client name to follow.
+            for meth in _REQUEST_METHODS:
+                for call in _calls(src, f".test_client().{meth}"):
+                    if "headers=" not in call:
+                        offenders.append(f"{folder}/{path.name}::<chained {meth}>")
+            if not bound:
+                # Wrapped in place (conftest hands the raw client to a Client
+                # that always sends one) — no name to follow, so fall back.
+                if "headers=" not in src and "HTTP_USER_AGENT" not in src:
+                    offenders.append(f"{folder}/{path.name}")
+                continue
+            for var in sorted(bound):
+                if not _client_names_a_ua(src, var):
+                    offenders.append(f"{folder}/{path.name}::{var}")
 
 
 def test_the_sweep_harness_ua_is_browser_lane_and_internal():

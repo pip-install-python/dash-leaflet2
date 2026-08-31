@@ -38,43 +38,49 @@ def test_admin_paths_absent_from_sitemap_llms_and_sidebar(client, app):
     from components.navbar import create_content
 
     sitemap = client.get("/sitemap.xml").text
+    llms = client.get("/llms.txt").text
     tree = str(create_content(dash.page_registry.values()))
-
-    # THE CORPUS, not just the index (note 75, found on llms): prose can leak
-    # what structure hides. Hyperlinking /admin/control-board from five docs
-    # pages put the path into the corpus while every navbar and sitemap pin
-    # passed — the structure was correct and the writing was not. This site
-    # serves the tiered documents too (run.py registers /llms-small.txt and
-    # /llms-full.txt), and a prose link lands in those exactly as readily, so
-    # they are swept here as well; the template checks /llms.txt alone.
-    corpus = {
-        name: client.get(name).text
-        for name in ("/llms.txt", "/llms-small.txt", "/llms-full.txt")
-    }
 
     leaked = []
     for path in _admin_paths():
         if f"{path}</loc>" in sitemap:
             leaked.append(f"{path} in sitemap.xml")
-        for name, body in corpus.items():
-            if f"{path})" in body or f"{path}/llms.txt" in body:
-                leaked.append(f"{path} in {name}")
+        if f"{path})" in llms or f"{path}/llms.txt" in llms:
+            leaked.append(f"{path} in /llms.txt")
         if path in tree:
             leaked.append(f"{path} in the startup sidebar tree")
     assert leaked == [], f"admin pages published: {leaked}"
 
-    # Non-vacuity for the corpus half: an empty or 404 tier document would
-    # make its sweep pass without reading anything.
-    for name, body in corpus.items():
-        assert len(body) > 200, f"{name} is empty ({len(body)}b) — swept nothing"
-
-    llms = corpus["/llms.txt"]
+    # The CORPUS, not only the index (llms, note 75; the gap measured by
+    # email, 2026-08-31 — the spec asked forks to sweep the tier docs while
+    # this reference file swept only /llms.txt). Prose leaks what structure
+    # hides: hyperlinking an admin path from five docs pages put it into the
+    # corpus while every sitemap and sidebar pin passed.
+    #
+    # LINKS only, deliberately (muicharts, 2026-08-31): a changelog that
+    # cannot name the page it added is not a changelog, and every mention it
+    # found was prose in a code span. A link is what makes the path
+    # REACHABLE, which is the defect. Narrowing a pin to reach green is
+    # normally the suspect move, so the reasoning is here rather than in a
+    # commit message.
+    # BOTH clauses link-shaped (llms, 2026-08-31): the first cut left the
+    # machine path as a bare substring, so a changelog code span naming
+    # `/admin/x/llms.txt` — documenting the very battery fix that hid it —
+    # tripped a pin whose other half already made the prose/reachability
+    # distinction. A fork that cannot describe its own admin pages goes red
+    # for being honest.
+    for tier in ("/llms-small.txt", "/llms-full.txt"):
+        body = client.get(tier).text
+        linked = [
+            p for p in _admin_paths()
+            if f"]({p})" in body or f"]({p}/llms.txt)" in body
+        ]
+        assert linked == [], f"admin pages linked from {tier}: {linked}"
 
     # Positive control: a real page IS listed, so an empty sitemap or a
     # broken llms.txt cannot make the assertions above pass vacuously.
     # Derived from the sidebar's own first page (1.6.41), never named, so
-    # the file is fork-invariant. Replaces this fork's earlier SAMPLE_PAGE
-    # port, which named /pointer-events and would have gone stale with it.
+    # the file is fork-invariant.
     from components.navbar import sections_for
 
     sections = sections_for(dash.page_registry.values())

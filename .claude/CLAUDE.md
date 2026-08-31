@@ -3,7 +3,8 @@
 ## Project Overview
 
 The project facts are NOT restated here: `CLAUDE.md` at the repo ROOT is this
-repo's overview — what it is (the public mirror of a private R&D checkout),
+repo's overview — what it is (and what `../dash-leaflet2` really is: a
+local sibling working tree, same origin, unpushed — corrected 2026-08-31),
 the two parallel deliverables (the `dash.hooks` documentation site and the
 compiled `dl2.*` component package), the Leaflet 2.0.0-alpha.1 API traps that
 cost real debugging time, the build/run/test commands, and the component

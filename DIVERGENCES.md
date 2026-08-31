@@ -31,7 +31,7 @@ to close them rather than treat the gap as a decision.
 
 ## This repo's divergences
 
-### 1. It is a public MIRROR of a private R&D checkout
+### 1. It pulls from a local sibling working tree (see the CORRECTION below)
 
 No other fork has an upstream of its own. The private tree is
 `../dash-leaflet2`; `scripts/sync_from_rnd.py` PULLS from it (dry run
@@ -45,6 +45,31 @@ its own lean `/tile-selector` page in place of the 3,700-line R&D lab.
 `MIRROR_OWNED` file applies here normally — the guard is against the
 R&D pull, not against upstream. But a change to `docs/` must not
 assume the doc set matches either repo.
+
+**CORRECTION, 2026-08-31 — "private R&D repo" was wrong.** The owner
+challenged the story and it does not survive measurement. There is no
+private repository and this is not a mirror of one. Both directories
+carry the SAME origin, `github.com/pip-install-python/dash-leaflet2`;
+`../dash-leaflet2` is a **local sibling working tree, same origin,
+unpushed**, which `scripts/sync_from_rnd.py` reads BY PATH. Everything
+operational above stands — it is never a drop target, its contents
+still flow into `docs/` through the sync, and its files are still not
+this repo's to edit.
+
+Measured here, and it is worse than "divergent": that tree has **one
+commit** (`b308393`, its own root), which is **not on the remote**
+(`git ls-remote` finds it nowhere) and shares **zero commits** with
+this repo's 82 — the two histories are unrelated, and its local
+`origin/main` ref points at its own unpushed root, which is a fiction.
+Of its 106 dirty paths, 31 are UNTRACKED, and
+`docs/text-marker/example.py` is one of them.
+
+So the examples that are phase 2's source of truth are **not in any
+commit, not on any remote, and present only as loose files on this one
+machine**. A `git clean -fd` there loses them with nothing to restore
+from. The phase-2 session must snapshot that tree — a pushed branch or
+the owner's backup — BEFORE it edits anything, and should not assume
+`git checkout` can undo a mistake there.
 
 ### 2. It ships a component PACKAGE alongside the docs site
 
@@ -322,7 +347,7 @@ them, so they stay out and the fan-out keeps them current. Two nearby
 mentions are deliberately NOT entries: the fleet precedent
 "muischeduler's no-npm dependabot scope" describes another fork's file,
 and the `/new-component` skill named in the drift section lives in the
-private R&D checkout's `.claude/rules/`, not in the kit's `skills/`.
+sibling working tree's `.claude/rules/`, not in the kit's `skills/`.
 
 *The cost of the one entry, written down so nobody rediscovers it:*
 a listed path is one the fan-out will never update either. Dependabot
@@ -491,6 +516,6 @@ decision. None of these are divergences.
   Nothing is at risk right now because no `kickoff/` exists here.
 - **The root `CLAUDE.md` advertises `.claude/rules/` and a
   `/new-component` skill that no clone of this repo has ever had.**
-  They exist in the private R&D checkout; the blanket `.claude/`
+  They exist in the sibling working tree; the blanket `.claude/`
   ignore (removed 2026-08-24) is why they never arrived. Either port
   them through the mirror or stop advertising them.

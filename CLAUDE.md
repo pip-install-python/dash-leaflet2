@@ -5,19 +5,35 @@ react-leaflet → Leaflet 1.9; this project wraps **Leaflet 2 core directly** (n
 react-leaflet) and is a generation ahead. Owner: Pip Install Python LLC. PyPI:
 `dash-leaflet2`, import `dash_leaflet2 as dl2`. Docs: https://leaflet.2plot.dev
 
-## This repo is the PUBLIC MIRROR
+## This repo, and the sibling working tree it pulls from
 
-The private R&D checkout is `../dash-leaflet2`. It keeps two pages that must never
-ship — `docs/sprite-generator/` (AI sprite authoring shell) and the 3,700-line
-`docs/tile-selector/` AI tile-generation lab. **This repo ships its own lean
-`/tile-selector` page** documenting the `dl2.TileSelector` component instead.
+`../dash-leaflet2` is a **local sibling working tree, same origin, unpushed** —
+NOT a private repository and NOT an upstream. Corrected 2026-08-31 after the
+owner challenged the "private R&D repo" story and it failed measurement: both
+directories carry the same origin (`github.com/pip-install-python/dash-leaflet2`),
+that tree has ONE commit which is not on the remote, and it shares ZERO commits
+with this repo's history. `scripts/sync_from_rnd.py` finds it BY PATH, not by
+any git relationship.
 
-Pull R&D work forward with `python scripts/sync_from_rnd.py` (dry run by default).
-It is a *pull*, not a push: a new R&D docs page shows up as NEW for you to approve
-or add to `DENY_DOCS`, so nothing leaks by being forgotten upstream. Files this
-mirror owns outright — `run.py`, `README.md`, `requirements.txt`, the `lib/`
-network clients, `pages/`, `scripts/`, `vendor/`, `Dockerfile`, `render.yaml` —
-are never overwritten (`MIRROR_OWNED`).
+**It exists only on this machine and mostly outside git.** 31 of its 106 dirty
+paths are untracked — `docs/text-marker/example.py` among them — so the example
+sources are in no commit and on no remote. Do not assume `git checkout` can undo
+a mistake there; snapshot it before editing it.
+
+It keeps two pages that must never ship — `docs/sprite-generator/` (AI sprite
+authoring shell) and the 3,700-line `docs/tile-selector/` AI tile-generation
+lab. **This repo ships its own lean `/tile-selector` page** documenting the
+`dl2.TileSelector` component instead.
+
+Pull that tree's work forward with `python scripts/sync_from_rnd.py` (dry run by
+default). It is a *pull*, not a push: a new docs page there shows up as NEW for
+you to approve or add to `DENY_DOCS`, so nothing ships by being forgotten. Files
+this repo owns outright are never overwritten (`MIRROR_OWNED`) — `run.py`,
+`README.md`, `requirements.txt`, the `lib/` network clients, `pages/`,
+`scripts/`, `vendor/`, `Dockerfile`, `render.yaml`, plus the seven template
+surfaces added 2026-08-31 (`lib/directives/{source,headings}.py`,
+`lib/api_reference.py`, `lib/aside.py`, `components/footer.py`, `pages/api.py`,
+`pages/changelog.py`). MIRROR_OWNED matches by EXACT PATH, not by prefix.
 
 ## Two parallel deliverables (both live in this repo)
 

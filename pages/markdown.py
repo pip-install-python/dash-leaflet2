@@ -14,6 +14,7 @@ from lib.ad_client import inject_ad_into_aside
 from lib.constants import OG_IMAGE_URL, PAGE_TITLE_PREFIX, NAME_CONTENT_MAP
 from lib import page_tiers
 from lib.directives.headings import patch_renderer
+from lib.directives.source import RegionNotFound, read_source
 from lib.directives.kwargs import Kwargs
 from lib.directives.llms_copy import LlmsCopy
 from lib.directives.source import SC
@@ -159,15 +160,46 @@ def _expand_source_directives(markdown_content: str) -> str:
     single-h1 pin in tests/test_pages.py; the browser lane was never
     affected because markdown2dash parses fences properly).
     """
-    def expansion(directive_line: str) -> str:
+    def _options(start: int) -> dict:
+        """The directive's own indented `:key: value` continuation lines.
+
+        Read by BOTH directives now. Before phase 1 only `.. exec::`
+        consumed them, so every `.. source::` option line fell through to
+        `out` and was published as prose — 54 of them across this corpus,
+        e.g. a bare `:defaultExpanded: false` sitting under the code fence
+        in /events-python/llms.txt. Skipping them is half this function's
+        job; honouring them is the other half.
+        """
+        opts = {}
+        j = start
+        while j < len(lines) and lines[j].strip().startswith(':'):
+            key, _, val = lines[j].strip().lstrip(':').partition(':')
+            opts[key.strip()] = val.strip()
+            j += 1
+        return opts
+
+    def expansion(directive_line: str, opts: dict) -> str:
         file_path = _SOURCE_DIRECTIVE.match(directive_line).group(1).strip()
+        region = opts.get('region') or None
+        caption = opts.get('caption') or None
         try:
             full = Path(file_path)
-            content = full.read_text()
             ext = full.suffix.lstrip('.').lower()
             lang = _LANG_MAP.get(ext, ext or 'text')
+            # THE SAME READER THE BROWSER LANE USES (lib/directives/source),
+            # so the two lanes cannot show different code for one directive.
+            content = read_source(str(full), region)
             tail = '' if content.endswith('\n') else '\n'
-            return f'\n```{lang}\n# File: {file_path}\n\n{content}{tail}```\n'
+            header = f'# File: {file_path}'
+            if region:
+                header += f'  (region: {region})'
+            block = f'\n```{lang}\n{header}\n\n{content}{tail}```\n'
+            # The caption becomes bold prose rather than a heading: a
+            # heading here would join the page's outline and the `.. toc::`,
+            # which the component lane's Title(order=4) does not.
+            return f'\n**{caption}**\n{block}' if caption else block
+        except RegionNotFound as exc:
+            return f'\n<!-- Error: {exc} in {file_path} -->\n'
         except FileNotFoundError:
             return f'\n<!-- Error: File not found: {file_path} -->\n'
         except Exception as exc:
@@ -243,7 +275,10 @@ def _expand_source_directives(markdown_content: str) -> str:
         elif fence is not None and head == fence:
             fence = None
         elif fence is None and _SOURCE_DIRECTIVE.match(line):
-            out.append(expansion(line))
+            # `i` already points PAST this line, so it is the first
+            # candidate option line.
+            skip_options = True
+            out.append(expansion(line, _options(i)))
             continue
         elif fence is None:
             m = _EXEC_DIRECTIVE.match(line)

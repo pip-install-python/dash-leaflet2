@@ -597,3 +597,24 @@ code.m2d-codespan,
     overflow-x: auto;
     max-width: 100%;
 }
+
+/* The skip link (template 1.6.41): the first tab stop on every page, jumping
+   past the sidebar's ~30 stops straight to the content. Moved off-screen with
+   `left` rather than display/visibility — a control removed from the tree
+   cannot be focused back into view, and one hidden with opacity alone is
+   still announced where it sits. `:focus` brings it back. */
+.skip-link {
+    position: absolute;
+    left: -9999px;
+    top: 0;
+    z-index: 9999;
+    background: var(--mantine-primary-color-filled);
+    color: var(--mantine-color-white);
+    padding: 8px 14px;
+    border-radius: 0 0 8px 0;
+    font-weight: 600;
+    text-decoration: none;
+}
+.skip-link:focus {
+    left: 0;
+}

@@ -95,11 +95,19 @@ DEFAULT_BASE_URL = "http://localhost:8050"
 # `/pointer-events` is a core Leaflet 2 page and is not going anywhere.
 SAMPLE_PAGE = "/pointer-events"
 
-# Owner-only surfaces that must 404 their llms.txt to an anonymous reader.
-# `/admin/control-board` is this app's one hidden page (run.py calls
-# `mark_hidden` on it); `/admin` is the canary for the next one added.
+# Owner-only surfaces that must 404 their llms.txt to an anonymous reader:
+# every registered /admin/ page's machine twin, plus one canary. Pinned
+# against the page registry by tests/test_nav_contract.py so a page added,
+# renamed or deleted moves this tuple in the SAME change — /admin/traffic
+# arrived in the 1.6.34 ledger round and this tuple did not notice, so the
+# live battery was not checking the newest owner surface at all.
 HIDDEN_DOC_PATHS = (
     "/admin/control-board/llms.txt",
+    "/admin/traffic/llms.txt",
+    # THE CANARY, and deliberately not registry-derived: `/admin` is not a
+    # page, so nothing would ever add it. It catches a 404 that stops being
+    # a real refusal — if the package ever served a directory-ish path, this
+    # is the check that says so before a real admin twin leaks.
     "/admin/llms.txt",
 )
 
@@ -450,6 +458,28 @@ def satellite_checks(base: str) -> None:
                f"the CDN file is {actual_w}x{actual_h}, the tags declare "
                f"{OG_IMAGE_WIDTH}x{OG_IMAGE_HEIGHT}")
 
+    def api_rows_present():
+        """Note 79/80: /api can ship EMPTY at 200 — with a canonical, an h1
+        and a heading — by FOUR different mechanisms (a missing
+        metadata.json, a gitignored one, a package that ships none, or a
+        directive whose output never reaches the machine lane). All four
+        look identical from outside and none of them fail a status check.
+        The invariant that catches every one is ROWS, on the machine lane
+        where the content is text: the document must carry more table pipes
+        than it has headings, and name a real component."""
+        status, _, doc = get("/api/llms.txt", ua=CRAWLER_UA)
+        if status == 404:
+            expect(True, "")  # a host documenting no package has no /api
+            return
+        expect(status == 200, f"/api/llms.txt {status}")
+        rows = doc.count("|")
+        headings = doc.count("### ")
+        expect(headings > 0, "/api/llms.txt has no component sections")
+        expect(rows > headings * 4, (
+            f"/api/llms.txt has {headings} component headings but only {rows} "
+            "table cells — the page is heading-shaped and row-empty"
+        ))
+
     def installable_as_an_app():
         """The manifest, and whether a browser could offer to install this.
 
@@ -493,6 +523,7 @@ def satellite_checks(base: str) -> None:
          agents_and_browsers_get_different_types),
         ("social_card_real_pixels", social_card_is_shareable),
         ("installable_as_an_app", installable_as_an_app),
+        ("api_rows_present", api_rows_present),
     ):
         check(name, fn)
 

@@ -19,7 +19,18 @@ from components.backend_badge import create_backend_badge
 from components.navbar import search_data
 from lib.auth import clerk_enabled
 from lib.backend import get_backend_info
-from lib.constants import API_PACKAGES, BASE_URL, GITHUB_URL, LEAFLET_VERSION
+from lib.constants import (
+    API_PACKAGES,
+    BASE_URL,
+    GITHUB_URL,
+    LEAFLET_VERSION,
+    LOGO_GLYPH_MOBILE,
+    LOGO_ICON,
+    LOGO_ICON_WIDTH,
+    WORDMARK,
+    WORDMARK_COLOR,
+    WORDMARK_VISIBLE_FROM,
+)
 
 
 def create_clerk_avatar():
@@ -227,8 +238,8 @@ def create_header(data):
                             dmc.Group(
                                 [
                                     DashIconify(
-                                        icon="emojione:satellite",
-                                        width=28,
+                                        icon=LOGO_ICON,
+                                        width=LOGO_ICON_WIDTH,
                                     ),
                                     dmc.Stack(
                                         [
@@ -250,17 +261,17 @@ def create_header(data):
                                             # phones and leave that callback
                                             # pointing at nothing.
                                             dmc.Text(
-                                                "dash-leaflet2",
+                                                WORDMARK,
                                                 size="lg",
                                                 fw=700,
-                                                c="green",
+                                                c=WORDMARK_COLOR,
                                                 id="dash-docs-title",
-                                                visibleFrom="xs",
+                                                visibleFrom=WORDMARK_VISIBLE_FROM,
                                             ),
                                             dmc.Text(
-                                                "🗺️",
+                                                LOGO_GLYPH_MOBILE,
                                                 size="lg",
-                                                hiddenFrom="xs",
+                                                hiddenFrom=WORDMARK_VISIBLE_FROM,
                                                 # Decorative: the Anchor's
                                                 # aria-label carries the name,
                                                 # so this is not announced as
@@ -287,7 +298,9 @@ def create_header(data):
                             # with the viewport: `display: none` text is not
                             # exposed, so below xs the name would collapse to
                             # the emoji alone.
-                            **{"aria-label": "dash-leaflet2 — home"},
+                            # Derived from WORDMARK so the accessible name can
+                            # never disagree with the visible one.
+                            **{"aria-label": f"{WORDMARK} — home"},
                         ),
                     ],
                     gap="md",

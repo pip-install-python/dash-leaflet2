@@ -44,6 +44,12 @@ class Meta(BaseModel):
     package: str = "dash-leaflet2"
     category: Optional[str] = None
     icon: Optional[str] = None
+    # A SHORT sidebar/search label, when the page's real name is too long for
+    # the rail. Shortening `name:` instead would churn <title>, og:title and
+    # the llms.txt heading, which are the same string — this is the seam that
+    # lets the two differ. Absent means the name is already short enough,
+    # which is true of every page here today.
+    nav: Optional[str] = None
     # Sidebar position within its category (template 1.6.38); ties break on
     # name. Absent on every page here on purpose: the sidebar has always
     # rendered each category alphabetically, and 1000-then-name reproduces
@@ -280,6 +286,7 @@ for file in files:
         category=metadata.category,
         icon=metadata.icon,
         order=metadata.order,
+        nav=metadata.nav,
     )
 
     # Feed the expanded markdown into dash-improve-my-llms so /<page>/llms.txt

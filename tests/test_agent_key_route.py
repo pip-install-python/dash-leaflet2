@@ -20,6 +20,20 @@ class _App:
         self.server = server
 
 
+# A named UA on every request, per the fleet rule (notes 70/74): a bare test
+# client sends `Werkzeug/x.y`, which dash-improve-my-llms >= 2.8 classifies
+# crawler-lane. It changes nothing HERE — this fixture builds a bare Flask app
+# with only the agent-key route on it, so there is no dimll, no page registry
+# and no analytics tracker to read a lane — but the rule is worth holding
+# uniformly rather than per-file, because the exemption is the thing that
+# stops being true when a file grows. tests/test_nav_contract.py greps for it.
+ROUTE_UA = (
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
+    "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+)
+ROUTE_HEADERS = {"User-Agent": ROUTE_UA}
+
+
 @pytest.fixture
 def route_client():
     server = flask.Flask(__name__)
@@ -28,7 +42,7 @@ def route_client():
 
 
 def test_anonymous_gets_204_with_no_store(route_client):
-    r = route_client.get("/api/agent-key")
+    r = route_client.get("/api/agent-key", headers=ROUTE_HEADERS)
     assert r.status_code == 204
     assert r.headers["Cache-Control"] == NO_STORE
 
@@ -37,7 +51,7 @@ def test_a_minted_key_returns_200_json_with_no_store(route_client, monkeypatch):
     monkeypatch.setattr(agent_key, "_mint_from_token",
                         lambda t: "k2p_minted" if t == "tok" else None)
     route_client.set_cookie("__session", "tok")
-    r = route_client.get("/api/agent-key")
+    r = route_client.get("/api/agent-key", headers=ROUTE_HEADERS)
     assert r.status_code == 200
     assert r.get_json() == {"key": "k2p_minted"}
     assert r.headers["Cache-Control"] == NO_STORE
@@ -47,7 +61,8 @@ def test_the_token_is_read_from_the_cookie_never_the_query(route_client, monkeyp
     seen = []
     monkeypatch.setattr(agent_key, "_mint_from_token",
                         lambda t: seen.append(t) or None)
-    route_client.get("/api/agent-key?token=forged&__session=forged2")
+    route_client.get("/api/agent-key?token=forged&__session=forged2",
+                     headers=ROUTE_HEADERS)
     assert seen == [""], "a query-string token reached the mint path"
 
 

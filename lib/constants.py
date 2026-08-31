@@ -223,6 +223,32 @@ def internal_ua(caller: str = "") -> str:
     return f"{INTERNAL_UA} {caller}" if caller else INTERNAL_UA
 
 
+# ---------------------------------------------------------------------------
+# The header's mark and wordmark, lifted out of components/header.py
+# (template 1.6.41) so that file holds identity by REFERENCE rather than
+# hardcoded. llms-2plot-dev once shipped serving the literal words "Dash Docs"
+# beside its own logo because the wordmark was hardcoded in the header; the
+# header's aria-label derives from WORDMARK too, so the accessible name can
+# never disagree with the visible one.
+#
+# LOGO_ASSET IS DELIBERATELY None HERE, and that is a statement rather than an
+# omission. Upstream's mark is an image file under assets/; this site's is an
+# ICONIFY GLYPH (the satellite), so there is no asset to name — the fleet
+# detect greps for this symbol, and finding it set to None with this comment
+# is a truer answer than finding nothing at all.
+WORDMARK = "dash-leaflet2"
+LOGO_ASSET = None                       # not an image on this host — see below
+LOGO_ICON = "emojione:satellite"        # the mark, as an iconify glyph
+LOGO_ICON_WIDTH = 28
+# Below `xs` the 13-character wordmark pushes the header's right-hand group
+# onto a second row, so the wordmark gives way to this glyph. It is decorative
+# — the anchor's aria-label carries the accessible name — so it must never be
+# announced as "world map".
+LOGO_GLYPH_MOBILE = "🗺️"
+WORDMARK_COLOR = "green"
+WORDMARK_VISIBLE_FROM = "xs"
+# ---------------------------------------------------------------------------
+
 # The legal entity behind every site in the network — the footer's copyright
 # line, and JSON-LD `publisher` where a host declares one.
 PUBLISHER = "Pip Install Python LLC"

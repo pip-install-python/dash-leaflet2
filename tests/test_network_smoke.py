@@ -136,16 +136,26 @@ def test_the_sample_page_is_a_real_page(battery, page_paths):
     assert battery.SAMPLE_PAGE in page_paths
 
 
-def test_the_hidden_paths_are_the_ones_run_py_marks_hidden(battery):
-    """A hidden page nobody listed here is a leak the battery cannot see."""
-    run_py = (REPO_ROOT / "run.py").read_text()
+def test_the_hidden_paths_are_really_marked_hidden(battery, app_module):
+    """A path in the battery's list that is NOT actually hidden makes the
+    check pass for the wrong reason — it would 404 for some other cause.
+
+    REWRITTEN (item 18): this asked run.py's SOURCE for `mark_hidden("...")`,
+    which was true when run.py marked the only hidden page. It stopped being
+    true when pages/traffic.py arrived and marked ITSELF at import, the same
+    way pages/control_board.py could. Asking the package's own hidden set
+    instead is both simpler and indifferent to which module did the marking —
+    a source grep can only ever know the sites it was written to look at.
+    """
+    from dash_improve_my_llms import is_hidden
+
     listed = {p.rsplit("/llms.txt", 1)[0] for p in battery.HIDDEN_DOC_PATHS}
     for path in listed:
         if path == "/admin":
             continue  # the canary, deliberately not a registered page
-        assert f'mark_hidden("{path}")' in run_py, (
-            f"{path} is in the battery's hidden list but run.py does not mark "
-            "it hidden — the check would pass for the wrong reason"
+        assert is_hidden(path), (
+            f"{path} is in the battery's hidden list but nothing marked it "
+            "hidden — the 404 the battery sees has some other cause"
         )
 
 

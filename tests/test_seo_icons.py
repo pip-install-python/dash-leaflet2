@@ -190,9 +190,9 @@ def _declared_lastmods() -> set[str]:
         if m:
             dates.add(m.group(1))
 
-    from pages.changelog import newest_release_date
+    from pages.changelog import newest_date
 
-    changelog_date = newest_release_date()
+    changelog_date = newest_date()
     assert changelog_date, "CHANGELOG.md has no dated release heading"
     dates.add(changelog_date)
 

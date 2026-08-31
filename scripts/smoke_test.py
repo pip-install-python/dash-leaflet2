@@ -162,10 +162,24 @@ def _http_checks(res: Results, run_mod, dash_mod) -> None:
     # item 12 documents for tests/test_proxy_scheme.py and item 17 for the
     # network battery's default UA — the third surface in this repo where a
     # UA-less probe silently changed meaning at the 2.8 floor.
+    #
+    # It also carries the INTERNAL TOKEN, after the engine token. This
+    # harness is a CI sweep, not a visitor: without the token its hits are
+    # countable people (muicharts measured 4 such rows in a real ledger).
+    # Belt and braces here — the env block above already redirects
+    # TRAFFIC_ANALYTICS_FILE to a temp dir, so these hits cannot reach the
+    # repo's ledger or production's — but the token is what makes that true
+    # by contract rather than by one env line staying correct forever.
+    from lib.constants import INTERNAL_UA
+
     BROWSER_UA = (
         "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
-        "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+        "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 "
+        + INTERNAL_UA + " smoke-test"
     )
+
+    # The other lane, named for the hidden-page refusal below.
+    CRAWLER_UA = "Mozilla/5.0 (compatible; Googlebot/2.1) " + INTERNAL_UA
 
     def get(url: str, group: str, expect=(200,), label: str | None = None):
         try:
@@ -192,6 +206,28 @@ def _http_checks(res: Results, run_mod, dash_mod) -> None:
     # so a non-200 means routing or the index template broke.
     for entry in dash_mod.page_registry.values():
         get(entry["path"], "routes")
+
+    # THE OTHER HALF OF THE LANE FIX, and it belongs in the same change as
+    # the browser UA above (fleet notes 70/74): repairing the lane alone
+    # measures strictly LESS than before and says nothing about it. The
+    # browser-lane loop now passes on the admin pages — which is exactly what
+    # it would also do if `mark_hidden` silently stopped working. So assert
+    # the refusal directly, on the lane that must still get it.
+    #
+    # `mark_hidden` is what keeps an owner surface out of the index; the
+    # crawler-lane 404 IS the feature, not an artefact of the harness.
+    from dash_improve_my_llms import is_hidden
+
+    hidden = sorted(
+        e["path"] for e in dash_mod.page_registry.values()
+        if is_hidden(e["path"])
+    )
+    res.add("hidden", "some page is marked hidden", bool(hidden),
+            ", ".join(hidden) or "NONE — mark_hidden is not wired at all")
+    for path in hidden:
+        resp = client.get(path, headers={"User-Agent": CRAWLER_UA})
+        res.add("hidden", f"{path} refuses the crawler lane",
+                resp.status_code == 404, f"HTTP {resp.status_code}")
 
 
 def _check_callbacks(res: Results, dash_mod, run_mod) -> None:

@@ -117,8 +117,16 @@ def admin_pages(data) -> list:
                   key=lambda e: e.get("name") or "")
 
 
+def nav_label(entry) -> str:
+    """The SHORT label for the rail, falling back to the page's real name.
+    `nav:` in a page's frontmatter lets a long title stay long everywhere it
+    is the document's identity (<title>, og:title, the llms.txt heading)
+    while the sidebar and search show something that fits."""
+    return entry.get("nav") or entry["name"]
+
+
 def _page_link(entry):
-    return create_nav_link(entry.get("icon") or DEFAULT_ICON, entry["name"], entry["path"])
+    return create_nav_link(entry.get("icon") or DEFAULT_ICON, nav_label(entry), entry["path"])
 
 
 def _has_api_page(data) -> bool:
@@ -214,7 +222,7 @@ def search_data(data) -> list:
     """Search entries: the pages the sidebar lists, and nothing else —
     never /admin/*, never a hidden-tier page (an anonymous visitor could
     otherwise enumerate them from the dropdown)."""
-    return [{"label": e["name"], "value": e["path"]}
+    return [{"label": nav_label(e), "value": e["path"]}
             for e in sorted((e for e in data if is_nav_page(e)), key=_sort_key)]
 
 

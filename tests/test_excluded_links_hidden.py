@@ -38,26 +38,48 @@ def test_admin_paths_absent_from_sitemap_llms_and_sidebar(client, app):
     from components.navbar import create_content
 
     sitemap = client.get("/sitemap.xml").text
-    llms = client.get("/llms.txt").text
     tree = str(create_content(dash.page_registry.values()))
+
+    # THE CORPUS, not just the index (note 75, found on llms): prose can leak
+    # what structure hides. Hyperlinking /admin/control-board from five docs
+    # pages put the path into the corpus while every navbar and sitemap pin
+    # passed — the structure was correct and the writing was not. This site
+    # serves the tiered documents too (run.py registers /llms-small.txt and
+    # /llms-full.txt), and a prose link lands in those exactly as readily, so
+    # they are swept here as well; the template checks /llms.txt alone.
+    corpus = {
+        name: client.get(name).text
+        for name in ("/llms.txt", "/llms-small.txt", "/llms-full.txt")
+    }
 
     leaked = []
     for path in _admin_paths():
         if f"{path}</loc>" in sitemap:
             leaked.append(f"{path} in sitemap.xml")
-        if f"{path})" in llms or f"{path}/llms.txt" in llms:
-            leaked.append(f"{path} in /llms.txt")
+        for name, body in corpus.items():
+            if f"{path})" in body or f"{path}/llms.txt" in body:
+                leaked.append(f"{path} in {name}")
         if path in tree:
             leaked.append(f"{path} in the startup sidebar tree")
     assert leaked == [], f"admin pages published: {leaked}"
 
+    # Non-vacuity for the corpus half: an empty or 404 tier document would
+    # make its sweep pass without reading anything.
+    for name, body in corpus.items():
+        assert len(body) > 200, f"{name} is empty ({len(body)}b) — swept nothing"
+
+    llms = corpus["/llms.txt"]
+
     # Positive control: a real page IS listed, so an empty sitemap or a
     # broken llms.txt cannot make the assertions above pass vacuously.
-    # PORTED: the template's control page is /getting-started, which this
-    # fork does not have. conftest.SAMPLE_PAGE is this site's stand-in real
-    # page (and the one scripts/network_smoke.py probes), so the two agree.
-    from conftest import SAMPLE_PAGE
+    # Derived from the sidebar's own first page (1.6.41), never named, so
+    # the file is fork-invariant. Replaces this fork's earlier SAMPLE_PAGE
+    # port, which named /pointer-events and would have gone stale with it.
+    from components.navbar import sections_for
 
-    assert f"{SAMPLE_PAGE}</loc>" in sitemap
-    assert SAMPLE_PAGE in llms
-    assert SAMPLE_PAGE in tree
+    sections = sections_for(dash.page_registry.values())
+    assert sections, "the sidebar has no docs section"
+    control = sections[0][1][0]["path"]
+    assert f"{control}</loc>" in sitemap
+    assert control in llms
+    assert control in tree

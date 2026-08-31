@@ -286,7 +286,10 @@ def test_api_page_is_registered_because_this_fork_documents_a_package(app_module
     from lib.api_reference import load_packages
     from pages import api
 
-    assert "if API_PACKAGES:" in inspect.getsource(api)
+    # The guard gained a second clause at 1.6.41 (`and not
+    # _docs_page_owns("/api")` — a docs page may claim the path), so pin the
+    # part that is this item's contract rather than the whole line.
+    assert "if API_PACKAGES and" in inspect.getsource(api)
     assert load_packages([]) == []
 
 
@@ -356,3 +359,248 @@ def test_other_apps_dropdown_is_solid_and_every_primary_app_has_an_icon(app_modu
     assert dropdown.styles["dropdown"]["backgroundColor"]
     for url in PRIMARY:
         assert ICONS.get(url) not in (None, "mdi:web"), f"{url} has no icon"
+
+
+def test_battery_hidden_paths_match_the_registry(app_module):
+    """Note 74: the battery's literal tuple is pinned against the registry,
+    so a page added, renamed or deleted moves it in the SAME change.
+
+    PORTED with a SUPERSET assertion, not the template's set equality, and
+    the difference is deliberate. This fork's battery carries one extra
+    entry — `/admin/llms.txt` — that is a canary rather than a page: `/admin`
+    is not registered, so a registry-derived set can never contain it, and
+    equality would force its deletion. The property the item actually asks
+    for is that no registered admin page is MISSING from the battery, which
+    is what this asserts; the canary is additionally pinned by name so it
+    cannot be dropped by accident either.
+
+    This pin arrived red: /admin/traffic registered in the 1.6.34 ledger
+    round and HIDDEN_DOC_PATHS did not notice, so the live battery was not
+    checking the newest owner surface at all.
+    """
+    import dash
+
+    from scripts.network_smoke import HIDDEN_DOC_PATHS
+
+    admin = {p["path"] for p in dash.page_registry.values()
+             if p["path"].startswith("/admin/")}
+    wanted = {f"{p}/llms.txt" for p in admin}
+    missing = wanted - set(HIDDEN_DOC_PATHS)
+    assert not missing, (
+        f"network_smoke.HIDDEN_DOC_PATHS drifted from the registered admin "
+        f"pages — the live battery never checks these: {sorted(missing)}"
+    )
+    assert "/admin/llms.txt" in HIDDEN_DOC_PATHS, (
+        "the /admin canary went missing; it is the check that catches a 404 "
+        "which has stopped being a real refusal"
+    )
+
+
+def test_every_test_client_user_names_headers():
+    """Notes 70/74: a bare test client sends `Werkzeug/x.y` — crawler lane
+    at dimll >= 2.8 — so a mark_hidden page 404s and an every-page-200 loop
+    goes red at the floor bump. Any file that drives `.test_client()` must
+    pass headers (a named UA). Measured on this fork: run 33326994172 went
+    red for exactly this, on scripts/smoke_test.py."""
+    offenders = []
+    for folder in ("tests", "scripts"):
+        for path in sorted((REPO / folder).glob("*.py")):
+            src = path.read_text()
+            names_ua = "headers=" in src or "HTTP_USER_AGENT" in src
+            if ".test_client()" in src and not names_ua:
+                offenders.append(f"{folder}/{path.name}")
+    assert offenders == [], offenders
+
+
+def test_the_sweep_harness_ua_is_browser_lane_and_internal():
+    """The other half of notes 70/74, which repairing the lane alone misses:
+    a CI sweep that names the browser lane WITHOUT the internal token lands
+    in the ledger as N countable people (muicharts measured 4 such rows).
+    Both properties, or the fix measures strictly less than it looks."""
+    import re
+
+    from dash_improve_my_llms import classify
+
+    from lib.constants import INTERNAL_UA, INTERNAL_UA_TOKEN
+
+    src = (REPO / "scripts" / "smoke_test.py").read_text()
+    block = re.search(r'BROWSER_UA = \(\s*(.*?)\n    \)', src, re.S).group(1)
+
+    # The token half is a SOURCE pin: the expression must actually splice
+    # INTERNAL_UA in. Composing the string and then asserting the token is
+    # in it would be true by construction — the first draft of this test did
+    # exactly that and asserted nothing.
+    assert "INTERNAL_UA" in block, (
+        "the sweep harness's UA does not splice INTERNAL_UA — its hits are "
+        f"countable people in whatever ledger they reach: {block!r}"
+    )
+
+    # The lane half is a real classification of the real string: the literal
+    # fragments, joined with the value the expression names.
+    ua = "".join(re.findall(r'"([^"]*)"', block)) + INTERNAL_UA
+    assert classify(ua)["lane"] == "browser", ua
+    assert INTERNAL_UA_TOKEN in ua.lower()
+
+
+# ---------------------------------------------------- lane parity (note 80) --
+#
+# The amendment's lesson, not its fix: the muicharts defect was that the TEST
+# asserted section HEADINGS, which a directive-stripped machine document still
+# carries while every row under them is gone. So these assert ROWS and row
+# CONTENT, and each is mutation-checked below — a pin that cannot go red when
+# the content disappears is the defect, not the guard.
+
+
+def _api_machine_doc(client):
+    from conftest import CRAWLER_UA
+
+    return client.get("/api/llms.txt", user_agent=CRAWLER_UA).text
+
+
+def test_api_machine_lane_carries_prop_ROWS_not_just_headings(app_module, client):
+    """Note 79's battery invariant, in-process: /api's machine document must
+    carry real prop rows. Headings alone are exactly what the broken shape
+    still produces."""
+    from lib.api_reference import load_package
+
+    doc = _api_machine_doc(client)
+    comps = load_package("dash_leaflet2")
+    assert comps, "no components resolved at all"
+
+    # Row CONTENT: a component's name, one of its prop names, and that prop's
+    # type — the three cells that make a row a row.
+    sample = next(c for c in comps if c["props"])
+    prop = sample["props"][0]
+    for cell in (sample["name"], prop["name"]):
+        assert cell in doc, f"{cell!r} missing from /api/llms.txt"
+
+    # And ROW COUNT, so a document carrying one lucky row cannot pass: every
+    # component must appear, and the table's pipes must be there in bulk.
+    missing = [c["name"] for c in comps if c["name"] not in doc]
+    assert not missing, f"components absent from the machine lane: {missing}"
+    assert doc.count("|") > sum(len(c["props"]) for c in comps), (
+        "the machine document has headings but no table rows"
+    )
+
+
+def test_the_api_row_pin_goes_red_when_the_rows_go(app_module):
+    """MUTATION CHECK for the pin above. Disable the row generation and the
+    assertion must fail; if it still passes, it was reading headings."""
+    from lib import api_reference
+
+    real = api_reference.load_packages
+    try:
+        api_reference.load_packages = lambda pkgs: [
+            {"package": p, "components": []} for p in pkgs
+        ]
+        stripped = api_reference.as_markdown(["dash_leaflet2"])
+    finally:
+        api_reference.load_packages = real
+
+    # The heading survives — which is precisely why heading pins are useless.
+    assert "# API reference" in stripped
+    comps = real(["dash_leaflet2"])[0]["components"]
+    assert comps[0]["name"] not in stripped, (
+        "the mutation did not actually remove the rows; this check proves "
+        "nothing about the pin above"
+    )
+
+
+def test_docs_source_directive_reaches_both_lanes(app_module, client):
+    """This fork's equivalent of note 80's directive seam, and the reason it
+    is NOT a defect here: `.. source::` output is expanded into the PROSE
+    (pages/markdown._expand_source_directives) — the same treatment the
+    amendment prescribes — so the example's code reaches the machine lane
+    instead of living only in the React tree. `.. exec::` renders an
+    interactive map, whose textual content IS that source."""
+    from pathlib import Path
+
+    from conftest import CRAWLER_UA
+
+    slug = "pointer-events"
+    example = Path(f"docs/{slug}/example.py")
+    assert example.is_file()
+    lines = [ln.strip() for ln in example.read_text().splitlines()
+             if ln.strip().startswith("import ")]
+    assert lines, "the example imports nothing — pick another control page"
+
+    doc = client.get(f"/{slug}/llms.txt", user_agent=CRAWLER_UA).text
+    assert lines[0] in doc, (
+        f"{lines[0]!r} is in example.py and rendered on the page, but not in "
+        "the machine document — the directive's output lives only in the "
+        "React tree (note 80's shape)"
+    )
+    # No directive line is served RAW to an agent either.
+    for d in (".. toc::", ".. exec::", ".. source::", ".. llms_copy::"):
+        assert d not in doc, f"{d} served literally to an agent"
+
+
+def test_api_survives_a_package_with_no_metadata_json(tmp_path, monkeypatch):
+    """Contract highlight 7: upstream `load_package` returns [] SILENTLY when
+    metadata.json is absent — and it IS absent here, because
+    dash_leaflet2/metadata.json is a 27 MB build artifact this repo
+    gitignores AND excludes from the wheel (DIVERGENCES 15). So /api would
+    ship empty on Render while every local check passed, because locally the
+    file exists.
+
+    The item asks for a pin that resolves the package into a directory with
+    NO metadata.json and asserts components still come back. That is the
+    committed-extract road, and this is the shape production actually runs.
+    """
+    import json
+    import sys
+
+    from lib import api_reference
+
+    pkg = tmp_path / "extract_only_pkg"
+    pkg.mkdir()
+    (pkg / "__init__.py").write_text("class Only:\n    pass\n")
+    (pkg / api_reference.SLIM_METADATA).write_text(json.dumps({
+        "generated": "2026-08-30",
+        "components": [{"name": "Only", "description": "d", "props": [
+            {"name": "id", "type": "string", "required": False,
+             "default": "", "description": "x"}]}],
+    }))
+    assert not (pkg / "metadata.json").exists(), "the point is its absence"
+
+    monkeypatch.syspath_prepend(str(tmp_path))
+    sys.modules.pop("extract_only_pkg", None)
+    try:
+        comps = api_reference.load_package("extract_only_pkg")
+        assert [c["name"] for c in comps] == ["Only"], comps
+        assert api_reference.slim_generated_on("extract_only_pkg") == "2026-08-30"
+    finally:
+        sys.modules.pop("extract_only_pkg", None)
+
+    # And the negative: a package with NEITHER file yields [] rather than
+    # raising — the silent-empty behaviour, pinned so it stays visible.
+    bare = tmp_path / "bare_pkg"
+    bare.mkdir()
+    (bare / "__init__.py").write_text("")
+    sys.modules.pop("bare_pkg", None)
+    try:
+        assert api_reference.load_package("bare_pkg") == []
+    finally:
+        sys.modules.pop("bare_pkg", None)
+
+
+def test_this_repo_really_has_no_committed_metadata_json(app_module):
+    """The premise of the pin above, asserted rather than assumed: if
+    metadata.json were ever committed, the extract road would stop being
+    exercised in production and this fork would quietly rejoin the class of
+    hosts whose /api works locally and is empty on the wire."""
+    import subprocess
+
+    out = subprocess.run(
+        ["git", "check-ignore", "dash_leaflet2/metadata.json"],
+        capture_output=True, text=True, cwd=REPO,
+    )
+    assert out.returncode == 0, "dash_leaflet2/metadata.json is no longer gitignored"
+    tracked = subprocess.run(
+        ["git", "ls-files", "dash_leaflet2/metadata.json"],
+        capture_output=True, text=True, cwd=REPO,
+    ).stdout.strip()
+    assert tracked == "", f"metadata.json is tracked: {tracked!r}"
+    assert (REPO / "dash_leaflet2" / "api_metadata.json").is_file(), (
+        "the committed extract is missing — /api would be empty in production"
+    )

@@ -258,50 +258,46 @@ replaced the tool records the divergence and ports the contract
 half"); the record is this entry.
 
 
-### 15. `/api` reads a COMMITTED props extract, not `metadata.json`
+### 15. `/api` reads a COMMITTED props extract — RETIRED at template 1.6.41
 
-Template 1.6.38's `lib/api_reference.py` reads the component package's
-`metadata.json` — which, on a pip-installed Dash component package,
-sits next to `__init__.py`. In this repo that file is a 27 MB
-react-docgen BUILD artifact: `.gitignore` excludes it (divergence 12)
-and `MANIFEST.in` excludes it from the wheel. It is an input to
-`dash-generate-components`, never a runtime file.
+Kept as history because the retirement is the useful part. This fork found
+that `lib/api_reference.load_package` reads the component package's
+`metadata.json`, which here is a 27 MB react-docgen BUILD artifact that
+`.gitignore` excludes and `MANIFEST.in` excludes from the wheel. On Render
+it therefore does not exist, and upstream's code returned `[]` SILENTLY —
+`/api` would have shipped empty at 200, with a canonical and an h1, while
+every local check passed because locally the file is there.
 
-So on Render — which clones this repo and builds the Dockerfile —
-`metadata.json` does not exist, and the template's code would have
-rendered an empty `/api` while every local check passed, because
-locally the file IS there. Measured both ways before and after.
+`scripts/build_api_metadata.py` distils it to `dash_leaflet2/api_metadata.json`
+(26 components, 302 props, 78 KB), which IS committed and carries the
+`generated` stamp that is `/api`'s sitemap `lastmod`.
 
-`scripts/build_api_metadata.py` distils it to
-`dash_leaflet2/api_metadata.json` (26 components, 302 props, 78 KB),
-which IS committed; `load_package` prefers `metadata.json` when
-present so a developer who has just re-run `npm run build:backends`
-sees new props immediately. That file also carries `generated`, the
-date the props last changed — which is `/api`'s sitemap `lastmod`,
-written by the thing that regenerates the content so the two can
-never drift, and committed so a Docker rebuild cannot reset it the
-way an mtime would.
+Template 1.6.41 adopted the whole road — same `SLIM_METADATA` constant, same
+`generated` stamp, same resolution order — and added a third fallback to the
+classes' docstrings. `lib/api_reference.py` is byte-identical to template
+4ac02e0 again, so this is no longer a divergence. What REMAINS this fork's is
+`scripts/build_api_metadata.py` (the template has its own) and the fact that
+metadata.json is gitignored here at all, which is what makes the extract road
+load-bearing rather than decorative — pinned by
+`test_this_repo_really_has_no_committed_metadata_json`.
 
-*Consequence for a sync:* `lib/api_reference.py` is NOT byte-identical
-to the template's and cannot become cargo here until upstream has a
-fallback of its own. Everything else in that file is verbatim.
+### 16. Two generated pages register their full machine record — RETIRED at 1.6.41
 
-### 16. Two generated pages register through `register_llms_doc`
+Also kept as history. `/changelog` and `/api` arrived from 1.6.38 leaving a
+module-level `LLMS_DOC` for the package to discover, which publishes the prose
+but sends no `lastmod`, so both entered the sitemap dateless — invisible
+upstream, where no test checks it, and red here under
+`tests/test_seo_icons.py`. `/changelog` additionally needed its date parser
+widened: this repo's CHANGELOG has always used an EM DASH, and the template's
+regex took only an ASCII hyphen, so it matched every version and dropped every
+date.
 
-`/changelog` and `/api` arrive from template 1.6.38 leaving a
-module-level `LLMS_DOC` for the package to discover. That publishes
-the prose but sends no `lastmod`, so both pages entered the sitemap
-dateless — which `tests/test_seo_icons.py` fails here and nowhere
-upstream, because the template has no such test. Both now register
-through `lib.page_visibility.register_llms_doc`, like every docs page
-here, which also brings them under the control board's per-page
-llms.txt toggle instead of silently skipping them.
-
-`/changelog` additionally needed its date parser widened: this repo's
-CHANGELOG has always written `## [0.2.2] — 2026-08-05` with an EM
-DASH, and the template's regex accepts only an ASCII hyphen, so it
-matched every version and dropped every date — a Timeline with no
-dates on it. The pattern now takes `-`, `–` or `—`.
+Template 1.6.41 took both findings and went further: the pages now call
+`page_visibility.register_default` + `page_tiers.register` +
+`register_page_metadata(..., lastmod=...)`, which also brings them under the
+control board's llms.txt toggle; and the heading regex generalised to the
+seven shapes the fleet writes, crediting this repo's em-dash case. Both files
+are byte-identical to 4ac02e0, so neither is a divergence any more.
 
 ## Byte-owned paths
 
@@ -366,6 +362,28 @@ fork's cd.yml, whose host string, wait sizing and comments are its own.
 # ADDS an npm ecosystem the template's copy does not have. The 1.6.24
 # rewrite is a whole-file byte-copy that would silently remove it.
 - .github/dependabot.yml
+# PORTED, not copied, at item 18 — each carries fork content a byte-copy
+# would delete. Fenced in the same commit that ported them, per the rule
+# that a path you ported belongs here before the next reclass, not after.
+#
+#   components/header.py    the satellite mark, the green wordmark, the
+#                           `Leaflet <version>` subline, the mobile glyph,
+#                           and the CARTO tile-theme bridge callback the
+#                           showcase maps depend on (no template equivalent)
+#   components/navbar.py    `nav_label()` — this fork reads `nav:` for the
+#                           rail; otherwise template-shaped
+#   components/appshell.py  the desktop-navbar collapse store + its two
+#                           clientside callbacks, absent upstream
+#   pages/markdown.py       this repo's directive set, `.. source::`
+#                           expansion, and the published-name llms_doc call
+#                           (divergence 7)
+#   lib/constants.py        this site's identity, DOCS_PYTHON_FLOOR, the
+#                           two-env BASE_URL alias (divergence 10)
+- components/header.py
+- components/navbar.py
+- components/appshell.py
+- pages/markdown.py
+- lib/constants.py
 ```
 
 ---

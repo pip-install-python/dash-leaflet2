@@ -65,11 +65,13 @@ def test_every_icon_only_control_in_components_has_a_name(control):
 
 def test_code_highlight_copy_button_has_a_name():
     """The copy button is icon-only; without these it is announced as
-    nothing. This ALSO happens to be the pin that would catch a
-    `sync_from_rnd.py` pull reverting the file — R&D's copy has neither
-    line — so it is the reason that revert would be loud rather than
-    silent. `lib/directives/source.py` is MIRROR_OWNED as of this change,
-    which stops the revert; this stays as the belt to that brace."""
+    nothing.
+
+    It was also, briefly, the pin that would have caught a
+    `scripts/sync_from_rnd.py` pull reverting this file — the sibling tree's
+    copy had neither line. That script is retired and deleted (2026-08-31,
+    DIVERGENCES 1), so nothing can revert it any more and the a11y reason is
+    now the whole reason this test exists. Which is reason enough."""
     src = (REPO / "lib" / "directives" / "source.py").read_text()
     assert "copyLabel=" in src and "copiedLabel=" in src
 

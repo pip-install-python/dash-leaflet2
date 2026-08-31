@@ -71,6 +71,33 @@ from. The phase-2 session must snapshot that tree — a pushed branch or
 the owner's backup — BEFORE it edits anything, and should not assume
 `git checkout` can undo a mistake there.
 
+**RETIRED, 2026-08-31 — `scripts/sync_from_rnd.py` is deleted.** Owner's
+decision 0af. Everything above and in the correction is now history: no
+script reads that tree, so there is no pull to be destructive, nothing to
+mark `MIRROR_OWNED` against, and no `DENY_DOCS` to enforce.
+
+What retired it was the divergence map. The sibling tree turned out to be a
+strict ANCESTOR with no new work — 26 of 27 changed `.md` files carried
+`lastmod:` here and not there, its `docs/home/home.md` was still the
+placeholder "This page demonstrates Home.", `dl2_tiles.py` and
+`dl2_locations.py` did not exist in it at all, and its `package-info.json`
+said 0.0.1 against this repo's 0.2.2. A pull would have stripped 26 sitemap
+dates, replaced the home page with a placeholder and reverted 15 examples to
+their pre-refactor state. A mechanism whose only remaining effect is to
+regress the site is not a mechanism worth keeping behind a warning.
+
+*What replaces it:* nothing, deliberately. This repo is simply the repo. The
+two pages that were never meant to ship — `docs/sprite-generator/` and the
+3,700-line R&D `docs/tile-selector/` lab — are not here and cannot arrive,
+because nothing copies from that tree any more; this repo keeps its own lean
+`/tile-selector` page. The sibling tree is snapshotted (`9fde34f`, bundle at
+`~/leaflet-rnd-2026-08-31.bundle`) and archived.
+
+*Consequence for a template sync:* the `MIRROR_OWNED` list is gone with the
+script, so the seven template surfaces hardened into it at `115f1c4` no
+longer need that protection — nothing can overwrite them. Template syncs are
+unaffected: they were never what that list guarded against.
+
 ### 2. It ships a component PACKAGE alongside the docs site
 
 `src/ts/` → webpack → `dash_leaflet2/`, published to PyPI as

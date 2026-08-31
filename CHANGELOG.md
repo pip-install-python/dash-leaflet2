@@ -82,6 +82,17 @@ changed, and `pip install dash-leaflet2` is untouched by any of it.
   sites from the shared registry, and a footer carrying the copyright, the
   GitHub profile, Discord and YouTube.
 
+### Removed
+
+- **The R&D sync script.** `scripts/sync_from_rnd.py` pulled documentation
+  forward from a sibling checkout on the maintainer's machine. That checkout
+  turned out to hold nothing this repository did not already have, and a good
+  deal less: running the pull would have stripped the real "last updated"
+  dates from 26 pages, replaced the home page with a placeholder, and
+  reverted 15 examples to an older shape. A tool whose only remaining effect
+  is to undo work is not worth keeping behind a warning, so it is gone.
+  Nothing replaces it — this repository is simply the repository.
+
 ### Changed
 
 - **The sidebar is built from each page's frontmatter, not a hand-kept list.**

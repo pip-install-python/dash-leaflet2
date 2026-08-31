@@ -81,10 +81,13 @@ the new repo.
    git add -A && git commit -m "R&D snapshot" && git push
    ```
 
-   Do NOT gitignore `docs/sprite-generator/` or `docs/tile-selector/` in this
-   checkout any more. They belong in the private repo. What keeps them out of
-   the public mirror is `scripts/sync_from_rnd.py`'s `DENY_DOCS`, plus the fact
-   that the mirror is a separate checkout with its own remote.
+   HISTORICAL — this step described a mirror arrangement that never existed
+   as written, and the mechanism it names is gone (2026-08-31). There was no
+   separate remote: both checkouts always pointed at the same origin. And
+   `scripts/sync_from_rnd.py` has been deleted with its `DENY_DOCS`, so
+   nothing enforces the split mechanically. What actually keeps
+   `docs/sprite-generator/` out of this repo is that it is not in it and
+   nothing copies from the sibling tree any more. See DIVERGENCES 1.
 
 3. **Create the new public repo** — `pip-install-python/dash-leaflet2`, public,
    and **completely empty**: no README, no .gitignore, no licence. Any

@@ -7,13 +7,19 @@ react-leaflet) and is a generation ahead. Owner: Pip Install Python LLC. PyPI:
 
 ## This repo, and the sibling working tree it pulls from
 
-`../dash-leaflet2` is a **local sibling working tree, same origin, unpushed** —
-NOT a private repository and NOT an upstream. Corrected 2026-08-31 after the
-owner challenged the "private R&D repo" story and it failed measurement: both
-directories carry the same origin (`github.com/pip-install-python/dash-leaflet2`),
-that tree has ONE commit which is not on the remote, and it shares ZERO commits
-with this repo's history. `scripts/sync_from_rnd.py` finds it BY PATH, not by
-any git relationship.
+`../dash-leaflet2` is an **archived local sibling working tree** — NOT a
+private repository, NOT an upstream, and as of 2026-08-31 not connected to
+this repo by anything at all. Both directories carry the same origin
+(`github.com/pip-install-python/dash-leaflet2`), that tree has ONE commit
+which is not on the remote, and it shares ZERO commits with this repo's
+history.
+
+**Nothing pulls from it.** `scripts/sync_from_rnd.py` was deleted (owner's
+decision 0af) once the divergence map showed that tree to be a strict
+ancestor: a pull would have stripped `lastmod:` from 26 pages, replaced the
+home page with a placeholder and reverted 15 examples to their pre-refactor
+state. See DIVERGENCES 1 for the measurements. It is snapshotted (`9fde34f`,
+bundle `~/leaflet-rnd-2026-08-31.bundle`) and should be left alone.
 
 **It exists only on this machine and mostly outside git.** 31 of its 106 dirty
 paths are untracked — `docs/text-marker/example.py` among them — so the example
@@ -25,15 +31,11 @@ authoring shell) and the 3,700-line `docs/tile-selector/` AI tile-generation
 lab. **This repo ships its own lean `/tile-selector` page** documenting the
 `dl2.TileSelector` component instead.
 
-Pull that tree's work forward with `python scripts/sync_from_rnd.py` (dry run by
-default). It is a *pull*, not a push: a new docs page there shows up as NEW for
-you to approve or add to `DENY_DOCS`, so nothing ships by being forgotten. Files
-this repo owns outright are never overwritten (`MIRROR_OWNED`) — `run.py`,
-`README.md`, `requirements.txt`, the `lib/` network clients, `pages/`,
-`scripts/`, `vendor/`, `Dockerfile`, `render.yaml`, plus the seven template
-surfaces added 2026-08-31 (`lib/directives/{source,headings}.py`,
-`lib/api_reference.py`, `lib/aside.py`, `components/footer.py`, `pages/api.py`,
-`pages/changelog.py`). MIRROR_OWNED matches by EXACT PATH, not by prefix.
+There is no sync to run and no `MIRROR_OWNED` list to respect — both went
+with the script. Two pages that were never meant to ship,
+`docs/sprite-generator/` and that tree's 3,700-line `docs/tile-selector/`
+lab, are simply not here and cannot arrive; this repo ships its own lean
+`/tile-selector` page.
 
 ## Two parallel deliverables (both live in this repo)
 
@@ -103,7 +105,6 @@ python usage.py             # compiled dl2.*      -> http://127.0.0.1:8060
 # Test
 python scripts/smoke_test.py          # pages register, layouts render, routes 200
 python scripts/compat_matrix.py       # a venv per Dash version -> COMPATIBILITY.md
-python scripts/sync_from_rnd.py       # dry-run the pull from ../dash-leaflet2
 
 # Package
 python -m build --wheel     # PyPI-installable wheel in dist/

@@ -29,7 +29,7 @@ from dash import (
 from dash_iconify import DashIconify
 from dl2_tiles import VOYAGER, register_theme_swap
 from dl2_locations import BOSTON
-from dl2_shared import header, info_panel
+from dl2_shared import info_panel
 
 # Basemap pair for this page. dl2_tiles owns the light/dark wiring so
 # every example themes the same way — see register_theme_swap below.
@@ -57,15 +57,6 @@ PREFIX_PRESETS = {
 
 component = dmc.Stack(
     [
-        header(
-            "AttributionControl",
-            "Explicit control over the attribution box. Set `attributionControl=False` on "
-            "the Map to suppress Leaflet 2's built-in control, then add a "
-            "`dl2.AttributionControl` child to choose its corner and prefix HTML. The "
-            "prefix accepts any HTML (anchors, emoji, inline-styled brand marks) — pass "
-            "`False` to hide it entirely.",
-            badge="dl2.AttributionControl",
-        ),
         dmc.Grid(
             [
                 dmc.GridCol(

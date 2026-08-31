@@ -50,6 +50,27 @@ packages, built with this library.
 .. exec::docs.home.example
     :code: false
 
+### How it works (zero build step)
+
+```python
+# app.py  — no JS build step
+from dash import Dash, hooks, html
+
+V = "2.0.0-alpha.1"  # WITH the dot; the dotless form 404s on unpkg
+hooks.stylesheet([{"external_url": f"https://unpkg.com/leaflet@{V}/dist/leaflet.css",
+                   "external_only": True}])
+hooks.script([{"external_url": f"https://unpkg.com/leaflet@{V}/dist/leaflet-global.js",
+               "external_only": True}])   # exposes window.leaflet (NOT window.L)
+
+app = Dash(__name__)
+app.layout = html.Div(className="leaflet2-map", **{"data-demo": "home"},
+                      style={"height": "60vh"})
+
+# assets/leaflet2_maps.js mounts the map:
+#   const map = new leaflet.Map(el).setView([49.286, -123.12], 12);
+#   new leaflet.TileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(map);
+```
+
 ### Source
 
 .. source::docs/home/example.py

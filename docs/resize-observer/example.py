@@ -2,24 +2,11 @@
 
 import dash_mantine_components as dmc
 from dash import Input, Output, clientside_callback, html
-from dl2_shared import code_panel, header, info_panel
+from dl2_shared import info_panel
 
-JS = """// Leaflet 2 observes its container with a ResizeObserver (trackResize,
-// default ON). When the container changes size — opening a side panel, a tab,
-// an accordion — the map re-renders itself. No more:
-//     map.invalidateSize();   // the classic Leaflet 1 dance
-const map = new leaflet.Map(el).setView([29.7589, -95.3677], 12);"""
 
 component = dmc.Stack(
     [
-        header(
-            "ResizeObserver Sizing",
-            "Leaflet 1's classic pain: a map inside a hidden tab or collapsible panel "
-            "renders gray until you manually call invalidateSize(). v2 watches its "
-            "container with a ResizeObserver and fixes itself. Toggle the side panel — "
-            "the map below resizes cleanly, with zero invalidateSize() calls.",
-            badge="no invalidateSize",
-        ),
         dmc.Button(
             "Toggle side panel", id="resize-toggle", color="green", variant="light"
         ),
@@ -42,7 +29,6 @@ component = dmc.Stack(
                 ),
             ],
         ),
-        code_panel("It just works", JS),
         info_panel(
             "Why this matters in Dash",
             dmc.Text(

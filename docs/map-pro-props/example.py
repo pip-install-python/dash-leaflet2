@@ -13,7 +13,7 @@ import dash_mantine_components as dmc
 from dash import Input, Output, callback
 from dl2_tiles import CYCLE, register_theme_swap
 from dl2_locations import NEW_ORLEANS
-from dl2_shared import header, info_panel
+from dl2_shared import info_panel
 
 # Basemap pair for this page — dl2_tiles owns the light/dark wiring.
 TILES = CYCLE
@@ -25,13 +25,6 @@ HARBOR_BOUNDS = NEW_ORLEANS.bounds(8.35, 9.83)
 
 component = dmc.Stack(
     [
-        header(
-            "Map pro props",
-            "minZoom / maxZoom / maxBounds / zoomControl / keyboard — try the "
-            "sliders to clamp the viewport; pan past the dashed box edges to feel "
-            "the bounce; flip the keyboard switch and the arrow keys stop working.",
-            badge="dl2.Map",
-        ),
         dmc.Grid(
             [
                 dmc.GridCol(

@@ -36,7 +36,7 @@ from dash import (
 from dash_iconify import DashIconify
 from dl2_tiles import OSM_CLASSIC, register_theme_swap
 from dl2_locations import MONTREAL
-from dl2_shared import header, info_panel
+from dl2_shared import info_panel
 
 # Basemap pair for this page. dl2_tiles owns the light/dark wiring so
 # every example themes the same way — see register_theme_swap below.
@@ -172,15 +172,6 @@ def form_edit(name, color):
 
 component = dmc.Stack(
     [
-        header(
-            "Edit Control + Measurement",
-            "Click a draw icon (top-left) → a popover opens with a name field and color "
-            "picker; pick a color, then click the map to draw — the shape uses that color "
-            "live. After drawing, Create finalizes or Cancel removes it. Enter Edit mode "
-            "(pencil icon, visible once a shape exists) and click any shape to recolor / "
-            "rename / delete it; clicking the map outside any shape closes the popover.",
-            badge="dl2.EditControl + popover",
-        ),
         dmc.Grid(
             [
                 dmc.GridCol(

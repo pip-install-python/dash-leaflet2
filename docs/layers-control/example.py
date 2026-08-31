@@ -10,7 +10,7 @@ import dash_leaflet2 as dl2
 import dash_mantine_components as dmc
 from dash import Input, Output, State, callback
 from dl2_locations import MINNEAPOLIS
-from dl2_shared import header, info_panel
+from dl2_shared import info_panel
 
 OSM = "https://tile.openstreetmap.org/{z}/{x}/{y}.png"
 CARTO_LIGHT = "https://basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png"
@@ -45,13 +45,6 @@ SENSORS = {
 
 component = dmc.Stack(
     [
-        header(
-            "Layers Control",
-            "dl2.LayersControl renders a Leaflet control with N base layers (radio) and M "
-            "overlays (checkbox). BaseLayer/Overlay capture their child layer via a React-context "
-            "map proxy and register it with the control. activeBase + activeOverlays are two-way.",
-            badge="dl2.LayersControl",
-        ),
         dmc.Grid(
             [
                 dmc.GridCol(

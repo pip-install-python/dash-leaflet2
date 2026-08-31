@@ -2,28 +2,11 @@
 
 import dash_mantine_components as dmc
 from dash import Input, Output, callback, dcc
-from dl2_shared import code_panel, header, info_panel, map_div
+from dl2_shared import info_panel, map_div
 
-JS = """// JS -> Python bridge uses Dash 4's clientside set_props into a dcc.Store,
-// which an ordinary @callback then reads.
-map.on("moveend zoomend", () => {
-    const c = map.getCenter();
-    window.dash_clientside.set_props("ev-store",
-        {data: {lat: c.lat, lng: c.lng, zoom: map.getZoom(),
-                bounds: map.getBounds()}});
-});
-map.on("click", (e) => window.dash_clientside.set_props(
-    "ev-click-store", {data: {lat: e.latlng.lat, lng: e.latlng.lng}}));"""
 
 component = dmc.Stack(
     [
-        header(
-            "Events → Python",
-            "The pattern a real dash-leaflet-next component would formalize: map events "
-            "push state into a dcc.Store via set_props, and standard Python @callbacks "
-            "read it. Pan, zoom, and click the map.",
-            badge="dash integration",
-        ),
         dmc.Grid(
             [
                 dmc.GridCol(map_div("events-python"), span=8),
@@ -48,7 +31,6 @@ component = dmc.Stack(
                 ),
             ]
         ),
-        code_panel("set_props bridge", JS),
         dcc.Store(id="ev-store"),
         dcc.Store(id="ev-click-store"),
     ],

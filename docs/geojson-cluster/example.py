@@ -14,7 +14,7 @@ import dash_mantine_components as dmc
 from dash import Input, Output, callback, html
 from dl2_tiles import OCEAN, register_theme_swap
 from dl2_locations import SAN_DIEGO
-from dl2_shared import header, info_panel
+from dl2_shared import info_panel
 
 # Basemap pair for this page — dl2_tiles owns the light/dark wiring.
 TILES = OCEAN
@@ -100,14 +100,6 @@ function (feature, latlng, index, ctx) {
 
 component = dmc.Stack(
     [
-        header(
-            "GeoJSON clustering",
-            "200 vessel points around San Diego, CA. The hideout dict ships a "
-            "color map into the JS — clusters take the dominant category's "
-            "color. Pan/zoom and the SuperCluster index re-renders for the "
-            "new viewport.",
-            badge="dl2.GeoJSON",
-        ),
         dmc.Grid(
             [
                 dmc.GridCol(

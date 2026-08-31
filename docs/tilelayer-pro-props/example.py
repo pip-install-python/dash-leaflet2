@@ -13,7 +13,7 @@ import dash_mantine_components as dmc
 from dash import Input, Output, callback, clientside_callback, html
 from dl2_tiles import POSITRON, register_theme_swap
 from dl2_locations import CHARLESTON
-from dl2_shared import header, info_panel
+from dl2_shared import info_panel
 
 # 1x1 transparent PNG — replaces 404 tiles outside the bounds.
 BLANK_TILE = (
@@ -39,15 +39,6 @@ LABELS_DARK = "https://{s}.basemaps.cartocdn.com/rastertiles/dark_only_labels/{z
 
 component = dmc.Stack(
     [
-        header(
-            "TileLayer pro props",
-            "Two stacked tile layers — an OSM base (subdomains a/b/c, detectRetina) "
-            "and a CARTO labels-only overlay clipped to Charleston, SC via bounds. "
-            "Move the overlay opacity slider to fade the labels in/out. "
-            "Flip the zIndex segmented control to put the labels below or above the "
-            "OSM base. Outside the bounds box, only the OSM base shows.",
-            badge="dl2.TileLayer",
-        ),
         dmc.Grid(
             [
                 dmc.GridCol(

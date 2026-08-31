@@ -35,7 +35,7 @@ from dash import Input, Output, State, callback, clientside_callback, dcc, html
 from dash_iconify import DashIconify
 from dl2_tiles import ESRI_STREET, register_theme_swap
 from dl2_locations import MIAMI
-from dl2_shared import header, info_panel
+from dl2_shared import info_panel
 
 # Basemap pair for this page. dl2_tiles owns the light/dark wiring so
 # every example themes the same way — see register_theme_swap below.
@@ -94,17 +94,6 @@ def _joystick_div(prefix: str):
 
 component = dmc.Stack(
     [
-        header(
-            "Flight Sim",
-            "Single-player flight on top of dl2.Map. The map stays north-up; the "
-            "aircraft sprite rotates to face the direction of travel (matches "
-            "fly.py's pattern). Physics runs entirely client-side on "
-            "requestAnimationFrame — frame-rate-independent, pauses when the tab "
-            "is hidden. Keyboard: ArrowLeft/Right turn, Up throttles, Down brakes, "
-            "Space stops, Cmd/Ctrl+Arrow pans the camera. Mobile / touch devices "
-            "automatically get a draggable joystick at the bottom of the screen.",
-            badge="dl2 · rAF physics · touch joystick",
-        ),
         dmc.Grid(
             [
                 # base 12 (stacks under map) on mobile, 8 on md+ (side-by-side).

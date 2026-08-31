@@ -46,7 +46,7 @@ from dash import (
 from dash_iconify import DashIconify
 from dash_mui_charts import TreeViewPro
 from dl2_locations import NASHVILLE
-from dl2_shared import header, info_panel
+from dl2_shared import info_panel
 from _tile_catalog import (
     DEFAULT_BASE_SLUG,
     PROVIDER_OPTIONS_GROUPED,
@@ -283,15 +283,6 @@ def _popover():
 
 component = dmc.Stack(
     [
-        header(
-            "Tile Layers (Pro)",
-            "Click the 📚 button on the map. The Popover opens with a MultiSelect of "
-            "the no-key tileset catalog (Worldwide / Esri / USGS / NOAA / NASA / "
-            "Game / Overlays) — each option rendered with a tiny rotating cube "
-            "preview. The TreeViewPro below it drives the active stack: drag to "
-            "reorder, slide for opacity, ⋮ for actions.",
-            badge="dl2.EasyButton + dmc.Popover + TreeViewPro",
-        ),
         dmc.Grid(
             [
                 dmc.GridCol(

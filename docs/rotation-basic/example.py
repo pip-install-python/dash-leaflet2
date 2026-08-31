@@ -25,7 +25,7 @@ from dash import Input, Output, State, callback, clientside_callback, ctx, dcc, 
 from dash_iconify import DashIconify
 from dl2_tiles import VOYAGER, register_theme_swap
 from dl2_locations import LONDON
-from dl2_shared import header, info_panel
+from dl2_shared import info_panel
 
 # Basemap pair for this page. dl2_tiles owns the light/dark wiring so
 # every example themes the same way — see register_theme_swap below.
@@ -37,14 +37,6 @@ ATTR = TILES.attribution()
 
 component = dmc.Stack(
     [
-        header(
-            "Basic Rotation",
-            "Drag the slider, press the preset compass buttons, or use the arrow "
-            "keys to rotate the map (hold Cmd / Ctrl + arrow to pan instead). "
-            "The center pin has rotateWithMap=False so it stays UPRIGHT on screen "
-            "while the map underneath rotates around it.",
-            badge="dl2.Map(bearing=) + KeyboardControl",
-        ),
         dmc.Grid(
             [
                 dmc.GridCol(

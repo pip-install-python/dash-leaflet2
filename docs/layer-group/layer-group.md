@@ -34,6 +34,20 @@ the bumping `n_clicks` counter.
 .. exec::docs.layer-group.example
     :code: false
 
+### The shape
+
+.. source::docs/layer-group/example.py
+    :region: layergroup
+    :caption: LayerGroup
+    :defaultExpanded: true
+    :withExpandedButton: false
+
+.. source::docs/layer-group/example.py
+    :region: featuregroup
+    :caption: FeatureGroup
+    :defaultExpanded: true
+    :withExpandedButton: false
+
 ### Source
 
 .. source::docs/layer-group/example.py

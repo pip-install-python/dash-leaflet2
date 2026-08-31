@@ -16,7 +16,7 @@ import dash_mantine_components as dmc
 from dash import Input, Output, State, callback, ctx
 from dl2_tiles import TRANSIT, register_theme_swap
 from dl2_locations import TORONTO
-from dl2_shared import header, info_panel
+from dl2_shared import info_panel
 
 # Basemap pair for this page — dl2_tiles owns the light/dark wiring.
 TILES = TRANSIT
@@ -32,13 +32,6 @@ def _btn(label, _id, color="gray"):
 
 component = dmc.Stack(
     [
-        header(
-            "Draw & Edit",
-            "Native v2 EditControl with dash-leaflet's prop API. Contextual sub-toolbar "
-            "(Finish / Delete last point / Cancel) appears while a tool is active; the Edit "
-            "section + its Save/Cancel/Clear-all controls appear only when shapes exist.",
-            badge="dl2.EditControl",
-        ),
         dmc.Grid(
             [
                 dmc.GridCol(

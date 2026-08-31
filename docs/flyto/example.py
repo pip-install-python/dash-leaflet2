@@ -40,7 +40,7 @@ from dash import (
 )
 from dash_iconify import DashIconify
 from dl2_tiles import POSITRON, register_theme_swap
-from dl2_shared import header, info_panel
+from dl2_shared import info_panel
 
 # Basemap pair for this page. dl2_tiles owns the light/dark wiring so
 # every example themes the same way — see register_theme_swap below.
@@ -143,15 +143,6 @@ def city_button(c):
 
 component = dmc.Stack(
     [
-        header(
-            "FlyTo — smooth viewport transitions",
-            "Setting the new `flyTo` prop on dl2.Map dispatches Leaflet 2's "
-            "`flyTo` / `setView` / `panTo` / `fitBounds` / `flyToBounds` / `panInsideBounds`. "
-            "Pair with `n_movestart` + `n_moveend` for a flying-state HUD. The grand-tour button "
-            "chains seven flyTo calls — each waits for the previous to finish before launching "
-            "the next.",
-            badge="dl2.Map.flyTo",
-        ),
         dmc.Grid(
             [
                 dmc.GridCol(

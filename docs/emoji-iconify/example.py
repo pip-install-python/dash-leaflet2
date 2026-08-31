@@ -14,25 +14,11 @@ import dash_mantine_components as dmc
 from dash import Input, Output, clientside_callback, dcc, html
 from dash_emoji_mart import DashEmojiMart
 from dash_iconify import DashIconify
-from dl2_shared import code_panel, header, map_div
+from dl2_shared import map_div
 
-CODE = """# The same DivIcon technique the compiled dl2.Marker uses:
-emoji   -> <div style="font-size:40px">{emoji}</div>
-iconify -> <iconify-icon icon="mdi:lighthouse-on" width="40"></iconify-icon>
-
-# With the compiled package it is just a prop:
-dl2.Marker(position=[56, 10], emoji="🛥️", iconSize=40)
-dl2.Marker(position=[56, 10], iconify="mdi:lighthouse-on", iconColor="#e8590c")"""
 
 component = dmc.Stack(
     [
-        header(
-            "Emoji & Iconify Markers",
-            "Pick an emoji from the live DashEmojiMart picker, or search the full Iconify "
-            "catalogue (200k+ icons via the Iconify API) — the Leaflet 2 marker's DivIcon updates "
-            "instantly. Both pickers follow the app's light/dark theme.",
-            badge="DivIcon",
-        ),
         dmc.Grid(
             [
                 dmc.GridCol(map_div("emoji-iconify", height="58vh"), span=7),
@@ -113,7 +99,6 @@ component = dmc.Stack(
                 ),
             ]
         ),
-        code_panel("How the icon is built", CODE),
         dcc.Store(id="ei-iconify-status"),
     ],
     gap="md",

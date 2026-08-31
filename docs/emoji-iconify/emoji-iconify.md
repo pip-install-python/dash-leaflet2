@@ -28,6 +28,18 @@ runtime via clientside callbacks that call into the JS-mounted map (DL2.emojiIco
 .. exec::docs.emoji-iconify.example
     :code: false
 
+### How the icon is built
+
+```python
+# The same DivIcon technique the compiled dl2.Marker uses:
+emoji   -> <div style="font-size:40px">{emoji}</div>
+iconify -> <iconify-icon icon="mdi:lighthouse-on" width="40"></iconify-icon>
+
+# With the compiled package it is just a prop:
+dl2.Marker(position=[56, 10], emoji="🛥️", iconSize=40)
+dl2.Marker(position=[56, 10], iconify="mdi:lighthouse-on", iconColor="#e8590c")
+```
+
 ### Source
 
 .. source::docs/emoji-iconify/example.py

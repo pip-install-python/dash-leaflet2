@@ -15,7 +15,7 @@ from dash import Input, Output, State, callback, clientside_callback
 from dash_iconify import DashIconify
 from dl2_tiles import ESRI_STREET, POSITRON, register_theme_swap
 from dl2_locations import PITTSBURGH
-from dl2_shared import header, info_panel
+from dl2_shared import info_panel
 
 # TWO different basemaps on purpose. A minimap that renders the same tiles as
 # the map above it is just a smaller copy; giving the overview its own, more
@@ -32,15 +32,6 @@ MINI_LIGHT = MINI_TILES.url("light")
 
 component = dmc.Stack(
     [
-        header(
-            "MiniMap",
-            "An overview map pinned to a corner of the main map. The minimap tracks the main "
-            "view's center and zoom (with a configurable offset) and draws a rectangle showing "
-            "the main viewport. Click the corner toggle to collapse / expand — same "
-            "`leaflet-control-minimap-toggle-display-<position>` class as the leaflet-minimap "
-            "plugin, native to Leaflet 2.",
-            badge="dl2.MiniMap",
-        ),
         dmc.Grid(
             [
                 dmc.GridCol(

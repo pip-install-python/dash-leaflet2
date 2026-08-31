@@ -17,43 +17,16 @@ import dash_mantine_components as dmc
 from dash import Input, Output, callback, html
 from dl2_tiles import ESRI_CANVAS, register_theme_swap
 from dl2_locations import PHILADELPHIA
-from dl2_shared import code_panel, header, info_panel
+from dl2_shared import info_panel
 
 # Basemap pair for this page — dl2_tiles owns the light/dark wiring.
 TILES = ESRI_CANVAS
 
-CODE_LG = """dl2.Map(children=[
-    dl2.TileLayer(),
-    dl2.LayerGroup(children=[
-        dl2.Marker(position=PHILADELPHIA.center),
-        dl2.Marker(position=PHILADELPHIA.at(2.2, 2.9)),
-        dl2.Marker(position=PHILADELPHIA.at(-2.2, -2.9)),
-    ]) if show_markers else None,
-])"""
 
-CODE_FG = """dl2.Map(children=[
-    dl2.TileLayer(),
-    dl2.FeatureGroup(id="fg", children=[
-        dl2.Polygon(positions=[...]),
-        dl2.Polyline(positions=[...]),
-        dl2.Circle(center=[...], radius=400),
-        dl2.Marker(position=[...]),
-    ]),
-])
-
-@callback(Output("fg-readout","children"), Input("fg","geojson"))
-def show(geojson): ..."""
 
 
 component = dmc.Stack(
     [
-        header(
-            "LayerGroup & FeatureGroup",
-            "LayerGroup bundles N layers so one switch hides them all. "
-            "FeatureGroup adds aggregate event + GeoJSON output — click any child and "
-            "n_clicks bumps; add/remove children and n_layers bumps too.",
-            badge="dl2.LayerGroup / FeatureGroup",
-        ),
 
         dmc.Title("1. LayerGroup", order=3, mt="md"),
         dmc.Grid(
@@ -91,7 +64,6 @@ component = dmc.Stack(
             ],
             gutter="md",
         ),
-        code_panel("LayerGroup", CODE_LG),
 
         dmc.Title("2. FeatureGroup", order=3, mt="md"),
         dmc.Grid(
@@ -105,6 +77,7 @@ component = dmc.Stack(
                             style={"height": "45vh"},
                             children=[
                                 dl2.TileLayer(),
+                                # region featuregroup
                                 dl2.FeatureGroup(
                                     id="fg",
                                     children=[
@@ -139,6 +112,7 @@ component = dmc.Stack(
                                         dl2.Marker(position=PHILADELPHIA.at(-1.1, -1.0)),
                                     ],
                                 ),
+                                # endregion
                             ],
                         ),
                         shadow="sm",
@@ -172,7 +146,6 @@ component = dmc.Stack(
             ],
             gutter="md",
         ),
-        code_panel("FeatureGroup", CODE_FG),
     ],
     gap="md",
 )
@@ -182,6 +155,7 @@ component = dmc.Stack(
 def render_group(show):
     if not show:
         return []
+    # region layergroup
     return dl2.LayerGroup(
         children=[
             dl2.Marker(position=PHILADELPHIA.center),
@@ -189,6 +163,7 @@ def render_group(show):
             dl2.Marker(position=PHILADELPHIA.at(-2.2, -2.9)),
         ]
     )
+    # endregion
 
 
 @callback(Output("fg-clicks", "children"), Input("fg", "n_clicks"))

@@ -11,7 +11,7 @@ import dash_mantine_components as dmc
 from dash import Input, Output, callback
 from dl2_tiles import NATGEO, register_theme_swap
 from dl2_locations import HONOLULU
-from dl2_shared import header, info_panel
+from dl2_shared import info_panel
 
 # Basemap pair for this page — dl2_tiles owns the light/dark wiring.
 TILES = NATGEO
@@ -34,14 +34,6 @@ ANCHORS = [
 
 component = dmc.Stack(
     [
-        header(
-            "Scale, FullScreen, ImageOverlay",
-            "Scale bar bottom-left (metric + imperial), fullscreen button top-left, and an "
-            "EDITABLE ImageOverlay: click it to select, then drag to move, drag the corner "
-            "dot (the anchor marker) to resize, and the top dot to rotate — bounds + rotation "
-            "round-trip back to Dash. The anchor dot follows the chosen anchor.",
-            badge="dl2.{Scale,FullScreen}Control · editable dl2.ImageOverlay",
-        ),
         dmc.Grid(
             [
                 dmc.GridCol(

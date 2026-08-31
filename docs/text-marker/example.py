@@ -14,7 +14,7 @@ import dash_mantine_components as dmc
 from dash import Input, Output, callback, clientside_callback
 from dl2_tiles import SATELLITE, register_theme_swap
 from dl2_locations import SAN_FRANCISCO
-from dl2_shared import header, info_panel
+from dl2_shared import info_panel
 
 # Basemap pair for this page. dl2_tiles owns the light/dark wiring so
 # every example themes the same way — see register_theme_swap below.
@@ -86,14 +86,6 @@ def _map():
 
 component = dmc.Stack(
     [
-        header(
-            "TextMarker — editable map captions",
-            "Place styled text on the map like a Marker. Drag to move, double-click to "
-            "edit, resize/rotate with the on-canvas handles, and restyle from the glass "
-            "toolbar — or drive every prop from the right. Position, text, rotation, font "
-            "size, and color all round-trip back to Dash.",
-            badge="dl2.TextMarker · EditControl text tool",
-        ),
         dmc.Grid(
             [
                 dmc.GridCol(

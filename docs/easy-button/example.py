@@ -20,7 +20,7 @@ from dash_emoji_mart import DashEmojiMart
 from dash_iconify import DashIconify
 from dl2_tiles import ESRI_CANVAS, register_theme_swap
 from dl2_locations import DENVER
-from dl2_shared import header, info_panel
+from dl2_shared import info_panel
 
 # CARTO Positron (light) + Dark Matter — the standard light/dark pair the rest of the
 # showcase already uses (see assets/leaflet2_maps.js). The tile URL is swapped at
@@ -88,14 +88,6 @@ def form_layout(pending):
 
 component = dmc.Stack(
     [
-        header(
-            "Easy Button — marker creation flow",
-            "Click the smile button on the map → emoji picker opens to its right and you enter "
-            "create mode. Click the map to drop a draggable marker; a form popup opens above it "
-            "for name + type. Picking a new emoji updates the marker icon live. Create finalizes; "
-            "Cancel discards.",
-            badge="dl2.EasyButton",
-        ),
         # Toggle button for the side panel. Mirrors /resize-observer's UX so this page
         # gets the same "expand for full-screen map / collapse to see context" affordance.
         dmc.Button(

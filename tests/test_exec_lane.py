@@ -42,6 +42,18 @@ UNPAIRED = """# Page
 Some prose.
 
 .. exec::docs.home.example
+
+More prose.
+"""
+
+# `:code: false` is the author saying "this module is plumbing for an
+# embed, not documentation" (muischeduler). Rendering it into the machine
+# lane publishes what the browser lane deliberately hides — and silently,
+# because the browser keeps looking right. This repo shipped that inversion
+# on all three of its own unpaired directives before the correction.
+HIDDEN = """# Page
+
+.. exec::docs.home.example
     :code: false
 
 More prose.
@@ -50,7 +62,6 @@ More prose.
 PAIRED = """# Page
 
 .. exec::docs.home.example
-    :code: false
 
 Source code:
 
@@ -64,7 +75,6 @@ Source code:
 DIFFERENT_TARGET = """# Page
 
 .. exec::docs.home.example
-    :code: false
 
 .. source::docs/home/video.py
 """
@@ -98,16 +108,19 @@ def _needle() -> str:
     """
     src = (REPO / "docs" / "home" / "example.py").read_text()
     for line in src.split("\n"):
-        # PORTED anchor: upstream looks for a top-level `def`, which its
-        # example modules have. This fork's showcase convention is a
-        # module-level `component = ...` with no functions at all, so the
-        # anchor is the first top-level STATEMENT of either shape. Still
-        # read at run time and never a literal — that property is the point.
-        if line.startswith("def ") or (
-            line[:1].isalpha() and " = " in line and not line.startswith(" ")
-        ):
+        if line.startswith("def "):
             return line
-    pytest.fail("docs/home/example.py has no top-level statement to anchor on")
+    # PORTED FALLBACK: this fork's showcase modules export a module-level
+    # `component = dmc.Stack(...)` and define no functions at all, so
+    # upstream's `def `-only search finds nothing here. The fork-invariant
+    # form is "first top-level statement" — still read at run time, never a
+    # literal, which is the property that matters. Multi-line-string openers
+    # (`X = """...`) are skipped: their first line is a poor anchor.
+    for line in src.split("\n"):
+        if (line[:1].isalpha() and " = " in line and not line.startswith(" ")
+                and '"""' not in line and "'''" not in line):
+            return line
+    pytest.fail("example.py has no top-level statement to anchor the pin on")
 
 
 def test_the_needle_is_really_in_the_module():
@@ -122,7 +135,28 @@ def test_an_unpaired_exec_renders_its_module_source(app_module):
     assert _needle() in out, "the exec'd component's code never reached the prose"
     assert "```python" in out
     assert ".. exec::" not in out, "the raw directive line survived into the prose"
-    assert ":code:" not in out, "the directive's option line was left behind as prose"
+
+
+def test_a_code_false_directive_withholds_the_source_but_says_so(app_module):
+    """The author's signal is honoured, and the gap is VISIBLE.
+
+    Skipping silently would leave the same shape as the defect: a machine
+    document with nothing where a component is. Broken, hidden and absent
+    must not look alike.
+    """
+    out = _expand(HIDDEN)
+    assert _needle() not in out, "`:code: false` source was published to the machine lane"
+    assert "source withheld" in out and "example.py" in out, (
+        "the withheld component left no trace at all"
+    )
+    # Line-exact, not a substring: the marker itself quotes `:code: false`,
+    # so a substring assertion matches the pin's own output. That is the
+    # third time in this round a check matched prose ABOUT the thing it was
+    # asked to find — the UA grep flagged its own comment, and before that a
+    # naive count read fenced documentation as defects.
+    assert not any(ln.strip() == ":code: false" for ln in out.split("\n")), (
+        "the directive's option line was left behind as prose"
+    )
 
 
 def test_a_paired_exec_renders_once_not_twice(app_module):
@@ -194,12 +228,12 @@ def test_every_exec_in_this_repos_docs_reaches_the_machine_lane(client, app_modu
                 continue
             target = REPO / (m.group(1).strip().replace(".", "/") + ".py")
             body = md.read_text()
-            # PORTED: this fork's frontmatter QUOTES its values
-            # (`endpoint: "/attribution"`), so the raw capture built
-            # `/"/attribution"/llms.txt` and every page looked like a
-            # mechanism-4 leak. Strip the quotes rather than the pin.
-            endpoint = re.search(r"^endpoint:\s*(\S+)", body, re.M).group(1)
-            endpoint = endpoint.strip("\"'")
+            # `.strip("\"'")` — a fork whose frontmatter QUOTES its values
+            # (`endpoint: "/attribution"`) otherwise builds
+            # `/"/attribution"/llms.txt`, gets "llms.txt not available", and
+            # sees every page reported as a mechanism-4 leak: a wall of false
+            # failures on a pin that is otherwise right (leaflet, 2026-08-31).
+            endpoint = re.search(r"^endpoint:\s*(\S+)", body, re.M).group(1).strip("\"'")
             url = f"{endpoint.rstrip('/')}/llms.txt"
             doc = client.get(url).text
             anchors = [
@@ -207,8 +241,13 @@ def test_every_exec_in_this_repos_docs_reaches_the_machine_lane(client, app_modu
                 if ln.startswith("def ") or ln.startswith("component = ")
             ]
             assert anchors, f"{target} has no anchor line to check"
-            assert anchors[0] in doc, (
-                f"{url} does not carry {target.name}'s code — mechanism 4"
+            # Either the code reached the lane, or the author withheld it with
+            # `:code: false` and the document SAYS SO. What is not acceptable
+            # is silence, which is the defect this whole file exists for.
+            withheld = "source withheld" in doc and target.name in doc
+            assert anchors[0] in doc or withheld, (
+                f"{url} carries neither {target.name}'s code nor a withheld "
+                f"marker for it — mechanism 4"
             )
             checked += 1
     assert checked >= 3, f"only {checked} exec directives walked; the sweep found nothing"

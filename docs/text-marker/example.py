@@ -14,7 +14,7 @@ import dash_mantine_components as dmc
 from dash import Input, Output, callback, clientside_callback
 from dl2_tiles import SATELLITE, register_theme_swap
 from dl2_locations import SAN_FRANCISCO
-from dl2_shared import code_panel, header, info_panel
+from dl2_shared import header, info_panel
 
 # Basemap pair for this page. dl2_tiles owns the light/dark wiring so
 # every example themes the same way — see register_theme_swap below.
@@ -30,38 +30,9 @@ ANCHORS = [
     "bottom-left", "bottom", "bottom-right",
 ]
 
-CODE = """import dash_leaflet2 as dl2
-
-dl2.Map(center=[37.808, -122.409], zoom=14, children=[
-    dl2.TileLayer(),
-
-    # A caption you place like a Marker: drag to move, double-click to edit,
-    # and (when selected) resize / rotate with the on-canvas handles.
-    dl2.TextMarker(
-        id="cap",
-        text="Fisherman's Wharf",
-        position=[37.808, -122.409],
-        color="#0b3d66", fontSize=26, fontWeight=700,
-        backgroundColor="rgba(255,255,255,0.6)",
-        selected=True,            # shows the handles + style toolbar
-    ),
-
-    # scaleWithZoom keeps a fixed GROUND size (grows on screen as you zoom in).
-    dl2.TextMarker(text="PIER 39", position=[37.8087, -122.4098],
-                   color="#c92a2a", fontSize=16, scaleWithZoom=True),
-
-    # Route B — the EditControl 'text' tool: click the T, click the map, type.
-    # Captions serialize as kind:"text" Point features in EditControl.geojson.
-    dl2.EditControl(id="edit", draw={"text": True}),
-])
-
-# read it back
-@callback(Output("out", "children"), Input("cap", "position"),
-          Input("cap", "text"), Input("cap", "n_edits"))
-def show(pos, text, n_edits): ...
-"""
 
 
+# region minimal
 def _map():
     return dl2.Map(
         id="tm-map",
@@ -70,6 +41,9 @@ def _map():
         style={"height": "62vh"},
         children=[
             dl2.TileLayer(id="tm-tile", url=TILE_URL, attribution=ATTR),
+            # A caption you place like a Marker: drag to move, double-click
+            # to edit, and (when selected) resize / rotate with the
+            # on-canvas handles.
             dl2.TextMarker(
                 id="tm-cap",
                 text="Fisherman's Wharf",
@@ -81,6 +55,8 @@ def _map():
                 anchor="center",
                 selected=True,
             ),
+            # scaleWithZoom keeps a fixed GROUND size, so it grows on
+            # screen as you zoom in.
             dl2.TextMarker(
                 id="tm-geo",
                 text="PIER 39",
@@ -90,6 +66,9 @@ def _map():
                 fontWeight=700,
                 scaleWithZoom=True,
             ),
+            # Route B — the EditControl 'text' tool: click the T, click the
+            # map, type. Captions serialize as kind:"text" Point features in
+            # EditControl.geojson.
             dl2.EditControl(
                 id="tm-edit",
                 position="topright",
@@ -102,6 +81,7 @@ def _map():
             ),
         ],
     )
+# endregion
 
 
 component = dmc.Stack(
@@ -180,7 +160,6 @@ component = dmc.Stack(
             ],
             gutter="md",
         ),
-        code_panel("A caption that places, styles, and round-trips like a Marker", CODE),
     ],
     gap="md",
 )

@@ -77,6 +77,14 @@ round-trip as every other shape — a GeoJSON `Point` carrying the caption + sty
 In edit mode the caption is draggable and double-click re-opens the inline editor. Enable it
 per-tool with `draw={"text": True}` (and disable the others to get a text-only toolbar).
 
+### The shape
+
+.. source::docs/text-marker/example.py
+    :region: minimal
+    :caption: A caption that places, styles, and round-trips like a Marker
+    :defaultExpanded: true
+    :withExpandedButton: false
+
 ### Source
 
 .. source::docs/text-marker/example.py

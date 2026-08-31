@@ -31,6 +31,20 @@ default (without our component, no box appears).
 .. exec::docs.attribution.example
     :code: false
 
+### The shape
+
+.. source::docs/attribution/example.py
+    :region: map
+    :caption: `attributionControl=False` suppresses Leaflet 2's built-in box
+    :defaultExpanded: true
+    :withExpandedButton: false
+
+.. source::docs/attribution/example.py
+    :region: control
+    :caption: dl2.AttributionControl — explicit positioning + custom prefix
+    :defaultExpanded: true
+    :withExpandedButton: false
+
 ### Source
 
 .. source::docs/attribution/example.py

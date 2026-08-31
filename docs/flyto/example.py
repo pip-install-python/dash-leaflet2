@@ -40,7 +40,7 @@ from dash import (
 )
 from dash_iconify import DashIconify
 from dl2_tiles import POSITRON, register_theme_swap
-from dl2_shared import code_panel, header, info_panel
+from dl2_shared import header, info_panel
 
 # Basemap pair for this page. dl2_tiles owns the light/dark wiring so
 # every example themes the same way — see register_theme_swap below.
@@ -124,30 +124,6 @@ START = [25.0, -30.0]  # Atlantic — a "neutral" starting view
 START_ZOOM = 3
 
 
-CODE = """# Smooth viewport transitions via the new MUTABLE `flyTo` prop.
-
-dl2.Map(id="m", flyTo=None, center=[25, -30], zoom=3, children=[dl2.TileLayer()])
-
-@callback(Output("m", "flyTo"),
-          Input("paris-btn", "n_clicks"),
-          State("m", "flyTo"),
-          prevent_initial_call=True)
-def go_to_paris(n, prev):
-    bump = (prev or {}).get("n_clicks", 0) + 1
-    return {
-        "transition": "flyTo",
-        "center": [48.864716, 2.349014],
-        "zoom": 12,
-        "options": {"duration": 2.5, "easeLinearity": 0.25},
-        "n_clicks": bump,
-    }
-
-# "Flying..." indicator:  n_movestart > n_moveend  -->  in transit.
-@callback(Output("hud", "children"),
-          Input("m", "n_movestart"), Input("m", "n_moveend"))
-def status(start, end):
-    return "FLYING…" if (start or 0) > (end or 0) else "IDLE"
-"""
 
 
 # ---- layout ----------------------------------------------------------------
@@ -180,6 +156,7 @@ component = dmc.Stack(
             [
                 dmc.GridCol(
                     dmc.Paper(
+                        # region map
                         dl2.Map(
                             id="fly-map",
                             center=START,
@@ -203,6 +180,7 @@ component = dmc.Stack(
                                 ],
                             ],
                         ),
+                        # endregion
                         shadow="sm",
                         radius="md",
                         withBorder=True,
@@ -449,7 +427,6 @@ component = dmc.Stack(
                 ),
             ]
         ),
-        code_panel("dl2.Map.flyTo — trigger + HUD pattern", CODE),
         # Tour driver: stepper + tick keep the grand-tour moving from city to city.
         dcc.Store(id="fly-tour-state", data={"running": False, "i": -1}),
         dcc.Interval(id="fly-tour-tick", interval=400, disabled=True),

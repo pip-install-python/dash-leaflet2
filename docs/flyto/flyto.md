@@ -41,6 +41,14 @@ Trigger payload shape:
 .. exec::docs.flyto.example
     :code: false
 
+### The shape
+
+.. source::docs/flyto/example.py
+    :region: map
+    :caption: dl2.Map.flyTo — trigger + HUD pattern
+    :defaultExpanded: true
+    :withExpandedButton: false
+
 ### Source
 
 .. source::docs/flyto/example.py

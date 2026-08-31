@@ -13,7 +13,7 @@ import dash_mantine_components as dmc
 from dash import Input, Output, callback
 from dl2_tiles import CYCLE, register_theme_swap
 from dl2_locations import NEW_ORLEANS
-from dl2_shared import code_panel, header, info_panel
+from dl2_shared import header, info_panel
 
 # Basemap pair for this page — dl2_tiles owns the light/dark wiring.
 TILES = CYCLE
@@ -22,21 +22,6 @@ TILES = CYCLE
 # demo that clamps or drapes something, wherever that demo is set.
 HARBOR_BOUNDS = NEW_ORLEANS.bounds(8.35, 9.83)
 
-CODE = """dl2.Map(
-    center=[29.9511, -90.0715],
-    zoom=12,
-    minZoom=10,                                # can't zoom out past 10
-    maxZoom=18,                                # can't zoom in past 18
-    maxBounds=[[29.876, -90.174], [30.026, -89.969]],  # pan-clamped to the riverfront
-    zoomControl=True,                          # +/- buttons (constructor-only)
-    keyboard=True,                             # arrow keys (mutable)
-    dragging=True,                             # pointer drag-pan (mutable)
-    scrollWheelZoom=True,                      # mouse-wheel zoom (mutable)
-    doubleClickZoom=True,                      # dbl-click zoom (mutable)
-    boxZoom=True,                              # shift-drag box-zoom (mutable)
-    pinchZoom=True,                            # touch pinch-zoom (mutable; v2 name for touchZoom)
-    children=[dl2.TileLayer()],
-)"""
 
 component = dmc.Stack(
     [
@@ -51,6 +36,7 @@ component = dmc.Stack(
             [
                 dmc.GridCol(
                     dmc.Paper(
+                        # region map
                         dl2.Map(
                             id="mpp-map",
                             center=NEW_ORLEANS.center,
@@ -68,6 +54,7 @@ component = dmc.Stack(
                             style={"height": "55vh"},
                             children=[dl2.TileLayer(id="mpp-tile", **TILES.kwargs("light"))],
                         ),
+                        # endregion
                         shadow="sm",
                         radius="md",
                         withBorder=True,
@@ -130,7 +117,6 @@ component = dmc.Stack(
             ],
             gutter="md",
         ),
-        code_panel("Map with the new pro props", CODE),
     ],
     gap="md",
 )

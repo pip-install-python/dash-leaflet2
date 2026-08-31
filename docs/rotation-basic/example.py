@@ -25,7 +25,7 @@ from dash import Input, Output, State, callback, clientside_callback, ctx, dcc, 
 from dash_iconify import DashIconify
 from dl2_tiles import VOYAGER, register_theme_swap
 from dl2_locations import LONDON
-from dl2_shared import code_panel, header, info_panel
+from dl2_shared import header, info_panel
 
 # Basemap pair for this page. dl2_tiles owns the light/dark wiring so
 # every example themes the same way — see register_theme_swap below.
@@ -33,31 +33,6 @@ TILES = VOYAGER
 TILE_URL = TILES.url("light")
 ATTR = TILES.attribution()
 
-CODE = """dl2.Map(
-    id="rb-map",
-    center=[51.505, -0.09],
-    zoom=13,
-    bearing=0,           # NEW: CSS-rotated map pane
-    children=[
-        dl2.TileLayer(url=TILE_URL),
-        # KeyboardControl: arrows rotate the map, Cmd/Ctrl+Arrow pans.
-        dl2.KeyboardControl(id="rb-kbd", bearingStep=5, panStep=80),
-        # rotateWithMap=False keeps the icon at a fixed SCREEN orientation
-        # (the home icon stays upright even when the map underneath spins).
-        dl2.Marker(position=[51.505, -0.09], iconify="mdi:home",
-                   rotateWithMap=False),
-    ],
-)
-
-# Slider -> map.bearing (live)
-@callback(Output("rb-map", "bearing"), Input("rb-slider", "value"))
-def set_bearing(deg): return deg
-
-# Map -> Python: viewport.bearing changes when KeyboardControl rotates
-@callback(Output("rb-slider", "value"),
-          Input("rb-map", "viewport"),
-          prevent_initial_call=True)
-def echo_bearing(vp): return (vp or {}).get("bearing", 0)"""
 
 
 component = dmc.Stack(
@@ -74,6 +49,7 @@ component = dmc.Stack(
             [
                 dmc.GridCol(
                     dmc.Paper(
+                        # region map
                         dl2.Map(
                             id="rb-map",
                             center=LONDON.center,
@@ -104,6 +80,7 @@ component = dmc.Stack(
                                 ),
                             ],
                         ),
+                        # endregion
                         shadow="sm",
                         radius="md",
                         withBorder=True,
@@ -244,7 +221,6 @@ component = dmc.Stack(
                 ),
             ]
         ),
-        code_panel("Pattern", CODE),
     ],
     gap="md",
 )

@@ -60,6 +60,14 @@ picks and pushes new state back — the Clear button in the demo is one line.
 .. exec::docs.tile-selector.example
     :code: false
 
+### The shape
+
+.. source::docs/tile-selector/example.py
+    :region: map
+    :caption: Usage
+    :defaultExpanded: true
+    :withExpandedButton: false
+
 ### Source
 
 .. source::docs/tile-selector/example.py

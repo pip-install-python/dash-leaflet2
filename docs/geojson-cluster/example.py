@@ -14,7 +14,7 @@ import dash_mantine_components as dmc
 from dash import Input, Output, callback, html
 from dl2_tiles import OCEAN, register_theme_swap
 from dl2_locations import SAN_DIEGO
-from dl2_shared import code_panel, header, info_panel
+from dl2_shared import header, info_panel
 
 # Basemap pair for this page — dl2_tiles owns the light/dark wiring.
 TILES = OCEAN
@@ -98,30 +98,6 @@ function (feature, latlng, index, ctx) {
 }
 """
 
-CODE = """dl2.GeoJSON(
-    id="cluster-geo",
-    data=feature_collection,                # 200 vessel points
-    cluster=True,
-    superClusterOptions={"radius": 80, "minPoints": 2, "maxZoom": 16},
-    zoomToBoundsOnClick=True,
-    hideout={"colors": {"fishing": "#4dabf7", "sailing": "#69db7c", ...}},
-    pointToLayer='''
-        function (feature, latlng, ctx) {
-            const color = ctx.hideout.colors[feature.properties.category] || '#868e96';
-            return new ctx.leaflet.CircleMarker(latlng, {radius: 6, color, fillOpacity: 0.85});
-        }
-    ''',
-    clusterToLayer='''
-        function (feature, latlng, index, ctx) {
-            const count = feature.properties.point_count;
-            // ... figure out the dominant category from the cluster's leaves,
-            //     build a colored DivIcon
-            return new ctx.leaflet.Marker(latlng, {icon: ...});
-        }
-    ''',
-)"""
-
-
 component = dmc.Stack(
     [
         header(
@@ -143,6 +119,7 @@ component = dmc.Stack(
                             style={"height": "60vh"},
                             children=[
                                 dl2.TileLayer(id="cl-tile", **TILES.kwargs("light")),
+                                # region map
                                 dl2.GeoJSON(
                                     id="cl-geo",
                                     data=POINTS,
@@ -157,6 +134,7 @@ component = dmc.Stack(
                                     pointToLayer=POINT_TO_LAYER,
                                     clusterToLayer=CLUSTER_TO_LAYER,
                                 ),
+                                # endregion
                             ],
                         ),
                         shadow="sm",
@@ -218,7 +196,6 @@ component = dmc.Stack(
             ],
             gutter="md",
         ),
-        code_panel("dl2.GeoJSON with clustering", CODE),
     ],
     gap="md",
 )

@@ -41,6 +41,14 @@ walkthrough plays, and so on.
 .. exec::docs.map-pro-props.example
     :code: false
 
+### The shape
+
+.. source::docs/map-pro-props/example.py
+    :region: map
+    :caption: Map with the new pro props
+    :defaultExpanded: true
+    :withExpandedButton: false
+
 ### Source
 
 .. source::docs/map-pro-props/example.py

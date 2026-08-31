@@ -15,7 +15,7 @@ from dash import Input, Output, State, callback, clientside_callback
 from dash_iconify import DashIconify
 from dl2_tiles import ESRI_STREET, POSITRON, register_theme_swap
 from dl2_locations import PITTSBURGH
-from dl2_shared import code_panel, header, info_panel
+from dl2_shared import header, info_panel
 
 # TWO different basemaps on purpose. A minimap that renders the same tiles as
 # the map above it is just a smaller copy; giving the overview its own, more
@@ -28,28 +28,6 @@ CARTO_LIGHT = MAIN_TILES.url("light")
 ATTR = MAIN_TILES.attribution()
 MINI_LIGHT = MINI_TILES.url("light")
 
-CODE = """dl2.Map(children=[
-    dl2.TileLayer(url=ESRI_STREET_LIGHT),      # detailed cartography
-    dl2.MiniMap(
-        id="mini",
-        # A DIFFERENT basemap to the main map: the inset is for context,
-        # so it wants generalised tiles, not a smaller copy of the detail.
-        position="bottomright",
-        url=CARTO_POSITRON_LIGHT,
-        width=160,
-        height=160,
-        zoomLevelOffset=-5,
-        toggleDisplay=True,
-    ),
-])
-
-# The corner toggle is two-way: clicks round-trip; Python can drive it too.
-@callback(Output("mini", "minimized"),
-          Input("mini-collapse", "n_clicks"),
-          State("mini", "minimized"),
-          prevent_initial_call=True)
-def collapse(_, current):
-    return not bool(current)"""
 
 
 component = dmc.Stack(
@@ -67,6 +45,7 @@ component = dmc.Stack(
             [
                 dmc.GridCol(
                     dmc.Paper(
+                        # region map
                         dl2.Map(
                             id="mini-map",
                             center=PITTSBURGH.center,
@@ -94,6 +73,7 @@ component = dmc.Stack(
                                 ),
                             ],
                         ),
+                        # endregion
                         shadow="sm",
                         radius="md",
                         withBorder=True,
@@ -187,7 +167,6 @@ component = dmc.Stack(
                 ),
             ]
         ),
-        code_panel("dl2.MiniMap — placement + two-way toggle", CODE),
     ],
     gap="md",
 )

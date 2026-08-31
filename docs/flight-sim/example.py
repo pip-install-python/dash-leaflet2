@@ -35,7 +35,7 @@ from dash import Input, Output, State, callback, clientside_callback, dcc, html
 from dash_iconify import DashIconify
 from dl2_tiles import ESRI_STREET, register_theme_swap
 from dl2_locations import MIAMI
-from dl2_shared import code_panel, header, info_panel
+from dl2_shared import header, info_panel
 
 # Basemap pair for this page. dl2_tiles owns the light/dark wiring so
 # every example themes the same way — see register_theme_swap below.
@@ -64,25 +64,6 @@ TURN_RATE = 90.0  # deg/sec of heading change while turning
 AIRPLANE_SRC = "/assets/sprites/airplane_with_shadow.webp"
 AIRPLANE_SIZE = 68  # bumped from 56 to give the propellers + stars room to read
 
-CODE = """# Map stays north-up. The aircraft sprite rotates to face the heading.
-dl2.Map(id="fs-map", center=START, zoom=15,
-        children=[
-            dl2.TileLayer(...),
-            dl2.Marker(id="fs-aircraft", position=START,
-                       icon={"iconUrl": AIRPLANE_SRC,
-                             "iconSize": [56, 56], "iconAnchor": [28, 28]},
-                       rotateWithMap=False,   # decoupled from map.bearing
-                       rotationAngle=0),      # rAF loop drives this to heading
-        ])
-
-# A single clientside callback installs the rAF loop. It:
-#   - reads keyboard state (ArrowLeft/Right/Up/Down + Space) and the joystick
-#     (window._dl2_joystick = {x, y})
-#   - integrates position, heading, speed
-#   - sets fs-aircraft.position via set_props
-#   - sets fs-aircraft.rotationAngle via set_props  ← the marker rotates
-#   - sets fs-map.center via set_props (camera follows)
-#   - updates the HUD displays directly (set_props on the badges)"""
 
 
 def _joystick_div(prefix: str):
@@ -135,6 +116,7 @@ component = dmc.Stack(
                             # on desktop, 55vh on mobile) so the responsive height
                             # doesn't require an inline style dict.
                             dmc.Paper(
+                                # region map
                                 dl2.Map(
                                     id="fs-map",
                                     center=START,
@@ -177,6 +159,7 @@ component = dmc.Stack(
                                         ),
                                     ],
                                 ),
+                                # endregion
                                 className="dl2-sim-map-paper",
                                 shadow="sm",
                                 radius="md",
@@ -336,7 +319,6 @@ component = dmc.Stack(
                 ),
             ]
         ),
-        code_panel("Pattern", CODE),
         dcc.Store(id="fs-tick", data=0),
     ],
     gap="md",

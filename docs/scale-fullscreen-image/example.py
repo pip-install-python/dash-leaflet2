@@ -11,7 +11,7 @@ import dash_mantine_components as dmc
 from dash import Input, Output, callback
 from dl2_tiles import NATGEO, register_theme_swap
 from dl2_locations import HONOLULU
-from dl2_shared import code_panel, header, info_panel
+from dl2_shared import header, info_panel
 
 # Basemap pair for this page — dl2_tiles owns the light/dark wiring.
 TILES = NATGEO
@@ -31,25 +31,6 @@ ANCHORS = [
     "bottom-left", "bottom", "bottom-right",
 ]
 
-CODE = """dl2.Map(center=[21.3069, -157.8583], zoom=12, children=[
-    dl2.TileLayer(),
-    dl2.ScaleControl(position="bottomleft", metric=True, imperial=True),
-    dl2.FullScreenControl(position="topleft"),
-
-    # Editable: click to select, drag to move, corner dot resizes (about `anchor`),
-    # top dot rotates. bounds / rotation / selected round-trip back to Dash.
-    dl2.ImageOverlay(
-        id="img",
-        url="https://leafletjs.com/examples/crs-simple/uqm_map_full.png",
-        bounds=[[21.23, -157.95], [21.38, -157.76]],
-        opacity=0.85,
-        editable=True, selected=True, anchor="center", rotation=0,
-    ),
-])
-
-@callback(Output("out", "children"),
-          Input("img", "bounds"), Input("img", "rotation"))
-def show(bounds, rotation): ..."""
 
 component = dmc.Stack(
     [
@@ -65,6 +46,7 @@ component = dmc.Stack(
             [
                 dmc.GridCol(
                     dmc.Paper(
+                        # region map
                         dl2.Map(
                             id="sfi-map",
                             center=HONOLULU.center,
@@ -96,6 +78,7 @@ component = dmc.Stack(
                                 ),
                             ],
                         ),
+                        # endregion
                         shadow="sm",
                         radius="md",
                         withBorder=True,
@@ -189,7 +172,6 @@ component = dmc.Stack(
             ],
             gutter="md",
         ),
-        code_panel("Three new pieces in one map", CODE),
     ],
     gap="md",
 )

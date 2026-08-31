@@ -41,6 +41,14 @@ no-op on it, so the map can never end up empty.
 .. exec::docs.tile-layers-pro.example
     :code: false
 
+### The shape
+
+.. source::docs/tile-layers-pro/example.py
+    :region: map
+    :caption: Single-store pattern
+    :defaultExpanded: true
+    :withExpandedButton: false
+
 ### Source
 
 .. source::docs/tile-layers-pro/example.py

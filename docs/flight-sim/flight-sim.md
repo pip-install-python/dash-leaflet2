@@ -46,6 +46,14 @@ self-throttling to display refresh, paused when the tab is hidden.
 .. exec::docs.flight-sim.example
     :code: false
 
+### The shape
+
+.. source::docs/flight-sim/example.py
+    :region: map
+    :caption: Pattern
+    :defaultExpanded: true
+    :withExpandedButton: false
+
 ### Source
 
 .. source::docs/flight-sim/example.py

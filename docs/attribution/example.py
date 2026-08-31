@@ -29,7 +29,7 @@ from dash import (
 from dash_iconify import DashIconify
 from dl2_tiles import VOYAGER, register_theme_swap
 from dl2_locations import BOSTON
-from dl2_shared import code_panel, header, info_panel
+from dl2_shared import header, info_panel
 
 # Basemap pair for this page. dl2_tiles owns the light/dark wiring so
 # every example themes the same way — see register_theme_swap below.
@@ -53,25 +53,6 @@ PREFIX_PRESETS = {
     "none": False,
 }
 
-CODE = """import dash_leaflet2 as dl2
-
-dl2.Map(
-    attributionControl=False,          # suppress Leaflet 2's built-in control
-    children=[
-        dl2.TileLayer(),
-        dl2.AttributionControl(
-            id="attr",
-            position="bottomright",
-            prefix='<a href="https://pipinstallpython.com">dash-leaflet2</a>',
-        ),
-    ],
-)
-
-# Both `position` and `prefix` are MUTABLE — drive them from callbacks.
-@callback(Output("attr", "prefix"), Input("custom-prefix", "value"))
-def update_prefix(text):
-    return text or False     # False hides the prefix entirely
-"""
 
 
 component = dmc.Stack(
@@ -89,6 +70,7 @@ component = dmc.Stack(
             [
                 dmc.GridCol(
                     dmc.Paper(
+                        # region map
                         dl2.Map(
                             id="attr-map",
                             center=BOSTON.center,
@@ -111,6 +93,7 @@ component = dmc.Stack(
                                 html.Div(id="attr-mount"),
                             ],
                         ),
+                        # endregion
                         shadow="sm",
                         radius="md",
                         withBorder=True,
@@ -225,9 +208,6 @@ component = dmc.Stack(
                 ),
             ]
         ),
-        code_panel(
-            "dl2.AttributionControl — explicit positioning + custom prefix", CODE
-        ),
         # Internal store: holds the resolved prefix value (string or False).
         dcc.Store(id="attr-resolved-prefix", data=PREFIX_PRESETS["branded"]),
     ],
@@ -258,11 +238,13 @@ def resolve_prefix(preset, custom):
 def render_attribution_control(mounted, position, prefix):
     if not mounted:
         return []
+    # region control
     return dl2.AttributionControl(
         id="attr-ctl",
         position=position or "bottomright",
         prefix=prefix,
     )
+    # endregion
 
 
 # ---- live readouts ----------------------------------------------------------

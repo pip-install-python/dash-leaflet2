@@ -34,6 +34,14 @@ projects (e.g. SailsBoard's harbor map) depend on:
 .. exec::docs.tilelayer-pro-props.example
     :code: false
 
+### The shape
+
+.. source::docs/tilelayer-pro-props/example.py
+    :region: map
+    :caption: Stacked TileLayers with the new props
+    :defaultExpanded: true
+    :withExpandedButton: false
+
 ### Source
 
 .. source::docs/tilelayer-pro-props/example.py

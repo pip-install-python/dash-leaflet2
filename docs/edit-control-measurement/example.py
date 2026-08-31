@@ -36,7 +36,7 @@ from dash import (
 from dash_iconify import DashIconify
 from dl2_tiles import OSM_CLASSIC, register_theme_swap
 from dl2_locations import MONTREAL
-from dl2_shared import code_panel, header, info_panel
+from dl2_shared import header, info_panel
 
 # Basemap pair for this page. dl2_tiles owns the light/dark wiring so
 # every example themes the same way — see register_theme_swap below.
@@ -56,24 +56,6 @@ PRESET_COLORS = [
     "#495057",
 ]
 
-CODE = """dl2.EditControl(
-    id="ec",
-    showMeasurementTooltips=True,   # permanent area/radius/length labels
-    measurementSystem="metric",     # 'metric' | 'imperial' (live)
-    shapeOptions={"color": "#2f9e44"},   # color of the NEXT shape (live)
-    edit={"remove": False},         # use our popover Delete instead
-)
-
-# EditControl emits, page reacts:
-#   activeTool   -> open popover, mode='create' (when truthy)
-#   action       -> capture {id} of the just-drawn shape as pending
-#   activeMode   -> mode='edit' when user clicks the edit icon
-#   featureClick -> select the clicked feature; open popover with its data
-
-# Page commands EditControl back:
-#   shapeOptions      -> next-draw color (color picker before drawing)
-#   featureUpdate     -> {id, style?, properties?, remove?, n_clicks}
-#                        applies color/name/delete live to one feature"""
 
 
 # ---- form layouts (rendered into the popover dropdown) ---------------------
@@ -208,6 +190,7 @@ component = dmc.Stack(
                         style={"position": "relative"},
                         children=[
                             dmc.Paper(
+                                # region map
                                 dl2.Map(
                                     id="ecm-map",
                                     center=MONTREAL.center,
@@ -235,6 +218,7 @@ component = dmc.Stack(
                                         ),
                                     ],
                                 ),
+                                # endregion
                                 shadow="sm",
                                 radius="md",
                                 withBorder=True,
@@ -347,7 +331,6 @@ component = dmc.Stack(
                 ),
             ]
         ),
-        code_panel("Pattern", CODE),
         # State stores
         dcc.Store(id="ecm-mode", data="view"),  # 'view' | 'create' | 'edit'
         dcc.Store(

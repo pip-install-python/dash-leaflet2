@@ -41,6 +41,22 @@ cluster and you fly to its children's bounding box.
 .. exec::docs.geojson-cluster.example
     :code: false
 
+### The shape
+
+.. source::docs/geojson-cluster/example.py
+    :region: map
+    :caption: dl2.GeoJSON with clustering
+    :defaultExpanded: true
+    :withExpandedButton: false
+
+### The shape
+
+.. source::docs/geojson-cluster/example.py
+    :region: map
+    :caption: dl2.GeoJSON with clustering
+    :defaultExpanded: true
+    :withExpandedButton: false
+
 ### Source
 
 .. source::docs/geojson-cluster/example.py

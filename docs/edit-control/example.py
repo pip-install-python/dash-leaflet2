@@ -16,7 +16,7 @@ import dash_mantine_components as dmc
 from dash import Input, Output, State, callback, ctx
 from dl2_tiles import TRANSIT, register_theme_swap
 from dl2_locations import TORONTO
-from dl2_shared import code_panel, header, info_panel
+from dl2_shared import header, info_panel
 
 # Basemap pair for this page — dl2_tiles owns the light/dark wiring.
 TILES = TRANSIT
@@ -24,26 +24,6 @@ TILES = TRANSIT
 TILE_URL = TILES.url("light")
 ATTR = TILES.attribution()
 
-CODE = '''dl2.Map(children=[
-    dl2.TileLayer(),
-    dl2.EditControl(id="ec",
-                    draw={"rectangle": False},        # disable specific tools
-                    shapeOptions={"color": "#2f9e44"})
-])
-
-# Python -> control: bump n_clicks each time, like dash-leaflet
-@callback(Output("ec", "drawToolbar"), Input("draw-poly-btn", "n_clicks"))
-def draw_polygon(n):
-    return {"mode": "polygon", "n_clicks": n}
-
-@callback(Output("ec", "editToolbar"), Input("clear-btn", "n_clicks"))
-def clear_all(n):
-    return {"mode": "remove", "action": "clear all", "n_clicks": n}
-
-# Single Input for "anything changed"
-@callback(Output("out", "children"), Input("ec", "action"))
-def react(a):
-    return f"{a}"'''
 
 
 def _btn(label, _id, color="gray"):
@@ -63,6 +43,7 @@ component = dmc.Stack(
             [
                 dmc.GridCol(
                     dmc.Paper(
+                        # region map
                         dl2.Map(
                             id="ec-map",
                             center=TORONTO.center,
@@ -83,6 +64,7 @@ component = dmc.Stack(
                                 ),
                             ],
                         ),
+                        # endregion
                         shadow="sm",
                         radius="md",
                         withBorder=True,
@@ -210,7 +192,6 @@ component = dmc.Stack(
                 },
             ),
         ),
-        code_panel("dl2.EditControl pattern (dash-leaflet API parity)", CODE),
     ],
     gap="md",
 )

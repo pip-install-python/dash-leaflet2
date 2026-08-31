@@ -25,6 +25,14 @@ the icon strip while a tool/mode is active. The Edit section appears only when s
 .. exec::docs.edit-control.example
     :code: false
 
+### The shape
+
+.. source::docs/edit-control/example.py
+    :region: map
+    :caption: dl2.EditControl pattern (dash-leaflet API parity)
+    :defaultExpanded: true
+    :withExpandedButton: false
+
 ### Source
 
 .. source::docs/edit-control/example.py

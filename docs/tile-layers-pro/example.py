@@ -46,7 +46,7 @@ from dash import (
 from dash_iconify import DashIconify
 from dash_mui_charts import TreeViewPro
 from dl2_locations import NASHVILLE
-from dl2_shared import code_panel, header, info_panel
+from dl2_shared import header, info_panel
 from _tile_catalog import (
     DEFAULT_BASE_SLUG,
     PROVIDER_OPTIONS_GROUPED,
@@ -142,38 +142,6 @@ def build_layer_group_children(order: list[str], sliders: dict[str, int]) -> lis
 
 # ---- layout -----------------------------------------------------------------
 
-CODE = """dcc.Store(id="tlp-state", data={"order": [...], "sliders": {...}})
-
-dl2.Map(children=[
-    dl2.LayerGroup(id="tlp-stack"),
-    dl2.EasyButton(id="tlp-open", icon="mdi:layers-triple-outline"),
-])
-
-# Popover anchored over the EasyButton (same trick as /easy-button)
-dmc.Popover([
-    dmc.PopoverTarget(html.Div(id="tlp-anchor")),
-    dmc.PopoverDropdown([
-        dmc.MultiSelect(
-            id="tlp-multiselect",
-            data=PROVIDER_OPTIONS_GROUPED,
-            renderOption={"function": "renderTileCubeFace",
-                          "options":  {"tilesets": renderoption_payload()}},
-        ),
-        TreeViewPro(
-            id="tlp-tree", items=build_tree_items(order),
-            itemsReordering=True, isItemEditable=True,
-            showItemControls=True, sliderValues=sliders,
-            kebabMenuItems=[{"label": "Remove layer", "value": "delete"}],
-            licenseKey=os.environ.get("MUI_PRO_API_KEY", ""),   # optional
-        ),
-    ]),
-])
-
-# One reduce-style callback maps every input (multiselect change,
-# tree reorder, slider drag, kebab Remove) into a new store value;
-# a second callback derives the LayerGroup, MultiSelect.value, and
-# the tree's items/sliderValues from that store. Single source of truth.
-"""
 
 
 def _popover():
@@ -331,6 +299,7 @@ component = dmc.Stack(
                         style={"position": "relative"},  # anchor frame for the popover
                         children=[
                             dmc.Paper(
+                                # region map
                                 dl2.Map(
                                     id="tlp-map",
                                     center=NASHVILLE.center,
@@ -357,6 +326,7 @@ component = dmc.Stack(
                                         ),
                                     ],
                                 ),
+                                # endregion
                                 shadow="sm",
                                 radius="md",
                                 withBorder=True,
@@ -410,7 +380,6 @@ component = dmc.Stack(
                 ),
             ]
         ),
-        code_panel("Single-store pattern", CODE),
         # Single source of truth. Every input (MultiSelect, tree reorder,
         # slider drag, kebab) updates this; one derivation callback rewires
         # the LayerGroup + tree props.

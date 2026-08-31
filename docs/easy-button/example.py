@@ -20,7 +20,7 @@ from dash_emoji_mart import DashEmojiMart
 from dash_iconify import DashIconify
 from dl2_tiles import ESRI_CANVAS, register_theme_swap
 from dl2_locations import DENVER
-from dl2_shared import code_panel, header, info_panel
+from dl2_shared import header, info_panel
 
 # CARTO Positron (light) + Dark Matter — the standard light/dark pair the rest of the
 # showcase already uses (see assets/leaflet2_maps.js). The tile URL is swapped at
@@ -34,21 +34,6 @@ ATTR = TILES.attribution()
 MARKER_TYPES = ["Market", "Event", "Bounty", "Other"]
 TYPE_COLORS = {"Market": "green", "Event": "blue", "Bounty": "grape", "Other": "gray"}
 
-CODE = """dl2.Map(children=[
-    dl2.TileLayer(),
-    dl2.EasyButton(id="add", icon="mdi:emoticon-happy-outline"),
-    # placed by callback after map click in create mode:
-    dl2.Marker(position=pending["lat,lng"], emoji=pending["emoji"], draggable=True,
-               children=dl2.Popup(opened=True, closeOnClick=False, closeButton=False,
-                                  children=form_layout(pending)))
-])
-
-# Popover anchored to an invisible div positioned over the EasyButton:
-dmc.Popover(opened=picker_open, position="right-start",
-            children=[
-                dmc.PopoverTarget(html.Div(id="anchor")),  # invisible, on top of the button
-                dmc.PopoverDropdown(DashEmojiMart(id="emoji")),
-            ])"""
 
 
 # ---- helpers ---------------------------------------------------------------
@@ -138,6 +123,7 @@ component = dmc.Stack(
                     style={"position": "relative"},
                     children=[
                         dmc.Paper(
+                            # region map
                             dl2.Map(
                                 id="eb-map",
                                 center=DENVER.center,
@@ -160,6 +146,7 @@ component = dmc.Stack(
                                     html.Div(id="eb-markers-container"),
                                 ],
                             ),
+                            # endregion
                             shadow="sm",
                             radius="md",
                             withBorder=True,
@@ -254,9 +241,6 @@ component = dmc.Stack(
                                         c="dimmed",
                                     ),
                                 ),
-                            ),
-                            code_panel(
-                                "dl2.EasyButton + marker-creation pattern", CODE
                             ),
                         ],
                         gap="md",

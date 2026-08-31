@@ -26,6 +26,14 @@ minimap from a button.
 .. exec::docs.minimap.example
     :code: false
 
+### The shape
+
+.. source::docs/minimap/example.py
+    :region: map
+    :caption: dl2.MiniMap — placement + two-way toggle
+    :defaultExpanded: true
+    :withExpandedButton: false
+
 ### Source
 
 .. source::docs/minimap/example.py

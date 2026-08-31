@@ -13,7 +13,7 @@ import dash_mantine_components as dmc
 from dash import Input, Output, callback, clientside_callback, html
 from dl2_tiles import POSITRON, register_theme_swap
 from dl2_locations import CHARLESTON
-from dl2_shared import code_panel, header, info_panel
+from dl2_shared import header, info_panel
 
 # 1x1 transparent PNG — replaces 404 tiles outside the bounds.
 BLANK_TILE = (
@@ -35,27 +35,6 @@ BASE_LIGHT = TILES.url("light")
 LABELS_LIGHT = "https://{s}.basemaps.cartocdn.com/rastertiles/voyager_only_labels/{z}/{x}/{y}.png"
 LABELS_DARK = "https://{s}.basemaps.cartocdn.com/rastertiles/dark_only_labels/{z}/{x}/{y}.png"
 
-CODE = """dl2.Map(center=[32.7833, -79.9333], zoom=10, children=[
-    dl2.TileLayer(
-        id="base-tile",
-        # Subdomains substituted into {s} — distribute requests across a, b, c.
-        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
-        subdomains=["a", "b", "c"],
-        detectRetina=True,        # 2x tiles on hi-DPI screens
-        minZoom=2,                # don't request tiles below world-view
-        maxZoom=18,
-        zIndex=1,
-    ),
-    dl2.TileLayer(
-        id="overlay-tile",
-        url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager_only_labels/{z}/{x}/{y}.png",
-        subdomains=["a", "b", "c", "d"],
-        bounds=[[27.93, -97.20], [28.12, -96.95]],   # only paint tiles inside this box
-        errorTileUrl=BLANK_TILE,                      # 1x1 transparent png for 404s
-        opacity=0.85,
-        zIndex=10,                                    # paint above OSM (negative = below)
-    ),
-])"""
 
 
 component = dmc.Stack(
@@ -73,6 +52,7 @@ component = dmc.Stack(
             [
                 dmc.GridCol(
                     dmc.Paper(
+                        # region map
                         dl2.Map(
                             id="tlpro-map",
                             center=CHARLESTON.center,
@@ -105,6 +85,7 @@ component = dmc.Stack(
                                 ),
                             ],
                         ),
+                        # endregion
                         shadow="sm",
                         radius="md",
                         withBorder=True,
@@ -172,7 +153,6 @@ component = dmc.Stack(
             ],
             gutter="md",
         ),
-        code_panel("Stacked TileLayers with the new props", CODE),
     ],
     gap="md",
 )

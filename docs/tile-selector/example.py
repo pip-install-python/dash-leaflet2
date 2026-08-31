@@ -23,7 +23,7 @@ from dash_iconify import DashIconify
 
 from dl2_tiles import USGS_TOPO, register_theme_swap
 from dl2_locations import AUSTIN
-from dl2_shared import code_panel, info_panel
+from dl2_shared import info_panel
 
 # Basemap pair for this page — dl2_tiles owns the light/dark wiring.
 TILES = USGS_TOPO
@@ -31,27 +31,6 @@ TILES = USGS_TOPO
 # basemap: this page's point is that the two are independent.
 OSM = "https://tile.openstreetmap.org/{z}/{x}/{y}.png"
 
-CODE = """import dash_leaflet2 as dl2
-
-dl2.Map(
-    center=[30.2672, -97.7431],
-    zoom=11,
-    children=[
-        dl2.TileLayer(url=OSM),
-        dl2.TileSelector(
-            id="tile-picker",
-            position="topright",
-            tileUrl=OSM,           # which tileset the picked URLs point at
-            hoverColor="#fa5252",  # dashed outline under the cursor
-            selectedColor="#228be6",
-        ),
-    ],
-)
-
-@callback(Output("out", "children"), Input("tile-picker", "selectedTiles"))
-def show(tiles):
-    return f"{len(tiles or [])} tiles selected"
-"""
 
 
 def _tile_row(tile):
@@ -107,6 +86,7 @@ component = dmc.Stack(
             icon=DashIconify(icon="tabler:hand-click"),
         ),
         dmc.Paper(
+            # region map
             dl2.Map(
                 id="ts-map",
                 center=AUSTIN.center,
@@ -126,6 +106,7 @@ component = dmc.Stack(
                     ),
                 ],
             ),
+            # endregion
             shadow="sm",
             radius="md",
             withBorder=True,
@@ -146,7 +127,6 @@ component = dmc.Stack(
             align="center",
         ),
         info_panel("Selected tiles", html.Div(id="ts-table")),
-        code_panel("Usage", CODE),
     ],
     gap="md",
 )

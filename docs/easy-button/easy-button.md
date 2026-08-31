@@ -29,6 +29,14 @@ Popover supports click-triggered + controlled `opened`, same visual styling.)
 .. exec::docs.easy-button.example
     :code: false
 
+### The shape
+
+.. source::docs/easy-button/example.py
+    :region: map
+    :caption: dl2.EasyButton + marker-creation pattern
+    :defaultExpanded: true
+    :withExpandedButton: false
+
 ### Source
 
 .. source::docs/easy-button/example.py

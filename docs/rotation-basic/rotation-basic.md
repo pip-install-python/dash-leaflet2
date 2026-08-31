@@ -35,6 +35,14 @@ For a basic showcase + flight/walking sims (camera-follow), this is fine.
 .. exec::docs.rotation-basic.example
     :code: false
 
+### The shape
+
+.. source::docs/rotation-basic/example.py
+    :region: map
+    :caption: Pattern
+    :defaultExpanded: true
+    :withExpandedButton: false
+
 ### Source
 
 .. source::docs/rotation-basic/example.py

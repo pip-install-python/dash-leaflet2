@@ -10,7 +10,7 @@ import dash_leaflet2 as dl2
 import dash_mantine_components as dmc
 from dash import Input, Output, State, callback
 from dl2_locations import MINNEAPOLIS
-from dl2_shared import code_panel, header, info_panel
+from dl2_shared import header, info_panel
 
 OSM = "https://tile.openstreetmap.org/{z}/{x}/{y}.png"
 CARTO_LIGHT = "https://basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png"
@@ -42,27 +42,6 @@ SENSORS = {
     ],
 }
 
-CODE = '''dl2.Map(children=[
-    dl2.LayersControl(id="lc", children=[
-        dl2.BaseLayer(dl2.TileLayer(url=CARTO_LIGHT), name="Light", checked=True),
-        dl2.BaseLayer(dl2.TileLayer(url=CARTO_DARK),  name="Dark"),
-        dl2.BaseLayer(dl2.TileLayer(url=OSM),         name="OSM"),
-        dl2.Overlay(dl2.Polygon(...),  name="Harbor zone", checked=True),
-        dl2.Overlay(dl2.Circle(...),   name="Buoy radius"),
-        dl2.Overlay(dl2.GeoJSON(data=SENSORS), name="Sensors"),
-    ]),
-])
-
-# activeBase / activeOverlays are TWO-WAY:
-@callback(Output("out", "children"),
-          Input("lc", "activeBase"), Input("lc", "activeOverlays"))
-def show(b, o):
-    return f"{b} | {o}"
-
-@callback(Output("lc", "activeBase"), Input("dark-btn", "n_clicks"),
-          prevent_initial_call=True)
-def force_dark(_):
-    return "Dark"'''
 
 component = dmc.Stack(
     [
@@ -77,6 +56,7 @@ component = dmc.Stack(
             [
                 dmc.GridCol(
                     dmc.Paper(
+                        # region map
                         dl2.Map(
                             id="lc-map",
                             center=MINNEAPOLIS.center,
@@ -144,6 +124,7 @@ component = dmc.Stack(
                                 ),
                             ],
                         ),
+                        # endregion
                         shadow="sm",
                         radius="md",
                         withBorder=True,
@@ -234,7 +215,6 @@ component = dmc.Stack(
                 ),
             ]
         ),
-        code_panel("dl2.LayersControl pattern", CODE),
     ],
     gap="md",
 )

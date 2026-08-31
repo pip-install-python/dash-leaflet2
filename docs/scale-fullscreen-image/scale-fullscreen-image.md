@@ -48,6 +48,14 @@ rotate from the top dot. Change the anchor pivot and watch the white dot follow.
 .. exec::docs.scale-fullscreen-image.example
     :code: false
 
+### The shape
+
+.. source::docs/scale-fullscreen-image/example.py
+    :region: map
+    :caption: Three new pieces in one map
+    :defaultExpanded: true
+    :withExpandedButton: false
+
 ### Source
 
 .. source::docs/scale-fullscreen-image/example.py

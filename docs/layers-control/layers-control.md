@@ -23,6 +23,14 @@ activeOverlays back to Python; Python callbacks also push those props to flip th
 .. exec::docs.layers-control.example
     :code: false
 
+### The shape
+
+.. source::docs/layers-control/example.py
+    :region: map
+    :caption: dl2.LayersControl pattern
+    :defaultExpanded: true
+    :withExpandedButton: false
+
 ### Source
 
 .. source::docs/layers-control/example.py

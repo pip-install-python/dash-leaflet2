@@ -35,6 +35,14 @@ right rail drives the unit system.
 .. exec::docs.edit-control-measurement.example
     :code: false
 
+### The shape
+
+.. source::docs/edit-control-measurement/example.py
+    :region: map
+    :caption: Pattern
+    :defaultExpanded: true
+    :withExpandedButton: false
+
 ### Source
 
 .. source::docs/edit-control-measurement/example.py

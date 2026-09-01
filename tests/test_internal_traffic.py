@@ -164,6 +164,139 @@ def test_real_traffic_is_still_counted(client):
     assert after["bot_hits"] == before["bot_hits"] + 1
 
 
+# ------------------------------------------------------- the READ table -----
+#
+# "Counted nowhere" includes the `reads` table (1.6.43 item 1). Everything
+# above this point tests `visits`, which `track_visit` has guarded since the
+# internal-traffic contract existed. `record_read` — the `on_document_read`
+# hook the 2.8.0 floor added — never learned the rule, so until this round the
+# hub's health sweep, every satellite's link audit and every post-deploy
+# battery landed in `reads` and were the busiest "vendor" on the board.
+
+
+def _ledger_reads():
+    tracker.flush()
+    try:
+        with open(analytics_path()) as f:
+            return json.load(f).get("reads", [])
+    except FileNotFoundError:
+        return []
+
+
+def test_the_drop_keys_on_the_field_the_package_actually_sends():
+    """This item's own failure mode, guarded.
+
+    The drop reads `event["ua"]`. `EVENT_FIELDS` has `ua`, NOT `user_agent` —
+    a drop keyed on the wrong name is a silent no-op that passes every
+    "no rows" assertion below by dropping nothing and being asked nothing.
+    Checked against the RESOLVED package rather than a literal, so a rename
+    between versions fails here rather than in production.
+    """
+    import importlib.metadata as md
+
+    from dash_improve_my_llms import _ledger
+
+    from pathlib import Path
+
+    assert "ua" in _ledger.EVENT_FIELDS, (
+        f"the package resolved here ({md.version('dash-improve-my-llms')}) has "
+        f"no `ua` field: {_ledger.EVENT_FIELDS}"
+    )
+    tracker_src = (Path(__file__).resolve().parent.parent
+                   / "lib" / "analytics_tracker.py").read_text()
+    body = tracker_src.split("def record_read")[1].split("def _enqueue")[0]
+    assert 'event.get("ua")' in body, "record_read does not key the drop on `ua`"
+    assert "INTERNAL_UA_TOKEN" in body, "record_read never checks the token"
+
+
+def test_an_internal_probe_writes_no_read_row(client, capsys):
+    """One probe carrying the token -> ZERO read rows, count PRINTED.
+
+    A bare "no rows" is the negative this round learned not to trust, so the
+    count goes next to the result and the positive control below proves the
+    pin cannot pass by dropping everything.
+    """
+    before = len(_ledger_reads())
+    client.get("/llms.txt", user_agent=internal_ua("network-smoke"))
+    client.get("/llms.txt", user_agent=f"{CRAWLER_UA} {INTERNAL_UA}")
+    after = len(_ledger_reads())
+    with capsys.disabled():
+        print(f"\n    internal probes: reads {before} -> {after} (delta 0 expected)")
+    assert after == before, (
+        f"internal traffic reached the read table: {after - before} row(s)"
+    )
+
+
+def test_a_real_crawler_probe_writes_exactly_one_read_row(client, capsys):
+    """The positive control, in the same file as the negative.
+
+    A `record_read` that returned unconditionally would satisfy the test
+    above; this is what stops that passing.
+    """
+    before = len(_ledger_reads())
+    client.get("/llms.txt", user_agent=CRAWLER_UA)
+    after = len(_ledger_reads())
+    with capsys.disabled():
+        print(f"    crawler probe  : reads {before} -> {after} (delta 1 expected)")
+    assert after == before + 1, (
+        f"expected exactly one read row, got {after - before}"
+    )
+
+
+def test_the_zero_above_is_the_drop_working_not_the_probe_being_silent(
+    client, monkeypatch, capsys
+):
+    """MUTATION CHECK, and the reason this file has one.
+
+    `delta 0` proves the drop only if the package WOULD have emitted a row
+    for that request. If an internal UA happened not to reach the crawler
+    lane, the assertion above would pass while `record_read` did nothing —
+    the vacuous negative this round has now produced three times.
+
+    So: neutralise the token, send the identical probe, and require the row
+    to appear. If it does, the zero above was the drop.
+    """
+    from lib import constants
+
+    monkeypatch.setattr(constants, "INTERNAL_UA_TOKEN", "\x00-never-matches")
+    before = len(_ledger_reads())
+    client.get("/llms.txt", user_agent=internal_ua("network-smoke"))
+    after = len(_ledger_reads())
+    with capsys.disabled():
+        print(f"    token neutralised: reads {before} -> {after} (delta 1 expected)")
+    assert after == before + 1, (
+        "with the token neutralised the identical probe STILL wrote no row — "
+        "so the zero in the test above says nothing about the drop"
+    )
+
+
+def test_internal_reads_never_reach_the_rollups_vendor_block(client):
+    """The number the hub actually charts.
+
+    `vendors[]` and `reads` in the daily rollup are built from this table, so
+    a token-carrying probe must not appear as a vendor row either.
+    """
+    from lib.traffic_rollup import daily_rollup, load_reads
+
+    # Scoped to the rows THIS test causes. The mutation check above
+    # deliberately writes one internal row (with the token neutralised) to
+    # prove the drop is load-bearing, so a whole-table assertion here would
+    # fail on another test's intentional fixture rather than on a defect.
+    before = len(_ledger_reads())
+    for _ in range(3):
+        client.get("/llms.txt", user_agent=internal_ua("link-audit"))
+    tracker.flush()
+    new_rows = load_reads(str(analytics_path()))[before:]
+    internal = [r for r in new_rows
+                if INTERNAL_UA_TOKEN in (r.get("ua") or "").lower()]
+    assert internal == [], f"{len(internal)} internal row(s) in the read table"
+    assert new_rows == [], f"3 internal probes wrote {len(new_rows)} row(s)"
+
+    payload = daily_rollup("leaflet", datetime.now().date()) or {}
+    for v in payload.get("vendors", []):
+        assert INTERNAL_UA_TOKEN not in str(v.get("key") or "").lower()
+
+
 # ----------------------------------------------------------------- outbound --
 
 

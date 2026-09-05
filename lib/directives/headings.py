@@ -62,6 +62,86 @@ def plain_text(node: Any) -> str:
     return plain_text(children)
 
 
+_SIZE_CACHE: dict = {}
+
+
+def _size_from_header(raw: bytes):
+    """(width, height) parsed from an image file's own header, or (None, None).
+
+    STDLIB ONLY, and that is the point — it is the template's own finding on
+    this item. Its first version used Pillow, which is installed here by two
+    BUILD-TIME scripts (`make_social_card`, `make_favicons`) and is
+    deliberately absent from requirements.txt. So in production, and on any
+    machine that had not run those tools, the size lookup silently returned
+    nothing and the feature reserved no box at all — inert everywhere except
+    the one laptop that happened to have Pillow.
+
+    PNG, JPEG and GIF cover every content image this repo ships. Anything else
+    — SVG, WebP, an unreadable file — returns (None, None), which the renderer
+    already treats as "no box", exactly as it does for a remote image.
+    """
+    # PNG: 8-byte signature, then a 25-byte IHDR whose width/height are
+    # big-endian uint32 at offsets 16 and 20.
+    if raw[:8] == b"\x89PNG\r\n\x1a\n" and len(raw) >= 24:
+        return (int.from_bytes(raw[16:20], "big"),
+                int.from_bytes(raw[20:24], "big"))
+
+    # GIF: "GIF87a"/"GIF89a", then little-endian uint16 width/height.
+    if raw[:6] in (b"GIF87a", b"GIF89a") and len(raw) >= 10:
+        return (int.from_bytes(raw[6:8], "little"),
+                int.from_bytes(raw[8:10], "little"))
+
+    # JPEG: WALK the segment chain to a Start-Of-Frame marker, whose payload
+    # carries height then width as big-endian uint16. Every other segment
+    # declares its own length, so this is a walk and not a scan — a scan would
+    # find the marker bytes inside compressed data.
+    if raw[:2] == b"\xff\xd8":
+        i = 2
+        while i + 9 < len(raw):
+            if raw[i] != 0xFF:
+                return (None, None)          # not where a marker should be
+            marker = raw[i + 1]
+            if marker in (0xD8, 0x01) or 0xD0 <= marker <= 0xD7:
+                i += 2                       # standalone marker, no payload
+                continue
+            length = int.from_bytes(raw[i + 2:i + 4], "big")
+            # SOF0-3, SOF5-7, SOF9-11, SOF13-15 carry the dimensions; the gaps
+            # (C4 DHT, C8 JPG, CC DAC) are not frame headers.
+            if marker in (0xC0, 0xC1, 0xC2, 0xC3, 0xC5, 0xC6, 0xC7,
+                          0xC9, 0xCA, 0xCB, 0xCD, 0xCE, 0xCF):
+                return (int.from_bytes(raw[i + 7:i + 9], "big"),
+                        int.from_bytes(raw[i + 5:i + 7], "big"))
+            if length <= 0:
+                return (None, None)
+            i += 2 + length
+    return (None, None)
+
+
+def _intrinsic_size(url: str):
+    """(width, height) for an image this repo serves, else (None, None).
+
+    Local only, and deliberately: a remote URL cannot be measured at render
+    time without fetching it, and a render that reaches the network is a
+    render that can hang.
+    """
+    if url in _SIZE_CACHE:
+        return _SIZE_CACHE[url]
+    size = (None, None)
+    if not url.startswith(("http://", "https://", "//", "data:")):
+        try:
+            from pathlib import Path
+
+            rel = url.split("?", 1)[0].lstrip("/")
+            path = Path(__file__).resolve().parents[2] / rel
+            if path.is_file():
+                with open(path, "rb") as handle:
+                    size = _size_from_header(handle.read(4096))
+        except Exception:
+            size = (None, None)
+    _SIZE_CACHE[url] = size
+    return size
+
+
 def patch_renderer() -> None:
     """Replace ``DashRenderer.heading`` with a version that reads all tokens.
 
@@ -92,7 +172,32 @@ def patch_renderer() -> None:
     def image(self, text, url, title=None, **attrs):
         from dash import html
 
+        # Explicit width/height where they can be KNOWN (1.6.44 item 6f).
+        # Markdown carries no dimensions, so an image reserves no box and the
+        # prose under it jumps when it loads. For an image served out of this
+        # repo's own tree the intrinsic size is readable off the file, and the
+        # two attributes give the browser an aspect ratio to reserve;
+        # `maxWidth: 100%` + `height: auto` keep it responsive, which is the
+        # combination that fixes layout shift instead of trading it for
+        # overflow. A REMOTE image (a shields.io badge) has no readable size
+        # at render time and gets none — no box beats a wrong box.
+        #
+        # `loading="lazy"` and `decoding="async"` CANNOT SHIP, and this is
+        # measured on the pinned Dash rather than taken from the drop:
+        #
+        #   html.Img(src='x', loading='lazy')
+        #   -> TypeError: The `html.Img` component (version 4.4.1) received
+        #      an unexpected keyword argument: `loading`
+        #
+        # Dash RAISES on an unknown prop rather than passing the attribute
+        # through, so shipping them is a collection error on every page that
+        # renders an image, not a degraded hint. The box is reserved and the
+        # load is not deferred; that is the whole of what this renderer can do
+        # on 4.4.1. tests/test_a11y_agentic.py pins the raise so a future Dash
+        # that ADDS the props is noticed rather than assumed.
+        width, height = _intrinsic_size(url)
+        extra = {"width": width, "height": height} if width else {}
         return html.Img(src=url, alt=plain_text(text), title=title,
-                        style={"maxWidth": "100%", "height": "auto"})
+                        style={"maxWidth": "100%", "height": "auto"}, **extra)
 
     m2d_renderer.DashRenderer.image = image

@@ -299,6 +299,59 @@ package reaches 2.9.4, so the prompt fires without anyone remembering.
 
 ---
 
+### 18. Item 6's recorded sub-items, and one prohibition
+
+**Content images carry width/height and NEVER `loading`/`decoding`**
+(1.6.44 item 6f). Neither is a prop of dash 4.4.1's `html.Img` and Dash
+RAISES on an unknown one — measured on the pinned version:
+
+    html.Img(src='x', loading='lazy')
+    -> TypeError: The `html.Img` component (version 4.4.1) received an
+       unexpected keyword argument: `loading`
+
+So adding them is a collection error on every page that renders an
+image, not a degraded hint. `tests/test_a11y_agentic.py` pins the raise
+and goes red the day Dash learns the props, at which point the sub-item
+can be completed rather than capped.
+
+**(d) The mobile console error is NOT CLEARED on this host.** The
+template records it as "not reproduced" against its own deployed build
+and adds, correctly, that a fork which DOES see it must not read that
+line as clearance. This repo is one of the three hosts the symptom was
+originally reported on (the template names leaflet, llms and
+pannellum), so its own measurement does not transfer here and this
+fork must not inherit the clearance.
+
+MEASURED HERE, 2026-09-05, in the owner's Chrome against the deployed
+build 2aea641 (which predates this pass):
+
+    /                desktop     4 console messages, ALL `LOG`, 0 errors
+    /pointer-events  390x844     15 console messages, ALL `LOG`, 0 errors
+
+Every line is Clerk's (`[Clerk Glass] Theme changed`, `[Clerk] Session
+changed`, the avatar element check) plus the satellite auth handshake.
+No error, no warning, on either page.
+
+TWO HONEST LIMITS on that reading, because a clean measurement taken
+the wrong way is how a fork clears a defect it still has. The session
+was SIGNED IN, so the anonymous path is not covered; and the window was
+resized to 390x844 but the captured screenshot still rendered the
+desktop layout, so this is a narrow window rather than a confirmed
+phone viewport. Status: NOT REPRODUCED on this build, NOT CLEARED —
+re-measure signed-out, in a real device emulation, before closing it.
+
+**(e) Shipped CSS/JS are not minified, deliberately.** Same posture as
+the template and for the same reasons, re-checked here rather than
+inherited: `assets/` is text served over a gzip transfer encoding, and
+a build step would trade the readable stylesheet for a saving the
+encoding has already taken. This repo has a stronger version of the
+template's argument — `assets/leaflet2_maps.js` and `assets/style.css`
+ARE the documentation for how the showcase wires Leaflet 2, and a
+reader who opens them expects the source a human wrote. Revisit if
+`assets/` grows past a few hundred KB.
+
+---
+
 ### 13. The site CI matrix's legs are the FLOOR and the adjacent minor
 
 The template's Python window rolls: its two include legs are X.Y-1

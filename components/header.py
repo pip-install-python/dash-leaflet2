@@ -119,7 +119,15 @@ def create_other_apps_menu():
                 }},
             ),
         ],
-        trigger="hover",
+        # a11y (1.6.44 item 6a): the TARGET here was already a real
+        # `dmc.Button`, so the defect was not the element — it was
+        # `trigger="hover"`, which made the menu unopenable without a pointer.
+        # Keyboard focus and a touch tap both reach the button and neither
+        # opens a hover-only menu, so every app in `other_apps_for()` was
+        # unreachable to a keyboard or screen-reader user. "click-hover" keeps
+        # the pointer behaviour the design wants and adds the one that makes
+        # it operable.
+        trigger="click-hover",
         openDelay=100,
         closeDelay=200,
     )

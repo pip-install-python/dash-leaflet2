@@ -381,6 +381,16 @@ if BACKEND == "flask":
         except Exception:
             pass
 
+    @app.server.after_request
+    def _asset_cache_lifetime(response):
+        """Give /assets/ a lifetime (1.6.44 item 6g). See lib/static_cache."""
+        from lib.static_cache import cache_control_for
+
+        value = cache_control_for(_flask_request.path)
+        if value and response.status_code == 200:
+            response.headers["Cache-Control"] = value
+        return response
+
 elif BACKEND == "quart":
     from quart import request as _quart_request
 
@@ -396,6 +406,22 @@ elif BACKEND == "quart":
             )
         except Exception:
             pass
+
+    @app.server.after_request
+    async def _asset_cache_lifetime(response):
+        """The Quart half of item 6g — same policy module, third lane.
+
+        The template has two lanes and this repo has three (lib/backend.py),
+        so a port that stopped at Flask + ASGI would leave Quart serving
+        `no-cache` while the other two served an hour. One module, three
+        callers.
+        """
+        from lib.static_cache import cache_control_for
+
+        value = cache_control_for(_quart_request.path)
+        if value and response.status_code == 200:
+            response.headers["Cache-Control"] = value
+        return response
 
 # ============================================================================
 # Access control. Reads the tiers the pages just declared, so it runs after

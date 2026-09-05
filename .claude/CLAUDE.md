@@ -447,6 +447,38 @@ anywhere, inside the item about checks that cannot fail.
   commit` committed over a red suite because a pipeline's exit status is
   the LAST command's (this seat, one hour after writing the note above).
   Capture the exit code; count what you swept; say both.
+- A VERIFY VERDICT IS METERING EVIDENCE, NEVER SOLE AUTHORISATION
+  (1.6.44 item 18; the security incident of 2026-09-02, hub 0.26.0 ->
+  0.26.1, 2plot.dev `5ca793c`). The hub gated two admin-data routes on
+  2plot.dev's `/api/agent-key/verify`, whose all-unknown-tier fallback
+  answered "allow" WITHOUT READING THE KEY; the lane was open
+  00:52-01:16Z. The contract: a host's own data is gated by a secret
+  THAT HOST HOLDS. A verify verdict may be a second factor, and it is
+  metering evidence first. A new tier is UNVERIFIED until the authority
+  learns it, so "ask the authority" is the wrong SHAPE for a gate — the
+  failure mode of an unreachable or ignorant authority must be closed,
+  and an authority that answers "allow" to a question it did not
+  understand is worse than no authority.
+  A key presented in a request proves nothing on its
+  own — anyone can put a string in a query parameter. What makes
+  `hub_client.verify`'s answer trustworthy is the HOST-HELD SECRET
+  beside it: the POST is signed with `CROSS_APP_WEBHOOK_SECRET`, which
+  lives in the deployment's environment and never travels with the
+  request, and without it `enabled()` is false and the answer is
+  "gated" without anyone being asked. So a route that consults `verify`
+  for access must NAME the host-held secret beside it, or be documented
+  as metering-only; a `verify` call somewhere the secret is not
+  required is a bearer check on an unauthenticated value.
+  Two testing rules come with it, both learned the hard way.
+  SOURCE-PIN THE CLOSED FALLBACKS, do not merely exercise them: a
+  behavioural suite cannot see a restored default that pre-empts its
+  own guard, because the guard never runs. And PIN THE GOOD ROWS BESIDE
+  THE BYPASS ROWS — a policy that denies everything passes every bypass
+  test ever written. Reject case and whitespace LOOKALIKES of a tier
+  (`"Auth "`, `"ADMIN"`), never one literal: this repo normalises hub
+  tiers at the source, which is the only place it happens, so a
+  refactor that drops the `.strip().lower()` would silently let a
+  restricted ceiling read as unrestricted.
 - A SHELL'S CWD CAN SHADOW AN INSTALLED PACKAGE, and it produces the
   most convincing wrong answer of the family: measuring `EVENT_FIELDS`
   across two dimll versions, a seat ran the comparison with the cwd

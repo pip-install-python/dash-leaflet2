@@ -170,6 +170,21 @@ def check(path: str) -> str:
         return "allow"
 
     # No session: an agent, or an anonymous browser. Only a key can help now.
+    #
+    # A VERIFY VERDICT IS METERING EVIDENCE, NOT SOLE AUTHORISATION (1.6.44
+    # item 18). The `key` here is presented by the CALLER and proves nothing on
+    # its own — anyone can put a string in a query parameter. What makes the
+    # returned verdict trustworthy is the HOST-HELD SECRET beside it:
+    # `hub_client.verify` signs its POST with `CROSS_APP_WEBHOOK_SECRET`, which
+    # lives in this deployment's environment and never travels with the
+    # request. Without that secret `enabled()` is false and `verify` returns
+    # "gated" without asking anyone — so a host that lost its secret withholds
+    # access rather than granting it on the strength of a caller-supplied
+    # string.
+    #
+    # The named secret is the authorisation; the hub's verdict is the meter.
+    # If this call ever moves somewhere the secret is not required, it becomes
+    # a bearer check on an unauthenticated value.
     key = _request_key()
     if not key:
         return "gated"

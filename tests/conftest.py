@@ -132,6 +132,36 @@ def app(app_module):
     return app_module.app
 
 
+def live_source(path) -> str:
+    """A module's CODE, with every comment and docstring removed.
+
+    Item 13's rule, as machinery. A detect that greps source matches the
+    COMMENT explaining why the thing is absent, and stripping comments still
+    leaves the DOCSTRING doing the same job — which is exactly how
+    `test_the_module_carries_no_user_agent_list` went red at 1.6.44 item 8:
+    a function docstring quoting `'claudebot'` to explain a measurement read
+    as a resurrected User-Agent table. `ast.unparse` drops comments outright,
+    and docstrings are stripped explicitly here.
+
+    Use this for any assertion of the form "this string must not appear in
+    this module", because the better the code is documented, the more
+    reliably a raw grep reports the defect the documentation denies.
+    """
+    import ast
+    from pathlib import Path
+
+    tree = ast.parse(Path(path).read_text())
+    for node in ast.walk(tree):
+        if isinstance(node, (ast.Module, ast.ClassDef, ast.FunctionDef,
+                             ast.AsyncFunctionDef)):
+            body = node.body
+            if (body and isinstance(body[0], ast.Expr)
+                    and isinstance(body[0].value, ast.Constant)
+                    and isinstance(body[0].value.value, str)):
+                node.body = body[1:] or [ast.Pass()]
+    return ast.unparse(tree)
+
+
 class Response:
     __slots__ = ("status", "text", "headers", "raw_headers")
 

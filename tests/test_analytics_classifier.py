@@ -13,10 +13,11 @@ back quietly.
 from __future__ import annotations
 
 import json
-import re
 from pathlib import Path
 
 import pytest
+
+from conftest import live_source
 
 from lib.analytics_tracker import AnalyticsTracker
 from lib.constants import INTERNAL_UA_TOKEN
@@ -98,14 +99,15 @@ def test_internal_traffic_is_still_dropped_before_classification(tracker):
 def test_the_module_carries_no_user_agent_list():
     """The grep. A token the registry lacks is a pushback to the package,
     never a list here (.claude/CLAUDE.md trap)."""
-    src = (Path(__file__).resolve().parent.parent / "lib" / "analytics_tracker.py").read_text()
-    code = "\n".join(
-        line for line in src.splitlines()
-        if not line.lstrip().startswith("#")
-    )
-    # Strip the module docstring — it names the old tokens to explain why
-    # they are gone; the assertion is about CODE.
-    code = re.sub(r'^"""[\s\S]*?"""', "", code, count=1)
+    path = Path(__file__).resolve().parent.parent / "lib" / "analytics_tracker.py"
+    src = path.read_text()
+    # PARSED, not stripped (1.6.44 item 13). This filtered comments and the
+    # MODULE docstring, which was enough until a FUNCTION docstring quoted a
+    # measured `classify()` result to explain where vendor_class comes from —
+    # and the guard read that quotation as a resurrected UA table (item 8,
+    # measured: it went red on "'claudebot'" appearing in prose). A comment
+    # strip cannot see a docstring; `ast` removes both.
+    code = live_source(path)
     survivors = [t for t in ("'anthropic-ai'", "'claude-web'", "'perplexitybot'",
                              "'gptbot'", "'claudebot'", "'googlebot'", "'bingbot'",
                              "'headlesschrome'", "'phantomjs'", "'pingdom'")

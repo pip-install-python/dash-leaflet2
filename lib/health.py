@@ -75,6 +75,21 @@ def _resolved_country() -> str:
         return "unavailable"
 
 
+def _geo_headers_seen() -> list:
+    """The visitor-location headers the tracker has seen this process.
+
+    Through the tracker, never a second list here: one module decides what
+    counts as a location header, and a health probe keeping its own would
+    drift from the one doing the recording.
+    """
+    try:
+        from lib.analytics_tracker import geo_headers_seen
+
+        return geo_headers_seen()
+    except Exception:
+        return []
+
+
 def _llms_version() -> dict:
     """``{"llms_version": "2.8.0"}``, or ``{}`` if the package cannot be read.
 
@@ -154,6 +169,14 @@ def health_payload(backend: str) -> dict:
                 "configured": bool(geo.is_configured()),
                 "denied": len(geo.effective_policy().get("deny_countries") or []),
                 "resolved": _resolved_country(),
+                # WHICH visitor-location headers actually arrive here (1.6.44
+                # item 16). Since the ip-api lookup was removed, the edge is
+                # the ONLY source of location, so "the city is missing" and
+                # "the zone transform is off" became the same question — and
+                # this is the one line that answers it. Read through the
+                # tracker rather than re-derived: one module decides what
+                # counts as a location header.
+                "headers_seen": _geo_headers_seen(),
             }
         except Exception:  # a diagnostic must never break the health probe
             payload["geo"] = {"configured": False, "denied": 0, "error": True}

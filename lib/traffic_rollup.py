@@ -110,6 +110,24 @@ def load_visits(path=None):
 
 
 def visitor_key(v):
+    """Identify a visitor from a stored row.
+
+    PREFER THE STORED KEY, FALL BACK TO THE OLD COMPOSITE (1.6.44 item 16).
+    Since that release the tracker writes `visitor_key` — a keyed one-way hash
+    of address + User-Agent — and no longer stores the address at all.
+
+    The fallback is not defensive dressing: rows written BEFORE the deploy are
+    still inside the retention window, and without it every one of them would
+    collapse to its User-Agent alone. A day's sessions either side of the
+    deploy would then not be comparable, and the drop would read as a traffic
+    cliff that never happened.
+
+    It also covers `ANALYTICS_KEEP_CLIENT_IP=1` hosts, where the address is
+    present alongside the hash.
+    """
+    stored = v.get("visitor_key")
+    if stored:
+        return stored
     ua = hashlib.md5((v.get("user_agent") or "?").encode()).hexdigest()[:8]
     return f"{v.get('ip_address') or '?'}|{ua}"
 

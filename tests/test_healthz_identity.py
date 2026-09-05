@@ -119,9 +119,19 @@ def test_geo_reports_flags_and_counts_but_never_the_denylist(client):
         "which on a deployed host means the image is stale"
     )
     geo = payload["geo"]
-    assert set(geo) <= {"configured", "denied", "resolved", "error"}, (
+    assert set(geo) <= {"configured", "denied", "resolved", "error",
+                        "headers_seen"}, (
         f"geo leaks keys beyond flags and counts: {sorted(geo)}"
     )
+    # `headers_seen` (1.6.44 item 16) is a list of HEADER NAMES this process
+    # has received — `cf-ipcountry`, `cf-ipcity` — never their values. Since
+    # the ip-api lookup was removed the edge is the only source of location,
+    # so "the city is missing" and "the zone transform is off" became the same
+    # question, and this answers it from outside. The guard's intent is
+    # unchanged and asserted directly below: names, never country codes.
+    seen = geo.get("headers_seen", [])
+    assert isinstance(seen, list)
+    assert all(isinstance(h, str) and h.startswith("cf-") for h in seen), seen
     assert isinstance(geo.get("denied"), int), "denied must be a count"
     assert isinstance(geo.get("configured"), bool)
     # `resolved` is the caller's OWN country reflected back, which

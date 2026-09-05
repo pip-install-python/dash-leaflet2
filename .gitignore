@@ -38,6 +38,12 @@ flask_session/
 #   visitor IPs and user agents.
 # satellite_traffic.jsonl — the RETIRED Gen-1 ledger; kept ignored so a stale
 #   local copy can never be committed.
+# .visitor_salt — the HMAC key behind every `visitor_key` in the ledger
+# (1.6.44 item 16). Ignored in the SAME COMMIT that introduced it: a committed
+# salt makes every visitor_key in every clone computable by anyone holding the
+# repo, which undoes the item entirely. Set ANALYTICS_VISITOR_SALT in the
+# deployment environment to control it explicitly.
+.visitor_salt
 page_visibility.json
 visitor_analytics.json
 visitor_analytics.json.*

@@ -82,13 +82,34 @@ def test_claudebot_is_training_and_unverifiable(tracker):
 
 
 def test_a_browser_row_carries_no_vendor_keys(tracker):
-    """Human rows are byte-for-byte what v3 wrote — the rollup's tests must
-    not move on adoption."""
+    """Human rows carry no vendor identity — and, since 1.6.44 item 16, no
+    raw address either.
+
+    THE KEY SET MOVED, DELIBERATELY. This assertion previously allowed
+    `ip_address` and that was the point of the item: the tracker no longer
+    stores it. `visitor_key` — a keyed one-way hash — takes its place, so a
+    visitor can still be told from another without being stored. The spec
+    named this exact failure in advance: the row-key set is a fork-owned seam
+    and its failing IS the item landing.
+
+    Still an upper bound rather than equality: a host with
+    ANALYTICS_KEEP_CLIENT_IP=1 legitimately adds `ip_address` back, and a
+    Cloudflare zone with the location transform on adds `location`.
+    """
     assert tracker.is_bot(CHROME) is False
     row = _one(tracker, CHROME)
     assert row["device_type"] == "desktop"
     assert set(row) <= {"timestamp", "path", "device_type", "user_agent",
-                        "ip_address", "location"}, row
+                        "visitor_key", "ip_address", "location"}, row
+
+    # The two halves of the item, asserted rather than implied.
+    assert "ip_address" not in row, (
+        "the raw client address is back in a default-config row"
+    )
+    assert row.get("visitor_key"), (
+        "no visitor_key — sessions collapse to the User-Agent"
+    )
+    assert "_geo_pending" not in row, "the removed lookup's marker is back"
 
 
 def test_internal_traffic_is_still_dropped_before_classification(tracker):

@@ -35,7 +35,25 @@ def create_footer():
         dmc.Container(
             dmc.Group(
                 [
-                    dmc.Text(f"© {datetime.now().year} {PUBLISHER}", size="sm", c="dimmed"),
+                    dmc.Group(
+                        [
+                            dmc.Text(f"© {datetime.now().year} {PUBLISHER}",
+                                     size="sm", c="dimmed"),
+                            # 1.6.44 item 15. These were linked from every
+                            # page in the fleet's footer and served NOTHING —
+                            # Dash answers 200 for any path, so the soft 404
+                            # was invisible to a status sweep. Both are real
+                            # registered pages now, and
+                            # tests/test_shell_links_resolve.py holds them
+                            # against the page registry rather than the wire.
+                            dmc.Anchor("Terms", href="/terms", size="sm",
+                                       c="dimmed"),
+                            dmc.Anchor("Privacy", href="/privacy", size="sm",
+                                       c="dimmed"),
+                        ],
+                        gap="md",
+                        wrap="nowrap",
+                    ),
                     dmc.Group(
                         [
                             _icon_link("radix-icons:github-logo", GITHUB_PROFILE_URL, "Pip Install Python on GitHub"),

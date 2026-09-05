@@ -360,6 +360,10 @@ CATEGORY_ORDER = [
     "Controls (compiled dl2.*)",
     "Rotation & Sims",
     "Dash integration",
+    # Legal LAST (1.6.44 item 15). The drop says "between Components and
+    # Admin"; this tree has no Components category and Admin is built
+    # separately by the navbar, so last IS that position here.
+    "Legal",
 ]
 
 # The upstream project this component library wraps. Rendered as the last

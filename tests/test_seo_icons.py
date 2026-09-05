@@ -174,11 +174,19 @@ def _declared_lastmods() -> set[str]:
       /changelog -> the newest DATED release heading in CHANGELOG.md
       /api       -> `generated` in the committed props extract, written by
                     scripts/build_api_metadata.py when the props change
+      /terms,
+      /privacy   -> `LEGAL_LASTMOD` in pages/legal.py, the module whose
+                    change IS those pages' change (1.6.44 item 15)
 
     Neither is an mtime: both are committed values that move only when the
     content moves, which is the rule the root CLAUDE.md states.
     """
     dates = set()
+
+    from pages.legal import LEGAL_LASTMOD
+
+    dates.add(LEGAL_LASTMOD)
+
     for md in Path("docs").glob("**/*.md"):
         if md.name == "SKILL.md":
             continue

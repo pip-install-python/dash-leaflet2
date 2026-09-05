@@ -228,7 +228,14 @@ def test_footer_is_the_contract(app_module):
         assert href in text
     assert GITHUB_URL not in text, "the repo link is the top bar's; the footer links the profile"
     assert "/changelog" not in text, "the sidebar's single Changelog link is the one"
-    assert "/terms" not in text and "/privacy" not in text
+    # FLIPPED at 1.6.44 item 15, and the spec said it would. This asserted the
+    # two links were ABSENT — correctly, while the pages did not exist: linking
+    # them would have been the fleet-wide soft 404 that item 11 is about. Now
+    # they are registered pages, so their presence is the contract and their
+    # absence is the defect.
+    assert "/terms" in text and "/privacy" in text, (
+        "the Legal links are gone from the footer while the pages exist"
+    )
 
 
 # ------------------------------------------------------- changelog --

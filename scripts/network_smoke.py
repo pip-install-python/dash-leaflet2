@@ -46,9 +46,9 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 TIMEOUT = 30
 try:
-    from lib.constants import INTERNAL_UA as _INTERNAL_UA
+    from lib.constants import PROBE_UA_SUFFIX as _PROBE
 except Exception:  # running outside a repo checkout — keep the token intact
-    _INTERNAL_UA = "2plot-internal/1.0 (+https://2plot.ai/docs/satellite-analytics)"
+    _PROBE = "2plot-internal/probe"
 # The default UA names the BROWSER lane first (template 1.6.40; muischeduler's
 # finding on its item-12 port, and independently this repo's on its own): at
 # dash-improve-my-llms >= 2.8 a UA with no browser engine token is classified
@@ -65,13 +65,21 @@ except Exception:  # running outside a repo checkout — keep the token intact
 # template's shape is better and replaces it — the DEFAULT was the wrong lane,
 # so fixing one caller left every other default-UA check one browser-document
 # assertion away from the same red.
+#
+# 1.6.44 item 4 moves these to the `/probe` SPELLING. The outbound half was
+# already here (1.6.40) — what was missing is the distinction the fleet reads
+# in its logs: `2plot-internal/1.0` is this app calling a peer, and
+# `2plot-internal/probe` is machinery checking a host. Same token, so the far
+# side's suppression is unchanged; different word, so the log says which.
 BROWSER_UA = (
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
     "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 "
-    + _INTERNAL_UA + " network-smoke"
+    + _PROBE + " network-smoke"
 )
 UA = BROWSER_UA
-CRAWLER_UA = "Mozilla/5.0 (compatible; Googlebot/2.1) " + _INTERNAL_UA
+CRAWLER_UA = (
+    "Mozilla/5.0 (compatible; Googlebot/2.1) " + _PROBE + " network-smoke"
+)
 
 # The body dash-improve-my-llms serves when a page has no prose registered.
 # Matched in full, deliberately: this app's own <noscript> block legitimately

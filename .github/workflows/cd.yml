@@ -36,6 +36,18 @@ concurrency:
 env:
   PIP_DISABLE_PIP_VERSION_CHECK: "1"
   SITE_URL: ${{ inputs.target_url || 'https://leaflet.2plot.dev' }}
+  # The fleet probe convention (1.6.44 item 4). Every curl in this workflow
+  # sends it. Before this, these curls sent NO User-Agent at all and arrived
+  # as `curl/8.x` — which dash-improve-my-llms classifies crawler-lane, and
+  # which carries no internal token, so every CD verification wrote rows into
+  # the production ledger it was verifying. The token is what the far side's
+  # tracker drops at write time; the `curl/8` prefix keeps the probe in the
+  # same lane a real curl would be in, so the check exercises the document it
+  # means to. Keep the token byte-identical to `PROBE_UA_SUFFIX` in
+  # lib/constants.py — tests/test_probe_ua.py asserts these agree, because a
+  # constant recorded in two places drifts and the copy nothing imports is the
+  # one that drifts.
+  PROBE_UA: "curl/8 2plot-internal/probe cd-verify"
 
 jobs:
   test:
@@ -119,7 +131,7 @@ jobs:
           matched=0
           ok=0
           for _ in $(seq 1 60); do
-            body="$(curl -fsS "$SITE_URL/healthz" 2>/dev/null || true)"
+            body="$(curl -fsS -A "$PROBE_UA" "$SITE_URL/healthz" 2>/dev/null || true)"
             if [ -n "$body" ]; then
               build="$(printf '%s' "$body" | python3 -c 'import sys,json;print(json.load(sys.stdin).get("build",""))' 2>/dev/null || true)"
               if [ "$build" = "$want" ]; then
@@ -164,7 +176,7 @@ jobs:
         # workflow_dispatch against another host (its shas are not ours).
         if: github.event_name == 'push' || inputs.target_url == ''
         run: |
-          build="$(curl -fsS "$SITE_URL/healthz" | python3 -c 'import sys,json;print(json.load(sys.stdin).get("build",""))')"
+          build="$(curl -fsS -A "$PROBE_UA" "$SITE_URL/healthz" | python3 -c 'import sys,json;print(json.load(sys.stdin).get("build",""))')"
           if [ "$build" != "$GITHUB_SHA" ]; then
             echo "::error::verify refuses: $SITE_URL serves build '${build:-<none>}', this run is $GITHUB_SHA — nothing this run shipped is on the wire to verify"
             exit 1

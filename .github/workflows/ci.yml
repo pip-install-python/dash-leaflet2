@@ -57,6 +57,19 @@ env:
   # keys off CROSS_APP_WEBHOOK_SECRET, which is absent here by design.
   APP_ENV: ci
 
+  # The fleet probe convention (1.6.44 item 4). Every curl in this workflow
+  # sends it. Before this, these curls sent NO User-Agent at all and arrived
+  # as `curl/8.x` — which dash-improve-my-llms classifies crawler-lane, and
+  # which carries no internal token, so every CD verification wrote rows into
+  # the production ledger it was verifying. The token is what the far side's
+  # tracker drops at write time; the `curl/8` prefix keeps the probe in the
+  # same lane a real curl would be in, so the check exercises the document it
+  # means to. Keep the token byte-identical to `PROBE_UA_SUFFIX` in
+  # lib/constants.py — tests/test_probe_ua.py asserts these agree, because a
+  # constant recorded in two places drifts and the copy nothing imports is the
+  # one that drifts.
+  PROBE_UA: "curl/8 2plot-internal/probe ci-boot"
+
 jobs:
   lint:
     name: lint
@@ -171,14 +184,14 @@ jobs:
         run: |
           gunicorn run:server -b 127.0.0.1:8050 --daemon --access-logfile - --error-logfile -
           for _ in $(seq 1 30); do
-            curl -sf http://127.0.0.1:8050/healthz && break
+            curl -sf -A "$PROBE_UA" http://127.0.0.1:8050/healthz && break
             sleep 1
           done
           # A page that renders under the test client can still fail under a
           # real WSGI worker — different import path, different working
           # directory, no test-client conveniences.
-          curl -sf http://127.0.0.1:8050/ > /dev/null
-          curl -sf http://127.0.0.1:8050/pointer-events > /dev/null
+          curl -sf -A "$PROBE_UA" http://127.0.0.1:8050/ > /dev/null
+          curl -sf -A "$PROBE_UA" http://127.0.0.1:8050/pointer-events > /dev/null
           # The battery, against the same server a satellite deploys.
           # SMOKE_PYTHON_DECLARED=ignore: this gunicorn runs the MATRIX
           # LEG's interpreter (3.10/3.13/3.14), which is a test axis, not a
@@ -315,7 +328,7 @@ jobs:
         run: |
           docker run -d --name docs -p 8050:8050 dash-leaflet2-docs:ci
           for i in $(seq 1 60); do
-            if curl -sf http://127.0.0.1:8050/healthz > /dev/null; then
+            if curl -sf -A "$PROBE_UA" http://127.0.0.1:8050/healthz > /dev/null; then
               echo "healthy after ~$((i*2))s"
               exit 0
             fi

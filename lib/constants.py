@@ -223,6 +223,73 @@ def internal_ua(caller: str = "") -> str:
     return f"{INTERNAL_UA} {caller}" if caller else INTERNAL_UA
 
 
+# The fleet probe convention (1.6.44 item 4)
+# ---------------------------------------------------------------------------
+# A PROBE is machinery fetching a network host to CHECK it: a workflow's
+# `curl /healthz`, a smoke battery, a link audit. That is not the same shape
+# as `internal_ua()`, which is this app calling a peer server-to-server, and
+# the difference earns a spelling of its own so a reader of the far side's log
+# can tell "a host checking itself" from "a host using another host".
+#
+# The rule, and both halves matter:
+#
+#   * the string LEADS with a real vendor-or-engine token — Chrome, Googlebot,
+#     curl — because dash_improve_my_llms classifies on those tokens and a
+#     probe must exercise the same lane as the thing it is checking serves;
+#   * it is otherwise GENERIC-WORD-FREE. A probe named for what it does, like
+#     `2plot-monitoring/1`, is a UA the classifier reads as a monitor.
+#
+# Suppression is the TRACKER's job, never the UA's: PROBE_UA_SUFFIX carries
+# INTERNAL_UA_TOKEN, so `track_visit` and `record_read` drop the row at write
+# time. Lane, vendor and class therefore hold BY CONSTRUCTION. Re-measured on
+# THIS repo's resolved package (dimll 2.8.0) rather than inherited from the
+# template's 2.9.4 note — appending the suffix moves none of the three:
+#
+#   Chrome/126 ...                        lane=browser bot_type=None        vendor=None
+#   Chrome/126 ... 2plot-internal/probe   lane=browser bot_type=None        vendor=None
+#   Googlebot/2.1 ...                     lane=crawler bot_type=traditional vendor=googlebot
+#   Googlebot/2.1 ... 2plot-internal/probe lane=crawler bot_type=traditional vendor=googlebot
+#   curl/8.7.1                            lane=crawler bot_type=traditional vendor=None
+#   curl/8.7.1 ... 2plot-internal/probe   lane=crawler bot_type=traditional vendor=None
+#
+# ONE DIFFERENCE FROM THE TEMPLATE'S NOTE, measured not assumed: it records
+# `2plot-monitoring/1` classifying `bot_type='monitor'` off the word
+# "monitoring" alone at 2.9.4. On 2.8.0, the version this fork resolves, that
+# string reads `bot_type='unknown'`. The ADVICE is unchanged — a generic word
+# is still the wrong thing to put in a probe UA, and it becomes 'monitor' the
+# moment the floor moves — but the specific claim is version-bound, so
+# tests/test_probe_ua.py re-measures the table instead of asserting the
+# template's literal.
+PROBE_UA_SUFFIX = f"{INTERNAL_UA_TOKEN}/probe"
+
+
+def probe_ua(engine: str, caller: str = "") -> str:
+    """A fleet probe UA: ``engine`` token, ``PROBE_UA_SUFFIX``, then ``caller``.
+
+    ``engine`` is REQUIRED and must be a real vendor-or-engine token. A probe
+    carrying only the internal suffix classifies crawler-lane whatever it
+    meant — measured here at 2.8.0, `lane=crawler bot_type=unknown` — which
+    silently swaps the document under a browser-lane check. Refusing is the
+    point: the failure it prevents is a green assertion against the wrong
+    document, which no amount of reading the probe's output would reveal.
+
+    ``caller`` names WHICH probe this is (``"network-smoke"``, ``"cd-verify"``)
+    for whoever reads the far side's log, exactly as ``internal_ua()``'s suffix
+    does. It is not part of the contract — only the token is — and it must
+    never be a generic word.
+    """
+    engine = (engine or "").strip()
+    if not engine:
+        raise ValueError(
+            "probe_ua() needs a vendor-or-engine token: a UA carrying only "
+            "the internal suffix classifies crawler-lane and changes which "
+            "document the probe is answered with"
+        )
+    caller = (caller or "").strip()
+    ua = f"{engine} {PROBE_UA_SUFFIX}"
+    return f"{ua} {caller}" if caller else ua
+
+
 # ---------------------------------------------------------------------------
 # The header's mark and wordmark, lifted out of components/header.py
 # (template 1.6.41) so that file holds identity by REFERENCE rather than

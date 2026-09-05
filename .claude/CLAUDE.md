@@ -479,6 +479,25 @@ anywhere, inside the item about checks that cannot fail.
   tiers at the source, which is the only place it happens, so a
   refactor that drops the `.strip().lower()` would silently let a
   restricted ceiling read as unrestricted.
+- A PROXIED robots.txt IS NOT YOUR robots.txt (1.6.44 item 19; the
+  2plot.dev proxy canary). An edge can inject, rewrite or REPLACE
+  robots.txt in perfectly valid syntax, with no tell beyond a comment
+  marker — a grep for `User-agent:` sails straight past it, and so does
+  a status check, because the file is served 200 either way. To learn
+  what the APP declares you must generate it in process or read the
+  config; to learn what the WORLD is told you fetch it; and WHEN THEY
+  DIFFER, THAT IS THE FINDING. Generate the app's side through the
+  PACKAGE's own `generate_robots_txt` with the registered config — a
+  reimplementation compares the edge against your beliefs about the
+  config rather than against the app. Compare BOTH directions: an edge
+  that REMOVES a directive is as much a rewrite as one that adds a
+  stanza, and dropping this host's `Allow:` rules for AI search agents
+  is the change most likely to be made on your behalf by a "security"
+  default. SKIP where the app cannot be generated beside the script —
+  and then make sure the job that matters CAN generate it: the row is
+  worthless in CI, where no edge sits in front of the container, so
+  cd.yml's verify job installs the app or the check skips forever and
+  reads green having compared nothing.
 - A SHELL'S CWD CAN SHADOW AN INSTALLED PACKAGE, and it produces the
   most convincing wrong answer of the family: measuring `EVENT_FIELDS`
   across two dimll versions, a seat ran the comparison with the cwd

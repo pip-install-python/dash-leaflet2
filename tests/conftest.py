@@ -37,6 +37,8 @@ from pathlib import Path
 
 import pytest
 
+from lib.constants import BASE_URL
+
 REPO_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO_ROOT))
 
@@ -331,3 +333,105 @@ def pages(app_module):
 @pytest.fixture(scope="session")
 def page_paths(pages):
     return [path for path, _name, _entry in pages]
+
+
+# The base URL the battery is pointed at in-process. The real script takes
+# `--base-url`; the harness substitutes this host's own, so a check that
+# hardcoded another host would fail here rather than silently pass.
+BASE = BASE_URL
+
+
+# ---------------------------------------------------------------------------
+# The network battery, wired to the in-process app.
+#
+# Lifted out of tests/test_network_smoke.py at 1.6.44 item 19: two files now
+# drive this harness (the battery's own tests and the robots-posture tests),
+# and a second copy would drift from this one — which is how a harness starts
+# passing a check the real script would fail.
+# ---------------------------------------------------------------------------
+
+@pytest.fixture(scope="module")
+def battery():
+    spec = importlib.util.spec_from_file_location(
+        "network_smoke", REPO_ROOT / "scripts" / "network_smoke.py"
+    )
+    module = importlib.util.module_from_spec(spec)
+    sys.modules["network_smoke"] = module
+    spec.loader.exec_module(module)
+    return module
+
+
+@pytest.fixture
+def wired(battery, client, monkeypatch):
+    """Point the battery's `fetch` at the test client.
+
+    The signature is `fetch(url, ua=..., method=..., body=..., headers=...)`
+    and it returns `(status, lowercased_headers, text)`. Only GET is used by
+    the satellite battery, so a non-GET here is a bug in the script rather
+    than something to emulate.
+    """
+    seen_agents = []
+
+    def _png_header(width: int, height: int) -> bytes:
+        """The 24 bytes the card check actually reads.
+
+        PNG signature (8) + length/type of the IHDR chunk (8) + width and
+        height as big-endian uint32 (8). The battery reads bytes 16..24 and
+        nothing else, so a synthetic header is a faithful stand-in for a real
+        image — and it keeps the suite off the network.
+        """
+        return (b"\x89PNG\r\n\x1a\n" + b"\x00\x00\x00\rIHDR"
+                + width.to_bytes(4, "big") + height.to_bytes(4, "big"))
+
+    def fetch_raw(url, ua=battery.UA, method="GET", body=None, headers=None,
+                  timeout=None, retries=1):
+        # HEAD joined GET at 1.6.44 item 5 (`head_get_parity_three_uas`).
+        # Anything else is still a bug in the script rather than something to
+        # emulate — and the assert says which method, so a future POST does
+        # not read as a mysterious stub failure.
+        assert method in ("GET", "HEAD"), (
+            f"the satellite battery issued a {method}"
+        )
+        seen_agents.append(ua)
+        accept = (headers or {}).get("Accept")
+
+        # Off-host URLs — today just the CDN-hosted social card — resolve to a
+        # stub at the DECLARED size, so the check passes here and still has to
+        # be earned against the real CDN after a deploy. Reaching the real CDN
+        # from a unit test would make the suite depend on another service.
+        if not url.startswith(BASE) and "://" in url:
+            return (200, {"content-type": "image/png"},
+                    _png_header(battery.OG_IMAGE_WIDTH, battery.OG_IMAGE_HEIGHT))
+
+        path = url[len(BASE):] if url.startswith(BASE) else url
+        if method == "HEAD":
+            response = client.head(path or "/", user_agent=ua)
+        else:
+            response = client.get(path or "/", user_agent=ua, accept=accept)
+        # `battery._Headers`, NOT a plain dict (1.6.44 item 5). The battery's
+        # discovery check calls `.get_all("link")`, and a dict keeps only the
+        # last of the several `Link` headers the package emits — so a plain
+        # dict here would make that check assert about one relation while
+        # believing it had read them all. `raw_headers` carries the repeats.
+        return (response.status, battery._Headers(response.raw_headers),
+                response.text.encode())
+
+    # `fetch_raw`, NOT `fetch`. The card check reads PNG bytes, and `fetch` is
+    # a thin decoding delegate — patching it would leave `fetch_raw` reaching
+    # the real CDN from a unit test, and patching only `fetch` in a repo where
+    # they were separate implementations is how the boilerplate's copy of this
+    # test silently kept hitting the network.
+    monkeypatch.setattr(battery, "fetch_raw", fetch_raw)
+    monkeypatch.setattr(battery, "_RESULTS", [])
+    # This seat's interpreter is the DEVELOPER's, never a deploy artifact —
+    # the in-process app answers /healthz with whatever Python is running
+    # pytest, while the Dockerfile declares the fleet's. Comparing them here
+    # would fail on every machine that is not coincidentally on the fleet
+    # minor, and would be measuring the seat rather than the deploy. The
+    # seats that leave `python_matches_declared` armed are the ones whose
+    # interpreter IS the artifact: the docker container in CI (which asserts
+    # the image's own Python) and production in CD. The `python` FIELD's
+    # presence is still pinned here, and by tests/test_healthz_identity.py.
+    monkeypatch.setattr(battery, "declared_python_minor", lambda: None)
+    battery.seen_agents = seen_agents
+    return battery

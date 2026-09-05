@@ -558,6 +558,77 @@ def satellite_checks(base: str) -> None:
                    f"{lane} lane's Link headers do not point at /llms.txt: "
                    f"{values}")
 
+    def ai_bot_posture():
+        """The SERVED robots.txt against the one this app GENERATES.
+
+        1.6.44 item 19, from the 2plot.dev proxy canary. An edge can inject,
+        rewrite or replace robots.txt in perfectly valid syntax, with no tell
+        beyond a comment marker — a grep for `User-agent:` sails straight
+        past it. To learn what the APP declares you must generate it in
+        process or read the config; to learn what the WORLD is told you fetch
+        it; and WHEN THEY DIFFER, THE DIFFERENCE IS THE FINDING. Same family
+        as "verify the artifact the claim is about, and say which one".
+
+        SKIPPED where the app cannot be generated beside this script (a copy
+        of the battery run against another host) — a comparison with only
+        one side is not a comparison.
+        """
+        status, _, served = get("/robots.txt")
+        expect(status == 200, f"/robots.txt {status}")
+
+        try:
+            from lib.robots_expected import expected_directives
+            generated = expected_directives()
+        except Exception as exc:
+            skip(f"cannot generate this app's robots.txt here ({type(exc).__name__})")
+
+        if not generated:
+            skip("the app generated no directives to compare against")
+
+        def directives(text):
+            out = []
+            for line in text.splitlines():
+                line = line.split("#", 1)[0].strip()
+                if line and ":" in line:
+                    name, _, value = line.partition(":")
+                    out.append((name.strip().lower(), value.strip()))
+            return out
+
+        served_directives = directives(served)
+        expect(served_directives,
+               "the served robots.txt carries no directives at all")
+
+        # BOTH directions. An edge that REMOVES a directive is as much a
+        # rewrite as one that adds a stanza — dropping this host's `Allow:`
+        # rules for the AI search agents would be invisible to an
+        # added-only comparison, and it is the change most likely to be
+        # made on your behalf by a "security" default.
+        #
+        # MULTISETS, not membership (corrected here, leaflet 1.6.44). This
+        # robots.txt carries ~16 directives of which many are the IDENTICAL
+        # pair ("allow", "/") — one per AI-agent stanza. With `d not in
+        # generated` over a LIST, removing ONE agent's `Allow: /` leaves the
+        # other copies matching and the diff comes back empty: the exact
+        # edit this row exists to catch is the one it could not see. Measured
+        # on this host — the removed-directive test passed as `pass` until
+        # this changed. Counter subtraction compares how MANY of each.
+        from collections import Counter
+
+        served_counts = Counter(served_directives)
+        generated_counts = Counter(generated)
+        injected = sorted((served_counts - generated_counts).elements())
+        missing = sorted((generated_counts - served_counts).elements())
+        markers = [ln.strip() for ln in served.splitlines()
+                   if ln.strip().startswith("#")
+                   and ("BEGIN" in ln or "Managed" in ln or "END" in ln)]
+        expect(not injected and not missing and not markers,
+               "the served robots.txt is not the one this app wrote"
+               + (f" — {len(injected)} directive(s) the app did not "
+                  f"generate, first: {injected[0]}" if injected else "")
+               + (f" — {len(missing)} directive(s) the app wrote that are "
+                  f"NOT served, first: {missing[0]}" if missing else "")
+               + (f" — edge marker: {markers[0]!r}" if markers else ""))
+
     def directory_counts_are_derived():
         """The Network section lists exactly the peers the module names.
 
@@ -660,6 +731,7 @@ def satellite_checks(base: str) -> None:
         ("api_llms_rows_present", api_llms_rows_present),
         ("discovery_link_headers_per_lane", discovery_link_headers_per_lane),
         ("directory_counts_are_derived", directory_counts_are_derived),
+        ("ai_bot_posture", ai_bot_posture),
     ):
         check(name, fn)
 

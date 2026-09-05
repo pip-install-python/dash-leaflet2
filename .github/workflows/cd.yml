@@ -169,6 +169,21 @@ jobs:
         with:
           python-version: "3.14"
 
+      # 1.6.44 item 19, and it is load-bearing rather than housekeeping. The
+      # `ai_bot_posture` row generates THIS APP's robots.txt in process — via
+      # the package's own `generate_robots_txt` and the app's registered
+      # `RobotsConfig` — and diffs it against what the world is served. With
+      # nothing installed, that import raises, the row SKIPS, and the battery
+      # reports green having compared nothing: the exact defect note 88 is
+      # about, in the one job where a real proxy sits in the path. CI's
+      # battery runs against a container with no edge in front of it and can
+      # never see an injected block, so this job is the only place the check
+      # means anything.
+      - name: Install the app (the battery generates robots.txt in-process)
+        run: |
+          pip install -r requirements.txt
+          pip install --no-deps markdown2dash==0.1.2
+
       - name: The live build IS this run's sha
         # Belt to the `if:` above's braces, and stronger: it also catches a
         # promote that succeeded while Render's build did not, or a later run

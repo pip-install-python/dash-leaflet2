@@ -162,6 +162,42 @@ PASS, FAIL, WARN, SKIP = "pass", "FAIL", "warn", "skip"
 _RESULTS: list[tuple[str, str, str]] = []  # (name, verdict, detail)
 
 
+class SmokeSkip(Exception):
+    """A check that cannot apply here — recorded as `skip`, NEVER as `pass`.
+
+    The distinction is the whole item (1.6.44 item 5, note 88): a check that
+    silently passes when its precondition is absent swept nothing, and reads
+    identically to one that swept the corpus and found it clean. This battery
+    had exactly that shape — `api_rows_present` answered a 404 with
+    `expect(True, "")`, printing `[pass]` for a host with no /api at all.
+    """
+
+
+class _Headers(dict):
+    """Lower-cased response headers that also remember REPEATED names.
+
+    Both `dict(resp.headers)` and `{k: v for k, v in resp.headers.items()}`
+    keep only the LAST value per name, and dash-improve-my-llms emits several
+    `Link` headers — so the discovery relations were unreadable through the
+    plain dict this battery used. Every existing caller wants the dict, so the
+    dict is what this still is; `get_all()` is the repaired accessor.
+
+    `get_all()` is NECESSARY AND NOT SUFFICIENT: a folded value is equally
+    legal, and over HTTP/2 both discovery relations can arrive comma-joined in
+    ONE `link` header. A caller counting relations must PARSE the values it
+    gets back rather than count the list.
+    """
+
+    def __init__(self, pairs):
+        self._all: dict = {}
+        for key, value in pairs:
+            self._all.setdefault(key.lower(), []).append(value)
+        super().__init__({k: v[-1] for k, v in self._all.items()})
+
+    def get_all(self, name: str) -> list:
+        return list(self._all.get(name.lower(), []))
+
+
 class SmokeFailure(Exception):
     pass
 
@@ -214,11 +250,9 @@ def fetch_raw(url: str, ua: str = UA, method: str = "GET",
         try:
             with urllib.request.urlopen(
                     req, timeout=timeout, context=SSL_CONTEXT) as r:
-                return (r.status, {k.lower(): v for k, v in r.headers.items()},
-                        r.read())
+                return (r.status, _Headers(r.headers.items()), r.read())
         except urllib.error.HTTPError as e:
-            return (e.code, {k.lower(): v for k, v in e.headers.items()},
-                    e.read())
+            return (e.code, _Headers(e.headers.items()), e.read())
         except Exception as exc:  # timeout, reset, truncated read, …
             last_exc = exc
     raise last_exc
@@ -248,6 +282,8 @@ def check(name: str, fn) -> None:
     try:
         fn()
         record(name, PASS)
+    except SmokeSkip as exc:
+        record(name, SKIP, str(exc))
     except SmokeFailure as exc:
         record(name, FAIL, str(exc))
     except Exception as exc:  # network/parse error → still a failure
@@ -257,6 +293,11 @@ def check(name: str, fn) -> None:
 def expect(cond: bool, msg: str) -> None:
     if not cond:
         raise SmokeFailure(msg)
+
+
+def skip(msg: str) -> None:
+    """This check does not apply to this host. Never a pass."""
+    raise SmokeSkip(msg)
 
 
 # ------------------------------------------------------------- the battery --
@@ -466,7 +507,80 @@ def satellite_checks(base: str) -> None:
                f"the CDN file is {actual_w}x{actual_h}, the tags declare "
                f"{OG_IMAGE_WIDTH}x{OG_IMAGE_HEIGHT}")
 
-    def api_rows_present():
+    def head_get_parity_three_uas():
+        """HEAD answers wherever GET does, in every lane (1.6.44 item 5).
+
+        `/healthz` alone with one UA is NOT the test, and this repo's own kit
+        says why: the prerender middleware answers a crawler-UA `HEAD /`
+        before routing, so that one path returns 200 on a host whose every
+        other route 405s. Probe paths that are NOT `/`, with all three UAs,
+        and count the pairs so a loop that stops looping fails instead of
+        passing quietly.
+        """
+        paths = ("/healthz", "/llms.txt", "/robots.txt", "/sitemap.xml", "/")
+        agents = (("browser", BROWSER_UA), ("crawler", CRAWLER_UA),
+                  ("engine", "curl/8 " + _PROBE))
+        mismatches = []
+        pairs = 0
+        for path in paths:
+            for lane, ua in agents:
+                get_status, _, _ = get(path, ua=ua)
+                head_status, _, _ = get(path, ua=ua, method="HEAD")
+                pairs += 1
+                if head_status != get_status:
+                    mismatches.append(
+                        f"{lane} {path}: HEAD {head_status} vs GET {get_status}"
+                        + (" (no HEAD rule for this GET route)"
+                           if head_status == 405 else ""))
+        expect(pairs == len(paths) * len(agents),
+               f"compared {pairs} pairs, expected {len(paths) * len(agents)}")
+        expect(not mismatches, "; ".join(mismatches))
+
+    def discovery_link_headers_per_lane():
+        """Both lanes advertise the same discovery relations.
+
+        Read EVERY `Link` value, not `headers['link']`: repeated headers keep
+        only the last through a plain dict — which is what this battery used
+        until 1.6.44 — and a folded comma-joined value is equally legal. So
+        parse the relations out of everything that came back rather than
+        counting the list.
+        """
+        wanted = {"alternate", "describedby"}
+        for lane, ua in (("browser", BROWSER_UA), ("crawler", CRAWLER_UA)):
+            status, headers, _ = get("/", ua=ua)
+            expect(status == 200, f"{lane} GET / {status}")
+            values = headers.get_all("link")
+            rels = set(re.findall(r'rel="?([a-zA-Z-]+)"?', ", ".join(values)))
+            expect(wanted <= rels,
+                   f"{lane} lane advertises {sorted(rels) or 'no Link header'}"
+                   f" — missing {sorted(wanted - rels)}")
+            expect(all("/llms.txt" in v for v in values),
+                   f"{lane} lane's Link headers do not point at /llms.txt: "
+                   f"{values}")
+
+    def directory_counts_are_derived():
+        """The Network section lists exactly the peers the module names.
+
+        Counts come from `lib/network_directory`, never a literal: a hard
+        number in a battery stops testing the moment the fleet grows, and
+        passes while doing it.
+        """
+        try:
+            from lib.constants import BASE_URL
+            from lib.network_directory import peers_for
+        except Exception:
+            skip("no checkout beside this script — the directory is unreadable")
+        expected = {p["url"].rstrip("/") for p in peers_for(BASE_URL)}
+        expect(len(expected) > 0,
+               "peers_for() names no peers — nothing to hold the wire to")
+        _status, _, text = get("/llms.txt")
+        section = text.split("## Network", 1)[-1]
+        missing = sorted(u for u in expected if u.rstrip("/") not in section)
+        expect(not missing,
+               f"{len(missing)} of {len(expected)} peers absent from the "
+               f"/llms.txt Network section: {missing[:3]}")
+
+    def api_llms_rows_present():
         """Note 79/80: /api can ship EMPTY at 200 — with a canonical, an h1
         and a heading — by FOUR different mechanisms (a missing
         metadata.json, a gitignored one, a package that ships none, or a
@@ -475,10 +589,21 @@ def satellite_checks(base: str) -> None:
         The invariant that catches every one is ROWS, on the machine lane
         where the content is text: the document must carry more table pipes
         than it has headings, and name a real component."""
+        try:
+            from lib.constants import API_PACKAGES
+        except Exception:
+            skip("no checkout beside this script — API_PACKAGES unreadable")
+        if not API_PACKAGES:
+            skip("API_PACKAGES is empty on this host — nothing to index")
+
         status, _, doc = get("/api/llms.txt", ua=CRAWLER_UA)
         if status == 404:
-            expect(True, "")  # a host documenting no package has no /api
-            return
+            # NEVER `expect(True, "")`, which is what stood here until 1.6.44
+            # and printed `[pass]` for a host serving no /api at all. This host
+            # DECLARES packages, so a 404 is a real failure; a host declaring
+            # none skipped above and never reaches this line.
+            expect(False, f"/api/llms.txt 404 while API_PACKAGES declares "
+                          f"{list(API_PACKAGES)}")
         expect(status == 200, f"/api/llms.txt {status}")
         rows = doc.count("|")
         headings = doc.count("### ")
@@ -531,7 +656,10 @@ def satellite_checks(base: str) -> None:
          agents_and_browsers_get_different_types),
         ("social_card_real_pixels", social_card_is_shareable),
         ("installable_as_an_app", installable_as_an_app),
-        ("api_rows_present", api_rows_present),
+        ("head_get_parity_three_uas", head_get_parity_three_uas),
+        ("api_llms_rows_present", api_llms_rows_present),
+        ("discovery_link_headers_per_lane", discovery_link_headers_per_lane),
+        ("directory_counts_are_derived", directory_counts_are_derived),
     ):
         check(name, fn)
 

@@ -24,7 +24,7 @@ import sys
 
 import pytest
 
-from conftest import REPO_ROOT
+from conftest import CRAWLER_UA, REPO_ROOT
 from lib.constants import BASE_URL, INTERNAL_UA_TOKEN, SITE_BRAND
 
 BASE = BASE_URL
@@ -65,7 +65,13 @@ def wired(battery, client, monkeypatch):
 
     def fetch_raw(url, ua=battery.UA, method="GET", body=None, headers=None,
                   timeout=None, retries=1):
-        assert method == "GET", f"the satellite battery issued a {method}"
+        # HEAD joined GET at 1.6.44 item 5 (`head_get_parity_three_uas`).
+        # Anything else is still a bug in the script rather than something to
+        # emulate — and the assert says which method, so a future POST does
+        # not read as a mysterious stub failure.
+        assert method in ("GET", "HEAD"), (
+            f"the satellite battery issued a {method}"
+        )
         seen_agents.append(ua)
         accept = (headers or {}).get("Accept")
 
@@ -78,8 +84,17 @@ def wired(battery, client, monkeypatch):
                     _png_header(battery.OG_IMAGE_WIDTH, battery.OG_IMAGE_HEIGHT))
 
         path = url[len(BASE):] if url.startswith(BASE) else url
-        response = client.get(path or "/", user_agent=ua, accept=accept)
-        return response.status, dict(response.headers), response.text.encode()
+        if method == "HEAD":
+            response = client.head(path or "/", user_agent=ua)
+        else:
+            response = client.get(path or "/", user_agent=ua, accept=accept)
+        # `battery._Headers`, NOT a plain dict (1.6.44 item 5). The battery's
+        # discovery check calls `.get_all("link")`, and a dict keeps only the
+        # last of the several `Link` headers the package emits — so a plain
+        # dict here would make that check assert about one relation while
+        # believing it had read them all. `raw_headers` carries the repeats.
+        return (response.status, battery._Headers(response.raw_headers),
+                response.text.encode())
 
     # `fetch_raw`, NOT `fetch`. The card check reads PNG bytes, and `fetch` is
     # a thin decoding delegate — patching it would leave `fetch_raw` reaching
@@ -239,3 +254,160 @@ def test_the_batterys_default_ua_is_browser_lane_and_still_internal():
     assert INTERNAL_UA_TOKEN in ns.UA and ns.UA.endswith("network-smoke")
     assert classify(ns.CRAWLER_UA)["lane"] == "crawler"
     assert INTERNAL_UA_TOKEN in ns.CRAWLER_UA
+
+
+# ---------------------------------------------------------------------------
+# 1.6.44 item 5 — the four invariants, and the machinery they needed first.
+# ---------------------------------------------------------------------------
+
+ITEM_5_INVARIANTS = (
+    "head_get_parity_three_uas",
+    "api_llms_rows_present",
+    "discovery_link_headers_per_lane",
+    "directory_counts_are_derived",
+)
+
+
+def test_the_four_invariants_are_registered_by_name(wired, capsys):
+    """Registered BY NAME, per the detect — not merely defined.
+
+    A check that exists as a nested function and is never added to the
+    registry runs never and fails never.
+    """
+    wired.satellite_checks(BASE)
+    capsys.readouterr()
+
+    ran = {name for name, _, _ in wired._RESULTS}
+    missing = [n for n in ITEM_5_INVARIANTS if n not in ran]
+    assert not missing, f"registered but never ran: {missing}; ran={sorted(ran)}"
+
+
+def test_the_four_invariants_pass_against_this_app(wired, capsys):
+    wired.satellite_checks(BASE)
+    capsys.readouterr()
+
+    verdicts = {name: v for name, v, _ in wired._RESULTS}
+    bad = {n: verdicts[n] for n in ITEM_5_INVARIANTS if verdicts[n] == wired.FAIL}
+    assert not bad, bad
+
+
+def test_an_empty_api_packages_SKIPS_and_does_not_pass(wired, capsys, monkeypatch):
+    """THE MUTATION THE SPEC ASKS FOR, and the defect it replaces.
+
+    Until 1.6.44 this check answered a 404 with `expect(True, "")` and printed
+    `[pass]` — a host serving no /api at all scored a pass on an /api check.
+    That is note 88's defect exactly: a sweep that swept nothing is
+    indistinguishable from a sweep that found nothing wrong.
+
+    `skip` had to become a real verdict before this could be fixed, so both
+    halves are asserted here: the verdict is SKIP, and it is specifically NOT
+    PASS.
+    """
+    import lib.constants as constants
+
+    monkeypatch.setattr(constants, "API_PACKAGES", [])
+    wired.satellite_checks(BASE)
+    capsys.readouterr()
+
+    verdicts = {name: v for name, v, _ in wired._RESULTS}
+    got = verdicts["api_llms_rows_present"]
+
+    assert got == wired.SKIP, (
+        f"api_llms_rows_present returned {got!r} with API_PACKAGES empty; "
+        "a pass here is a check that swept nothing"
+    )
+    assert got != wired.PASS
+
+
+def test_a_non_empty_api_packages_really_passes(wired, capsys):
+    """The other direction, so the skip above is not the only outcome.
+
+    Without this, a check hard-wired to skip forever would satisfy the
+    mutation test and assert nothing about this host's actual /api.
+    """
+    from lib.constants import API_PACKAGES
+
+    assert API_PACKAGES, "this host declares no API_PACKAGES — control is void"
+    wired.satellite_checks(BASE)
+    capsys.readouterr()
+
+    verdicts = {name: v for name, v, _ in wired._RESULTS}
+    assert verdicts["api_llms_rows_present"] == wired.PASS
+
+
+def test_skip_is_a_verdict_of_its_own(battery):
+    """`skip()` must not be reachable as a pass or a failure."""
+    results = []
+    battery_results = battery._RESULTS
+    try:
+        battery._RESULTS = results
+
+        def skipper():
+            battery.skip("precondition absent")
+
+        def passer():
+            battery.expect(True, "")
+
+        def failer():
+            battery.expect(False, "boom")
+
+        battery.check("skipper", skipper)
+        battery.check("passer", passer)
+        battery.check("failer", failer)
+    finally:
+        battery._RESULTS = battery_results
+
+    assert [v for _, v, _ in results] == [battery.SKIP, battery.PASS, battery.FAIL]
+
+
+def test_the_header_container_keeps_repeats_and_parses_a_folded_value(battery):
+    """`get_all()` is necessary and NOT sufficient — measured on this host.
+
+    Two shapes are both legal and both occur. Repeated headers are what a
+    plain dict loses; a comma-FOLDED single header is what `get_all()` alone
+    cannot count. This host serves the second shape: one `link` header
+    carrying both relations, measured in-process.
+    """
+    import re
+
+    repeated = battery._Headers([
+        ("Link", '</llms.txt>; rel="alternate"'),
+        ("Link", '</llms.txt>; rel="describedby"'),
+        ("Content-Type", "text/html"),
+    ])
+    assert len(repeated.get_all("link")) == 2, "repeated names collapsed"
+    assert repeated["link"] == '</llms.txt>; rel="describedby"', (
+        "the dict view should still hold the LAST value, for every existing caller"
+    )
+    assert repeated["content-type"] == "text/html", "keys are not lower-cased"
+
+    folded = battery._Headers([
+        ("Link", '</llms.txt>; rel="alternate", </llms.txt>; rel="describedby"'),
+    ])
+    assert len(folded.get_all("link")) == 1
+    rels = set(re.findall(r'rel="?([a-zA-Z-]+)"?', ", ".join(folded.get_all("link"))))
+    assert rels == {"alternate", "describedby"}, (
+        "a folded value must be PARSED, not counted — this is the shape this "
+        f"host actually serves: {rels}"
+    )
+
+
+def test_this_host_really_folds_its_discovery_relations(client):
+    """Pin the measurement the comment above rests on.
+
+    If this host ever starts sending two separate `Link` headers instead, the
+    parsing code still works — but the claim in the comment would be stale,
+    and a stale measured claim is what the kit's traps section keeps warning
+    about.
+    """
+    import re
+
+    values = client.get("/", user_agent=CRAWLER_UA).header_all("link")
+    assert values, "no Link header at all on the crawler lane"
+
+    rels = set(re.findall(r'rel="?([a-zA-Z-]+)"?', ", ".join(values)))
+    assert {"alternate", "describedby"} <= rels, rels
+    assert len(values) < len(rels), (
+        f"{len(values)} Link header(s) carrying {len(rels)} relations — this "
+        "host no longer folds them; update the comment in scripts/network_smoke"
+    )

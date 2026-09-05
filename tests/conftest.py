@@ -133,11 +133,19 @@ def app(app_module):
 
 
 class Response:
-    __slots__ = ("status", "text", "headers")
+    __slots__ = ("status", "text", "headers", "raw_headers")
 
     def __init__(self, status: int, text: str, headers=None) -> None:
         self.status = status
         self.text = text
+        # The RAW (name, value) pairs, repeats intact (1.6.44 item 5). Both
+        # `dict(resp.headers)` and a dict comprehension keep only the LAST
+        # value per name, and dash-improve-my-llms emits several `Link`
+        # headers — so a discovery-relation assertion made through `.headers`
+        # below is reading one of them and calling it all of them.
+        self.raw_headers = list(
+            (headers or {}).items() if hasattr(headers, "items") else (headers or [])
+        )
         # Headers matter from 2.2.0 on: `/<page>/llms.txt` content-negotiates,
         # so the *type* of the response is part of the contract and `Vary` is
         # what stops a CDN serving cached HTML to the next agent.
@@ -146,7 +154,7 @@ class Response:
         # Werkzeug hands back `Content-Type`, httpx `content-type`. A plain
         # `headers.get("Content-Type")` therefore passes on Flask and fails on
         # FastAPI and Quart, which reads like a backend bug and isn't one.
-        self.headers = {k.lower(): v for k, v in (headers or {}).items()}
+        self.headers = {k.lower(): v for k, v in self.raw_headers}
 
     @property
     def ok(self) -> bool:
@@ -154,6 +162,17 @@ class Response:
 
     def header(self, name: str, default: str = "") -> str:
         return self.headers.get(name.lower(), default)
+
+    def header_all(self, name: str) -> list:
+        """EVERY value sent under this name, repeats intact.
+
+        `header()` answers with the last one, which is what a dict can hold.
+        Discovery relations arrive as several `Link` headers, so a caller
+        counting them must come through here — and must still PARSE what it
+        gets, because a comma-folded single header is equally legal.
+        """
+        want = name.lower()
+        return [v for k, v in self.raw_headers if k.lower() == want]
 
     @property
     def content_type(self) -> str:
@@ -183,23 +202,25 @@ class Client:
 
         if self._kind == "werkzeug":
             r = self._raw.get(path, headers=headers)
+            # `r.headers` is a Werkzeug Headers: iterating it yields every
+            # repeat, where dict(...) would collapse them.
+            return Response(r.status_code, r.get_data().decode("utf-8", "replace"),
+                            list(r.headers))
             # errors="replace", not `as_text=True`: the latter decodes strictly
             # and raises UnicodeDecodeError on any binary response, so a test
             # that merely checks a favicon or a manifest icon RESOLVES would
             # blow up on the PNG's first byte. httpx (the FastAPI branch) is
             # already lenient; this matches it.
-            return Response(r.status_code, r.get_data().decode("utf-8", "replace"),
-                            dict(r.headers))
 
         if self._kind == "quart":
             async def fetch():
                 r = await self._raw.get(path, headers=headers)
-                return r.status_code, await r.get_data(as_text=True), dict(r.headers)
+                return r.status_code, await r.get_data(as_text=True), list(r.headers)
 
             return Response(*self._loop.run_until_complete(fetch()))
 
         r = self._raw.get(path, headers=headers)
-        return Response(r.status_code, r.text, dict(r.headers))
+        return Response(r.status_code, r.text, list(r.headers.multi_items()))
 
     def head(self, path: str, user_agent: str = BROWSER_UA) -> Response:
         """The same request as `.get()`, by the other method (1.6.44 item 2).
@@ -218,17 +239,17 @@ class Client:
 
         if self._kind == "werkzeug":
             r = self._raw.head(path, headers=headers)
-            return Response(r.status_code, "", dict(r.headers))
+            return Response(r.status_code, "", list(r.headers))
 
         if self._kind == "quart":
             async def fetch():
                 r = await self._raw.head(path, headers=headers)
-                return r.status_code, "", dict(r.headers)
+                return r.status_code, "", list(r.headers)
 
             return Response(*self._loop.run_until_complete(fetch()))
 
         r = self._raw.head(path, headers=headers)
-        return Response(r.status_code, "", dict(r.headers))
+        return Response(r.status_code, "", list(r.headers.multi_items()))
 
 
 @pytest.fixture(scope="session")

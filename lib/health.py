@@ -75,6 +75,29 @@ def _resolved_country() -> str:
         return "unavailable"
 
 
+def _llms_version() -> dict:
+    """``{"llms_version": "2.8.0"}``, or ``{}`` if the package cannot be read.
+
+    Omitted rather than reported as "unknown": a health payload that invents a
+    version is worse than one that is silent about it, and run.py's
+    ``LLMS_PKG_FLOOR`` already refuses to boot below the floor — so an absent
+    key here means the import broke AFTER boot, which is itself the finding.
+
+    This is the resolved PACKAGE version, and it is the only honest answer to
+    "which dash-improve-my-llms is this host actually serving?". requirements.txt
+    states a floor; the image states an intention; this states the fact. The
+    two questions a fork confuses at its peril: `llms_version` is the package,
+    `openapi_version` (run.py) is the API surface's own shape.
+    """
+    try:
+        import dash_improve_my_llms as _pkg
+
+        version = getattr(_pkg, "__version__", None)
+        return {"llms_version": version} if version else {}
+    except Exception:
+        return {}
+
+
 def health_payload(backend: str) -> dict:
     """Built PER REQUEST, never snapshotted.
 
@@ -106,6 +129,15 @@ def health_payload(backend: str) -> dict:
         # `runtime: docker`, so the image IS the declaration.
         "python": platform.python_version(),
         "reporting": bool(os.getenv("CROSS_APP_WEBHOOK_SECRET")),
+        # ADDITIVE (1.6.44 item 1). Every existing key keeps its meaning; a
+        # consumer that does not know this one ignores it. The template's own
+        # finding is why the test below reads it off the WIRE on the lane that
+        # actually answers rather than off `health_payload`: a pydantic
+        # `response_model` DROPS undeclared fields in silence, so a key can be
+        # in this dict and absent from the served JSON. This repo's FastAPI
+        # lane returns a bare `JSONResponse` with no model, so nothing filters
+        # it — recorded, because that is the reason it works here.
+        **_llms_version(),
     }
 
     build = os.environ.get("RENDER_GIT_COMMIT")

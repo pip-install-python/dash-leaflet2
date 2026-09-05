@@ -72,6 +72,7 @@ from lib.constants import (
     LEAFLET_VERSION,
     SITE_BRAND,
     SITE_DESCRIPTION,
+    SITE_SHORT_NAME,
     require_owned_base_url,
 )
 
@@ -450,7 +451,50 @@ ACCESS_ENABLED = _access.configure(force=True)
 # register_page_metadata MERGE, so every page now keeps the llms_doc the
 # markdown loader gave it and the warning should stay at zero. If it starts
 # firing, a page has genuinely lost its prose — which is worth hearing about.
-add_llms_routes(app, LLMSConfig(warn_missing_llms_doc=True))
+# THE HOST OWNS ITS API IDENTITY (1.6.44 item 1, dimll 2.9.4's three
+# `openapi_*` knobs). The package cannot read `/healthz` and must not guess:
+# without these the FastAPI lane's OpenAPI document is titled "FastAPI" with
+# version "0.1.0", which is what an agent discovering this host through
+# `/openapi.json` would read as the app's name. The knobs exist so identity
+# flows one way — from this repo's constants, the same ones the browser title,
+# the og: tags and the network registry read.
+#
+# `openapi_version` is the API SURFACE's version, not the package's and not
+# this app's release: it moves when the routes change shape, so it is pinned
+# here rather than wired to APP_VERSION. `llms_version` on `/healthz` reports
+# the resolved PACKAGE version — two different questions, deliberately not the
+# same field.
+#
+# BEHIND A SIGNATURE GUARD, and that is not defensive dressing: this repo's
+# requirements line is a `>=2.8.0` FLOOR, not the template's `==2.9.4` pin (the
+# fleet pin lands at 1.6.45). 2.8.0's LLMSConfig has THIRTEEN parameters and
+# not one of them is an `openapi_*` — passing these unguarded is a TypeError at
+# IMPORT, i.e. a dead site, on every venv or image that resolves below 2.9.4.
+# Measured here, not assumed: the .venv this was written in resolves 2.8.0.
+# DELETE THIS GUARD when the pin lands at 1.6.45 and the floor guarantees the
+# parameters exist.
+
+
+def _openapi_kwargs() -> dict:
+    """The three knobs, filtered to what the RESOLVED LLMSConfig accepts."""
+    import inspect
+
+    knobs = {
+        "openapi_title": f"{SITE_SHORT_NAME} API",
+        "openapi_description": SITE_DESCRIPTION,
+        "openapi_version": "1.0",
+    }
+    try:
+        accepted = inspect.signature(LLMSConfig).parameters
+    except (TypeError, ValueError):  # unintrospectable config object
+        return {}
+    return {name: value for name, value in knobs.items() if name in accepted}
+
+
+add_llms_routes(app, LLMSConfig(
+    warn_missing_llms_doc=True,
+    **_openapi_kwargs(),
+))
 
 # The ledger row (dimll 2.8.0): the package emits one event per corpus
 # document it serves and does no I/O with it; lib/analytics_tracker keeps it

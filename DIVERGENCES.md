@@ -29,6 +29,54 @@ to close them rather than treat the gap as a decision.
 
 ---
 
+## Recorded conventions (not divergences)
+
+Guard entries. Every line here documents something this repo MATCHES
+or deliberately does NOT carry — an absence a sync would otherwise
+read as drift and helpfully undo. Nothing in a diff distinguishes a
+deliberate absence from an accident, and a test docstring is invisible
+to both the fan-out and the next sync author, who read THIS FILE.
+Adding one costs a sentence; the alternative costs a fortnight of a
+defect walking back in.
+
+- **There is no User-Agent list in this app, and there must not be**
+  (1.6.34). `dash_improve_my_llms.classify()` is the one classifier.
+  This tracker carried a local list for a year: it filed ClaudeBot —
+  Anthropic's TRAINING crawler — as *search*, still named the retired
+  `anthropic-ai` / `claude-web` tokens, and counted every UA-less or
+  library client as a person. Every host in the fleet reported those
+  numbers. A token the registry lacks is a pushback to the package
+  seat, never a table here.
+  `tests/test_analytics_classifier.py` greps the module and goes red
+  if one returns. The same rule now covers `vendor_class` (1.6.44
+  item 8): prefer the package's value, derive from the package's
+  REGISTRY when absent, never from a local map.
+- **Content images carry width/height and NEVER `loading`/`decoding`**
+  (1.6.44 item 6f). Neither is a prop of dash 4.4.1's `html.Img` and
+  Dash RAISES on an unknown one, so adding them is a collection error
+  on every page with an image rather than a degraded hint.
+  `tests/test_a11y_agentic.py` pins the TypeError and goes red the day
+  Dash learns the props — at which point the sub-item can be completed
+  instead of capped.
+- **The image size readers use the STDLIB only** (1.6.44 item 6f).
+  Pillow is installed here by two BUILD-TIME scripts
+  (`make_social_card`, `make_favicons`) and is deliberately absent from
+  `requirements.txt`. The template's first version of this feature
+  imported it and was therefore inert in production and on every CI
+  leg while looking correct in review.
+- **`skip` is a verdict in the battery, never a pass** (1.6.44 item 5).
+  `scripts/network_smoke.py` answered an absent precondition with
+  `expect(True, "")`. A check that passes when it swept nothing reads
+  identically to one that swept the corpus and found it clean.
+- **Assertions of the form "this string is absent from this module"
+  parse, never grep** (1.6.44 item 13). `conftest.live_source()`
+  strips comments AND docstrings via `ast`. A comment strip is not
+  enough: a function docstring quoting a measured result tripped the
+  UA-list guard during item 8, because good documentation explains the
+  absence of exactly the thing such a detect hunts for.
+
+---
+
 ## This repo's divergences
 
 ### 1. It pulls from a local sibling working tree (see the CORRECTION below)
@@ -263,95 +311,6 @@ block match the template exactly.
 
 ---
 
-### 17. `HeadAsGetMiddleware` is KEPT, where the template retired it
-
-Template 1.6.44 item 2 removes the HEAD->GET ASGI shim it added at
-1.6.32. Its own note is explicit that the retirement is "gated on the
-pin (item 1) and not on the calendar": at dash-improve-my-llms
-**2.9.4** the package walks the router and adds HEAD wherever GET is
-allowed, including Dash's lifespan-registered page catch-all — the
-one case the middleware was kept for.
-
-This fork does not take that pin. Rider 1 of the 1.6.44 drop leaves
-our requirements line at `dash-improve-my-llms[flask]>=2.8.0` until
-the fleet pin lands at 1.6.45, so the package-side fix is not present
-here and the shim is still load-bearing. Measured in-process on the
-FastAPI lane at the resolved 2.8.0, 5 paths x 3 UAs, BEFORE porting:
-four of fifteen pairs mismatched — `/healthz` 405 on all three UAs,
-and `/` 405 to a browser while returning 200 to a crawler and to curl
-(the prerender middleware answers above routing, which is the kit's
-own trap). The package's routes — `/llms.txt`, `/robots.txt`,
-`/sitemap.xml` — already passed: 2.7.2 fixed those. The residue is
-exactly the two routes the package does not own.
-
-Note this fork had NEVER carried the class; `grep -rn HeadAsGet`
-returned zero lines. So this is not "declining to retire", it is
-porting for the first time, at the moment the template drops it — and
-absent-vs-retired is the confusion the ops seat flagged from
-pannellum. Production is Flask, where Werkzeug derives HEAD from every
-GET rule, so the wire was never affected; `lib/backend.py` puts the
-ASGI lane one env var away, which is what makes it worth fixing.
-
-RETIRE IT AT 1.6.45, on a re-measurement and not on the date — same
-trigger as run.py's `_openapi_kwargs` guard.
-`tests/test_head_get_parity.py` fails on its own when the resolved
-package reaches 2.9.4, so the prompt fires without anyone remembering.
-
----
-
-### 18. Item 6's recorded sub-items, and one prohibition
-
-**Content images carry width/height and NEVER `loading`/`decoding`**
-(1.6.44 item 6f). Neither is a prop of dash 4.4.1's `html.Img` and Dash
-RAISES on an unknown one — measured on the pinned version:
-
-    html.Img(src='x', loading='lazy')
-    -> TypeError: The `html.Img` component (version 4.4.1) received an
-       unexpected keyword argument: `loading`
-
-So adding them is a collection error on every page that renders an
-image, not a degraded hint. `tests/test_a11y_agentic.py` pins the raise
-and goes red the day Dash learns the props, at which point the sub-item
-can be completed rather than capped.
-
-**(d) The mobile console error is NOT CLEARED on this host.** The
-template records it as "not reproduced" against its own deployed build
-and adds, correctly, that a fork which DOES see it must not read that
-line as clearance. This repo is one of the three hosts the symptom was
-originally reported on (the template names leaflet, llms and
-pannellum), so its own measurement does not transfer here and this
-fork must not inherit the clearance.
-
-MEASURED HERE, 2026-09-05, in the owner's Chrome against the deployed
-build 2aea641 (which predates this pass):
-
-    /                desktop     4 console messages, ALL `LOG`, 0 errors
-    /pointer-events  390x844     15 console messages, ALL `LOG`, 0 errors
-
-Every line is Clerk's (`[Clerk Glass] Theme changed`, `[Clerk] Session
-changed`, the avatar element check) plus the satellite auth handshake.
-No error, no warning, on either page.
-
-TWO HONEST LIMITS on that reading, because a clean measurement taken
-the wrong way is how a fork clears a defect it still has. The session
-was SIGNED IN, so the anonymous path is not covered; and the window was
-resized to 390x844 but the captured screenshot still rendered the
-desktop layout, so this is a narrow window rather than a confirmed
-phone viewport. Status: NOT REPRODUCED on this build, NOT CLEARED —
-re-measure signed-out, in a real device emulation, before closing it.
-
-**(e) Shipped CSS/JS are not minified, deliberately.** Same posture as
-the template and for the same reasons, re-checked here rather than
-inherited: `assets/` is text served over a gzip transfer encoding, and
-a build step would trade the readable stylesheet for a saving the
-encoding has already taken. This repo has a stronger version of the
-template's argument — `assets/leaflet2_maps.js` and `assets/style.css`
-ARE the documentation for how the showcase wires Leaflet 2, and a
-reader who opens them expects the source a human wrote. Revisit if
-`assets/` grows past a few hundred KB.
-
----
-
 ### 13. The site CI matrix's legs are the FLOOR and the adjacent minor
 
 The template's Python window rolls: its two include legs are X.Y-1
@@ -439,6 +398,86 @@ Template 1.6.41 took both findings and went further: the pages now call
 control board's llms.txt toggle; and the heading regex generalised to the
 seven shapes the fleet writes, crediting this repo's em-dash case. Both files
 are byte-identical to 4ac02e0, so neither is a divergence any more.
+
+### 17. `HeadAsGetMiddleware` is KEPT, where the template retired it
+
+Template 1.6.44 item 2 removes the HEAD->GET ASGI shim it added at
+1.6.32. Its own note is explicit that the retirement is "gated on the
+pin (item 1) and not on the calendar": at dash-improve-my-llms
+**2.9.4** the package walks the router and adds HEAD wherever GET is
+allowed, including Dash's lifespan-registered page catch-all — the
+one case the middleware was kept for.
+
+This fork does not take that pin. Rider 1 of the 1.6.44 drop leaves
+our requirements line at `dash-improve-my-llms[flask]>=2.8.0` until
+the fleet pin lands at 1.6.45, so the package-side fix is not present
+here and the shim is still load-bearing. Measured in-process on the
+FastAPI lane at the resolved 2.8.0, 5 paths x 3 UAs, BEFORE porting:
+four of fifteen pairs mismatched — `/healthz` 405 on all three UAs,
+and `/` 405 to a browser while returning 200 to a crawler and to curl
+(the prerender middleware answers above routing, which is the kit's
+own trap). The package's routes — `/llms.txt`, `/robots.txt`,
+`/sitemap.xml` — already passed: 2.7.2 fixed those. The residue is
+exactly the two routes the package does not own.
+
+Note this fork had NEVER carried the class; `grep -rn HeadAsGet`
+returned zero lines. So this is not "declining to retire", it is
+porting for the first time, at the moment the template drops it — and
+absent-vs-retired is the confusion the ops seat flagged from
+pannellum. Production is Flask, where Werkzeug derives HEAD from every
+GET rule, so the wire was never affected; `lib/backend.py` puts the
+ASGI lane one env var away, which is what makes it worth fixing.
+
+RETIRE IT AT 1.6.45, on a re-measurement and not on the date — same
+trigger as run.py's `_openapi_kwargs` guard.
+`tests/test_head_get_parity.py` fails on its own when the resolved
+package reaches 2.9.4, so the prompt fires without anyone remembering.
+
+---
+
+### 18. Item 6's recorded sub-items
+
+The `loading`/`decoding` prohibition and the stdlib-only size readers
+are guard entries and live under **Recorded conventions** above. The
+two below are this fork's own findings and belong here.
+
+**(d) The mobile console error is NOT CLEARED on this host.** The
+template records it as "not reproduced" against its own deployed build
+and adds, correctly, that a fork which DOES see it must not read that
+line as clearance. This repo is one of the three hosts the symptom was
+originally reported on (the template names leaflet, llms and
+pannellum), so its own measurement does not transfer here and this
+fork must not inherit the clearance.
+
+MEASURED HERE, 2026-09-05, in the owner's Chrome against the deployed
+build 2aea641 (which predates this pass):
+
+    /                desktop     4 console messages, ALL `LOG`, 0 errors
+    /pointer-events  390x844     15 console messages, ALL `LOG`, 0 errors
+
+Every line is Clerk's (`[Clerk Glass] Theme changed`, `[Clerk] Session
+changed`, the avatar element check) plus the satellite auth handshake.
+No error, no warning, on either page.
+
+TWO HONEST LIMITS on that reading, because a clean measurement taken
+the wrong way is how a fork clears a defect it still has. The session
+was SIGNED IN, so the anonymous path is not covered; and the window was
+resized to 390x844 but the captured screenshot still rendered the
+desktop layout, so this is a narrow window rather than a confirmed
+phone viewport. Status: NOT REPRODUCED on this build, NOT CLEARED —
+re-measure signed-out, in a real device emulation, before closing it.
+
+**(e) Shipped CSS/JS are not minified, deliberately.** Same posture as
+the template and for the same reasons, re-checked here rather than
+inherited: `assets/` is text served over a gzip transfer encoding, and
+a build step would trade the readable stylesheet for a saving the
+encoding has already taken. This repo has a stronger version of the
+template's argument — `assets/leaflet2_maps.js` and `assets/style.css`
+ARE the documentation for how the showcase wires Leaflet 2, and a
+reader who opens them expects the source a human wrote. Revisit if
+`assets/` grows past a few hundred KB.
+
+---
 
 ## Byte-owned paths
 

@@ -147,6 +147,41 @@ they win.
    scope. Enumerate what you cannot do (closing PRs, dashboard
    steps) for the owner instead of claiming it done.
 
+### Acceptance output (1.6.44 item 10)
+
+**PRINT THE RESOLVED VERSION BESIDE THE RESULT, and say which tool
+produced it.** An acceptance is a claim about a tree AT A VERSION.
+"suite green" is not a result; "423 passed, 3 skipped, exit 0,
+dash-improve-my-llms 2.8.0 imported from
+`.venv/lib/python3.12/site-packages/dash_improve_my_llms/__init__.py`"
+is.
+
+Resolve it by IMPORTING and printing `mod.__file__` — never by reading
+`requirements.txt`, which states an intent rather than a fact, and
+never by parsing source, which truncates (the regex trap below cost
+this seat a wrong field count in a spec). This repo's line is a `>=`
+FLOOR, which makes the gap wider here than on a pinned host: the
+number in the file and the number in the venv are different questions
+and often different answers.
+
+The gap is real and was measured on excalidraw 2026-09-01 —
+`llms_version` 2.9.4 on the wire while its suite ran 2.8.0, so its CI
+and its production disagreed about which package's behaviour was being
+accepted, and every green tick meant the older one. This fork will
+reproduce that shape at 1.6.45: CI legs install `>=2.8.0` and resolve
+current, while production serves whatever the last image built.
+
+NAME THE TOOLS WHOSE LOCAL INVOCATION IS NOT CI'S. `actionlint`
+without shellcheck on PATH skips every `run:` block's shell analysis,
+so "actionlint clean" locally is a weaker statement than the CI job's;
+a local ABSENCE of the binary is weaker still, and both must be
+reported as what they are. Same for a backend leg this seat cannot
+run — `quart` is not installed in this venv, so a three-lane claim
+made from here is a two-lane measurement plus an assumption.
+
+The general form: **when the check you ran differs from the check CI
+runs, the report says so in the same sentence as the result.**
+
 ### Verification traps (fleet-learned, keep them)
 
 - A `>=` floor can never pull a new release through a Docker cache

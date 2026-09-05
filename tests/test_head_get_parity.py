@@ -90,35 +90,117 @@ def test_the_shim_is_present_and_registered_outermost():
     )
 
 
-def test_the_package_has_not_yet_taken_over_the_head_fix():
-    """The removal trigger, pinned so it fires on its own.
+def _resolved_dimll() -> tuple:
+    """The RESOLVED package version as a tuple, e.g. (2, 10, 0).
 
-    When the resolved dash-improve-my-llms reaches 2.9.4 this goes RED, which
-    is the prompt to re-measure the parity table without the middleware and
-    retire it as the template did. Without this, the shim outlives its reason
-    and silently masks a regression in the package's own fix — the template's
-    stated motive for removing rather than leaving it harmless.
+    Imported, not read from requirements.txt — this fork's line is a `>=`
+    FLOOR, so the file states an intention and the import states the fact, and
+    on this item they are routinely different numbers.
     """
     import dash_improve_my_llms as pkg
 
-    def _v(text):
-        parts = []
-        for chunk in str(text).split(".")[:3]:
-            digits = ""
-            for ch in chunk:
-                if not ch.isdigit():
-                    break
-                digits += ch
-            if not digits:
+    parts = []
+    for chunk in str(pkg.__version__).split(".")[:3]:
+        digits = ""
+        for ch in chunk:
+            if not ch.isdigit():
                 break
-            parts.append(int(digits))
-        return tuple(parts)
+            digits += ch
+        if not digits:
+            break
+        parts.append(int(digits))
+    return tuple(parts)
 
-    assert _v(pkg.__version__) < (2, 9, 4), (
-        f"dash-improve-my-llms resolved {pkg.__version__} >= 2.9.4: the "
-        "package now adds HEAD wherever GET is allowed. Re-run the parity "
-        "table WITHOUT HeadAsGetMiddleware, confirm 15/15, then delete the "
-        "class, its registration and these two tests (1.6.45)."
+
+PACKAGE_ANSWERS_HEAD = _resolved_dimll() >= (2, 9, 4)
+
+
+def test_the_shim_stays_installed_in_both_version_regimes():
+    """The shim is KEPT until the pin round retires it, whichever version
+    resolves — and this test says which regime it is running in.
+
+    THE BUG THIS REPLACES, because it is the more useful half of the record.
+    The first version asserted `resolved < (2, 9, 4)` as a hard failure, so
+    that it would "go red by itself when the package catches up". It does —
+    but our requirements line is a `>=2.8.0` FLOOR, so a fresh venv resolves
+    2.10.0 TODAY and the assertion fails on every CI leg from the first run.
+    A reminder that turns a permitted dependency resolution into a red build
+    is not a reminder, it is an outage with a helpful message.
+
+    My own clean-clone verification could not see it: I cloned the tree but
+    reused this seat's `.venv`, which holds 2.8.0 from an earlier install. The
+    clone standard means a FRESH venv from requirements.txt — the clone tests
+    the code, the venv tests the resolution, and only the pair tests what CI
+    runs. Found by the ops seat on 3.14 with dimll 2.10.0.
+    """
+    import lib.asgi_middleware as mod
+
+    assert hasattr(mod, "HeadAsGetMiddleware"), (
+        "HeadAsGetMiddleware is gone. It is retired by the PIN round (1.6.45), "
+        "not by the resolved version — until then it stays installed in both "
+        "regimes, harmless where the package also answers HEAD."
+    )
+
+
+def test_the_head_fix_is_provided_by_someone_in_this_regime(record_property):
+    """WHICH mechanism answers HEAD here, recorded rather than asserted away.
+
+    Two regimes, one requirement — the parity table above must be 15/15
+    either way:
+
+    * below 2.9.4 the package does NOT walk the router, so the shim is
+      LOAD-BEARING and its absence is a defect;
+    * at or above 2.9.4 the package adds HEAD wherever GET is allowed, so the
+      shim is REDUNDANT — a note, never a failure, because the floor permits
+      this version and nothing is broken by it.
+
+    The note is emitted as a test property so it lands in CI's output, which
+    is where somebody will read it when the pin round comes.
+    """
+    version = _resolved_dimll()
+    regime = "package" if PACKAGE_ANSWERS_HEAD else "shim"
+    record_property("dimll_resolved", ".".join(str(n) for n in version))
+    record_property("head_fix_provided_by", regime)
+
+    import lib.asgi_middleware as mod
+
+    assert hasattr(mod, "HeadAsGetMiddleware")
+
+    if PACKAGE_ANSWERS_HEAD:
+        print(
+            f"\n[1.6.44 item 2] dash-improve-my-llms {'.'.join(map(str, version))} "
+            ">= 2.9.4: the package now answers HEAD at the router, so "
+            "HeadAsGetMiddleware is REDUNDANT here. It stays installed until "
+            "the pin round (1.6.45) retires it deliberately, on a re-measured "
+            "parity table — see DIVERGENCES 17."
+        )
+    else:
+        print(
+            f"\n[1.6.44 item 2] dash-improve-my-llms {'.'.join(map(str, version))} "
+            "< 2.9.4: HeadAsGetMiddleware is LOAD-BEARING here."
+        )
+
+
+@pytest.mark.xfail(
+    PACKAGE_ANSWERS_HEAD,
+    reason=(
+        "the resolved dash-improve-my-llms is >= 2.9.4, so the package answers "
+        "HEAD itself and the shim is no longer required. XFAIL rather than a "
+        "hard failure: the floor permits this version and the parity table is "
+        "still 15/15. Retire the shim in the pin round (1.6.45), not here."
+    ),
+    strict=False,
+)
+def test_the_shim_is_still_required():
+    """The 'still required' clause, xfailed in the regime where it is false.
+
+    This is the clause that used to be a hard assert. As an xfail it still
+    FLIPS visibly the day the package takes over — an XPASS/XFAIL transition
+    in CI's output — without turning that day into a red build.
+    """
+    assert not PACKAGE_ANSWERS_HEAD, (
+        "the package answers HEAD itself now; the shim is redundant (not "
+        "broken) and is retired by the pin round"
     )
 
 

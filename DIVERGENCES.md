@@ -428,10 +428,30 @@ pannellum. Production is Flask, where Werkzeug derives HEAD from every
 GET rule, so the wire was never affected; `lib/backend.py` puts the
 ASGI lane one env var away, which is what makes it worth fixing.
 
-RETIRE IT AT 1.6.45, on a re-measurement and not on the date — same
-trigger as run.py's `_openapi_kwargs` guard.
-`tests/test_head_get_parity.py` fails on its own when the resolved
-package reaches 2.9.4, so the prompt fires without anyone remembering.
+TWO VERSION REGIMES, ONE POSTURE — and the distinction is what a
+`>=` floor makes unavoidable. The floor permits any version from
+2.8.0 up, and a fresh venv resolves **2.10.0 today**, so both of
+these are normal states of this repo:
+
+* **below 2.9.4** — the package does not walk the router, the shim is
+  LOAD-BEARING, and its absence is a defect;
+* **at or above 2.9.4** — the package adds HEAD wherever GET is
+  allowed, so the shim is REDUNDANT. Not wrong, not broken: the
+  parity table is 15/15 either way. It stays INSTALLED.
+
+The shim is retired by the PIN ROUND (1.6.45), never by whichever
+version a resolver happened to pick, and never on a date — a
+re-measured parity table without it is the trigger, the same rule as
+run.py's `_openapi_kwargs` guard.
+
+`tests/test_head_get_parity.py` records which regime it ran in and
+xfails the "shim still required" clause above 2.9.4, so the day the
+package takes over is VISIBLE in CI output as an XFAIL transition
+without being a red build. It asserted that clause as a hard failure
+until the ops seat mirrored this tree on a FRESH venv: our `>=2.8.0`
+floor resolved 2.10.0 and the guard failed on every leg. A reminder
+that turns a permitted dependency resolution into a red build is not
+a reminder.
 
 ---
 

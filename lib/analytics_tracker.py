@@ -537,7 +537,11 @@ class AnalyticsTracker:
 
             data["visits"] = _prune(visits)
             read_rows.extend(reads)
-            data["reads"] = _prune(read_rows, stamp=_read_stamp)
+            # cap=False: reads are pruned by DATE ONLY (1.6.44 item 21). The
+            # count cap belongs to `visits` above; applying it here discards
+            # in-window rows on exactly the busy days the read ledger exists
+            # to record.
+            data["reads"] = _prune(read_rows, stamp=_read_stamp, cap=False)
 
             # Atomic replace: a crash mid-write can't leave a truncated ledger.
             tmp = path.with_suffix(path.suffix + ".tmp")
@@ -566,12 +570,29 @@ def _read_stamp(r):
         return ""
 
 
-def _prune(rows, stamp=_visit_stamp):
-    """Drop rows older than the retention window, then cap the total."""
+def _prune(rows, stamp=_visit_stamp, cap=True):
+    """Drop rows older than the retention window, and optionally cap the total.
+
+    `cap` IS THE PER-TABLE CHOICE (1.6.44 item 21), and the caller makes it:
+
+    * ``visits`` KEEP the count cap. The visit table is unbounded in the bad
+      case — a scraper hammering one path writes a row per request — and the
+      cap is what stops one afternoon filling the disk.
+    * ``reads`` are pruned BY DATE ONLY. A crawler sweep legitimately produces
+      tens of thousands of read rows in a day, and capping by count silently
+      discards rows that are INSIDE the retention window — throwing away the
+      busiest days, which is precisely the data the read ledger exists to
+      record. A count cap answers "how big is the file"; the retention window
+      answers "what are we allowed to keep". Only the second is a policy.
+
+    The default stays True so a caller that does not think about it gets the
+    conservative behaviour, and the choice is visible at each call rather than
+    hidden here.
+    """
     if RETENTION_DAYS > 0:
         cutoff = (datetime.now() - timedelta(days=RETENTION_DAYS)).isoformat()
         rows = [v for v in rows if stamp(v) >= cutoff]
-    if MAX_VISITS > 0 and len(rows) > MAX_VISITS:
+    if cap and MAX_VISITS > 0 and len(rows) > MAX_VISITS:
         rows = rows[-MAX_VISITS:]
     return rows
 

@@ -84,3 +84,10 @@ KICKOFF-*.md
 !.claude/CLAUDE.md
 !.claude/settings.json
 !.claude/skills/
+# .claude/session-name — this host's app key (1.6.44 item 23b), so
+# `claude -n "$(cat .claude/session-name)"` starts a session already named for
+# the host it is working on. It MUST be allow-listed: `.claude/*` above ignores
+# everything, so without this line the file is written, passes every test run
+# from the working directory, and is INVISIBLE in a fresh checkout — which is
+# the only place it matters.
+!.claude/session-name

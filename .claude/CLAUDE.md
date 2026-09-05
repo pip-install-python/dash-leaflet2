@@ -182,6 +182,39 @@ made from here is a two-lane measurement plus an assumption.
 The general form: **when the check you ran differs from the check CI
 runs, the report says so in the same sentence as the result.**
 
+### Writing a detect (1.6.44 item 13)
+
+**PARSE, or strip comments AND STRINGS.** A detect of the form "this
+token must not appear in this file" matches the COMMENT that explains
+why the token is absent — and stripping comments still leaves the
+DOCSTRING doing the same job. The better-documented the code, the more
+reliably a raw grep reports the very defect the documentation denies.
+
+Measured on this tree, twice in one pass:
+
+* item 6's a11y detects hunted `trigger="hover"`, `loading=` and
+  `Pillow`, and matched the comments saying those must never appear;
+* item 8 tripped the PRE-EXISTING UA-list guard, which already stripped
+  comments and the MODULE docstring — a FUNCTION docstring quoting a
+  measured `classify()` result read as a resurrected vendor table.
+
+`tests/conftest.py::live_source()` is the answer: `ast.unparse` drops
+comments outright and docstrings are removed explicitly. Use it for
+every "string absent from module" assertion. `ast.parse` is the tool;
+a comment strip is not.
+
+TWO MORE FAILURE MODES, both formatting-bound and both cheap to avoid:
+
+* a phrase that WRAPS across a line defeats a literal grep — FLATTEN
+  whitespace before matching prose;
+* an indented blockquote's `> ` markers do the same.
+
+And match prose CASE-INSENSITIVELY. The template shipped a detect
+grepping `"ASSERT THE CORPUS IS NON-EMPTY"` in the capitals a spec uses
+for emphasis while the trap ships in sentence case, so `grep -c`
+returned 0 on the tree that authored it — a detect that could not pass
+anywhere, inside the item about checks that cannot fail.
+
 ### Verification traps (fleet-learned, keep them)
 
 - A `>=` floor can never pull a new release through a Docker cache

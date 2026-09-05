@@ -46,8 +46,10 @@ reported back as this app being slow.
 """
 from __future__ import annotations
 
+import json
 import os
 import platform
+from pathlib import Path
 
 import dash
 
@@ -88,6 +90,55 @@ def _geo_headers_seen() -> list:
         return geo_headers_seen()
     except Exception:
         return []
+
+
+def _ledger_block() -> dict:
+    """``{"path", "persistent", "visits", "reads"}`` — the ledger, from outside.
+
+    Three facts that were previously invisible on the wire, and the first is
+    the one this host paid for: **leaflet ran for weeks with a disk DECLARED
+    in render.yaml and no disk actually attached**, and nothing served could
+    contradict the declaration.
+
+    So ``persistent`` is MEASURED, never declared. It is true iff the resolved
+    ledger path lies OUTSIDE the repository root — i.e. on a mounted disk such
+    as ``/var/data/...``. A path under the app tree is the container
+    filesystem and reads false EVEN WHERE A BLUEPRINT DECLARES A DISK. A
+    boolean that reports the deployment's INTENTION is worth nothing; this one
+    reports the filesystem.
+
+    ``visits`` and ``reads`` are the two tables' current row counts, read from
+    the same file the tracker writes. A missing file is ``0`` and ``0`` —
+    never an error, and /healthz stays 200: this block is a diagnostic, and a
+    diagnostic that can take the health probe down with it is a liability.
+
+    Row CONTENTS never appear here. Counts, a boolean and a path.
+    """
+    block = {"path": None, "persistent": False, "visits": 0, "reads": 0}
+    try:
+        from lib.analytics_tracker import analytics_path
+
+        path = Path(analytics_path()).resolve()
+        block["path"] = str(path)
+        repo_root = Path(__file__).resolve().parent.parent
+        try:
+            path.relative_to(repo_root)
+            block["persistent"] = False      # inside the tree: container fs
+        except ValueError:
+            block["persistent"] = True       # outside it: a mounted disk
+
+        if path.exists():
+            data = json.loads(path.read_text())
+            if isinstance(data, dict):
+                for table in ("visits", "reads"):
+                    rows = data.get(table)
+                    block[table] = len(rows) if isinstance(rows, list) else 0
+    except Exception:
+        # Never let a diagnostic break the health probe. An unreadable or
+        # half-written ledger reports zeros, and the `path` already in the
+        # block is what a reader needs in order to go and look.
+        pass
+    return block
 
 
 def _llms_version() -> dict:
@@ -153,6 +204,9 @@ def health_payload(backend: str) -> dict:
         # lane returns a bare `JSONResponse` with no model, so nothing filters
         # it — recorded, because that is the reason it works here.
         **_llms_version(),
+        # Where this host's ledger actually lives, whether it survives a
+        # redeploy, and how much is in it (1.6.44 item 20).
+        "ledger": _ledger_block(),
     }
 
     build = os.environ.get("RENDER_GIT_COMMIT")

@@ -655,5 +655,60 @@ def _classify(user_agent, client_ip=None):
     }
 
 
+def _ledger_persistence_warning() -> None:
+    """Say ONCE, at boot, whether the ledger will survive the next deploy.
+
+    1.6.44 item 22, and it MIRRORS the `[visibility]` warning in
+    lib/page_visibility.py deliberately — an operator greps one deploy log for
+    "WARNING" and should find both persistence problems in the same shape,
+    not one warning and one silence.
+
+    The failure it names is the one this host actually had: with
+    TRAFFIC_ANALYTICS_FILE unset, `analytics_path()` falls back to
+    `visitor_analytics.json` in the app directory, which a Docker deploy
+    replaces wholesale — so every visit and every read row is discarded on
+    each deploy while nothing anywhere says so.
+
+    A `print`, not a logger call: this runs at IMPORT time, before any logging
+    configuration a host might apply, and the line has to reach the deploy log
+    unconditionally. That also means `caplog` cannot see it — the test boots a
+    SUBPROCESS, which is the real boot path anyway.
+
+    PAIRS WITH ITEM 20: this says it once at boot, `/healthz`'s `ledger.
+    persistent` says it continuously on the wire. They must AGREE, and a test
+    asserts they do rather than pinning either value on its own — two
+    diagnostics that disagree about the same fact are worse than one.
+    """
+    configured = os.environ.get("TRAFFIC_ANALYTICS_FILE")
+    if not configured:
+        print(
+            "[analytics] WARNING: TRAFFIC_ANALYTICS_FILE unset — the visit "
+            "and read ledger is writing to the app directory and will NOT "
+            "survive a redeploy. Set TRAFFIC_ANALYTICS_FILE="
+            "/var/data/visitor_analytics.json on the Render service "
+            "(render.yaml declares it, but only a Blueprint sync or a "
+            "dashboard add makes it live)."
+        )
+        return
+    # The env being right is only HALF the persistence story: a disk
+    # materialises only via a Blueprint sync or a dashboard add, and an app
+    # can mkdir /var/data on the container filesystem and look fine until the
+    # next deploy wipes it — indistinguishable from the unset case without
+    # this check. Same reasoning, same shape, as the visibility guard.
+    path = Path(configured)
+    if str(path).startswith("/var/"):
+        anchor = (Path("/") / path.parts[1] / path.parts[2]
+                  if len(path.parts) > 2 else path.parent)
+        if not os.path.ismount(str(anchor)):
+            print(
+                f"[analytics] WARNING: {anchor} is not a mounted disk on this "
+                "instance — the ledger will vanish on the next deploy. Attach "
+                "the render.yaml disk (Blueprint sync, or add it in the "
+                "dashboard)."
+            )
+
+
+_ledger_persistence_warning()
+
 # Global tracker instance
 tracker = AnalyticsTracker()

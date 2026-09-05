@@ -221,9 +221,12 @@ anywhere, inside the item about checks that cannot fail.
   hit — the requirements line changing IS the cache bust, and floors
   live in several encodings (requirements, run.py's boot floor,
   tests, CI): grep the number, move every one.
-- `/healthz` build == HEAD is the deploy proof; a missing geo block
-  on dimll ≥2.7 means the cache trap fired (unless DIVERGENCES.md
-  says this host's healthz is deliberately minimal).
+- `/healthz` build == HEAD **of `release`** is the deploy proof on a
+  release-branch host — read the fuller trap below before acting on
+  this line, which was written UNQUALIFIED here until 1.6.44 and so
+  said "HEAD" where it meant HEAD of `release`. A missing geo block on
+  dimll ≥2.7 means the cache trap fired (unless DIVERGENCES.md says
+  this host's healthz is deliberately minimal).
 - Always GET, never HEAD — and the mechanism, measured 2026-08-27
   after two rounds of wrong diagnoses: on the ASGI backends HEAD is
   answered by NOTHING AT ALL. Werkzeug derives a HEAD rule from
@@ -350,7 +353,9 @@ anywhere, inside the item about checks that cannot fail.
   numbers. A token the registry lacks is a pushback to the package
   seat, not a list here; `tests/test_analytics_classifier.py` greps the
   module for the old tokens and goes red if one comes back.
-- `build == HEAD` on `/healthz` means HEAD of **`release`**, not main
+- `/healthz` BUILD == HEAD OF `release` IS THE DEPLOY PROOF on a repo
+  with a promote lane, and `build == HEAD` means HEAD of **`release`**,
+  not main
   (1.6.35). Render deploys `release`; only cd.yml's `deploy` job writes
   it, fast-forward, after the CI matrix is green. `main` ahead of
   `release` is an uncertified push pending — its CD run is red or still
@@ -424,8 +429,82 @@ anywhere, inside the item about checks that cannot fail.
   commit` committed over a red suite because a pipeline's exit status is
   the LAST command's (this seat, one hour after writing the note above).
   Capture the exit code; count what you swept; say both.
-- And the same family one turn later, worth keeping because it nearly
-  shipped a wrong fact into a spec: extracting a package constant with
+- A SHELL'S CWD CAN SHADOW AN INSTALLED PACKAGE, and it produces the
+  most convincing wrong answer of the family: measuring `EVENT_FIELDS`
+  across two dimll versions, a seat ran the comparison with the cwd
+  inside an unpacked 2.9.4 wheel, so `import dash_improve_my_llms`
+  resolved from the CURRENT DIRECTORY rather than site-packages — and
+  two readings of ONE wheel were reported as two versions agreeing, in
+  a CHANGELOG and a shipped spec. The load-bearing half was true and
+  the supporting detail was invented. When comparing versions,
+  `print(mod.__file__)` and assert it is the path you meant, or set
+  PYTHONPATH explicitly and import in a fresh process per version; and
+  print the unpacked file count before the read. Parsing the constant
+  out of source is NOT the safe alternative: the regex form truncated
+  on a `)` inside a comment, and an AST form written to replace it
+  agreed with the wrong answer until the import settled it. IMPORT THE
+  THING.
+- NAME THE CHECK THAT ACTUALLY RAN, not the one you meant to run
+  (1.6.44 item 7). `.flake8` excludes `docs/*/` and the lint job never
+  passes it `docs` anyway, so "flake8 is clean" was reported for a year
+  as covering the exec'd examples this documentation site RENDERS, and
+  it never read one of them. Measured here 2026-09-05: a file in
+  `docs/` containing `def broken(:` leaves `flake8 docs/` at exit 0
+  with ZERO output, while `py_compile` exits 1 with the SyntaxError on
+  the same file. The general form: a report says which invocation
+  produced the number, over how many files, and with what exit code,
+  because "lint passed" is a claim about a COMMAND and everyone reads
+  it as a claim about the CODE. CI now runs the sweep as its own step
+  (`py_compile sweep of docs/`) and fails when the corpus is EMPTY.
+- A CD LANE THAT CALLS ci.yml MUST NOT ALSO LET ci.yml RUN ITSELF on a
+  push to main (1.6.44 item 12). Both runs resolve to the same commit,
+  both go green, and the only symptoms are the runner bill and an
+  unreadable workflow list. This repo does NOT have the defect —
+  ci.yml declares `{pull_request, workflow_dispatch, workflow_call}`
+  and cd.yml owns the push — and `tests/test_workflow_double_run.py`
+  keeps it that way in BOTH directions, since "no push trigger" is also
+  satisfied by deleting the triggers that make CI useful. Reading the
+  triggers at all needs care: YAML 1.1 folds an unquoted `on:` key to
+  the BOOLEAN True, so `workflow["on"]` raises KeyError on every
+  workflow file ever written, and a test that catches that and moves on
+  asserts nothing while looking thorough.
+- A FORK'S TRAPS SECTION DRIFTS BEHIND THE TEMPLATE'S SILENTLY (1.6.44
+  item 14). The kit is contract-class, so no sync copies it and nothing
+  printed the gap: emojimart carried 7 entries against 22, and its HEAD
+  trap still held the diagnosis 1.6.32 had corrected — a fork can be
+  acting on a fact the fleet retired months ago. Detect, printed as a
+  PAIR: `python3 scripts/kit_traps.py` reports `fork N / template M`
+  and names what is missing. Matching is by TOKEN OVERLAP of each
+  trap's opening sentence, never exact text, because a fork is EXPECTED
+  to merge a trap into its own wording; a strict check would train
+  forks to paste over their own adaptations. MERGED, NEVER INSTALLED
+  OVER. Known limit, measured on this fork: the 0.6 overlap threshold
+  cannot see a template trap that a fork carries SPLIT ACROSS TWO
+  bullets, and reported two such as missing here. SECOND limit, found
+  by this fork's own test fixture: `_tokens()` scores only the FIRST
+  SENTENCE, so a fork that opens a reworded trap with a short
+  colon-terminated summary is judged on a handful of words and reads as
+  missing however faithfully the rest of the entry carries the trap.
+  Neither is patched here — the counts are compared ACROSS the fleet,
+  and a fork that quietly changes the algorithm makes its number
+  incomparable with everyone else's. Both are pushbacks to the template
+  seat. Read the pair as a prompt to look, not as a verdict.
+- PRINT THE RESOLVED VERSION BESIDE THE RESULT, and say which tool
+  produced it (1.6.44 item 10). An acceptance is a claim about a tree
+  AT A VERSION: "suite green" is not a result. Resolve by IMPORTING and
+  printing `mod.__file__` — never by reading `requirements.txt`, which
+  states an intent, and on this fork's `>=` FLOOR the intent and the
+  fact are routinely different numbers. excalidraw served
+  `llms_version` 2.9.4 while its suite ran 2.8.0, so every green tick
+  meant the older package. The same rule names the tools whose LOCAL
+  invocation is not CI's: `actionlint` without shellcheck skips every
+  `run:` block's shell analysis, and a local ABSENCE of the binary is
+  weaker still — both are absent on this seat, as is `quart`, so a
+  three-lane claim from here is two lanes plus an assumption.
+- And the same family one turn later, MEASURED TWICE — this seat and
+  clerkhook hit it independently within the hour, so it is a property
+  of the TECHNIQUE and not one seat's slip. It nearly shipped a wrong
+  fact into a spec: extracting a package constant with
   `re.search(r"EVENT_FIELDS = \((.*?)\)", src, re.S)` truncated at a `)`
   inside a COMMENT in the middle of the tuple, printed eight of sixteen
   fields, and reported `'ua' present: False` — confidently, with a

@@ -263,6 +263,42 @@ block match the template exactly.
 
 ---
 
+### 17. `HeadAsGetMiddleware` is KEPT, where the template retired it
+
+Template 1.6.44 item 2 removes the HEAD->GET ASGI shim it added at
+1.6.32. Its own note is explicit that the retirement is "gated on the
+pin (item 1) and not on the calendar": at dash-improve-my-llms
+**2.9.4** the package walks the router and adds HEAD wherever GET is
+allowed, including Dash's lifespan-registered page catch-all — the
+one case the middleware was kept for.
+
+This fork does not take that pin. Rider 1 of the 1.6.44 drop leaves
+our requirements line at `dash-improve-my-llms[flask]>=2.8.0` until
+the fleet pin lands at 1.6.45, so the package-side fix is not present
+here and the shim is still load-bearing. Measured in-process on the
+FastAPI lane at the resolved 2.8.0, 5 paths x 3 UAs, BEFORE porting:
+four of fifteen pairs mismatched — `/healthz` 405 on all three UAs,
+and `/` 405 to a browser while returning 200 to a crawler and to curl
+(the prerender middleware answers above routing, which is the kit's
+own trap). The package's routes — `/llms.txt`, `/robots.txt`,
+`/sitemap.xml` — already passed: 2.7.2 fixed those. The residue is
+exactly the two routes the package does not own.
+
+Note this fork had NEVER carried the class; `grep -rn HeadAsGet`
+returned zero lines. So this is not "declining to retire", it is
+porting for the first time, at the moment the template drops it — and
+absent-vs-retired is the confusion the ops seat flagged from
+pannellum. Production is Flask, where Werkzeug derives HEAD from every
+GET rule, so the wire was never affected; `lib/backend.py` puts the
+ASGI lane one env var away, which is what makes it worth fixing.
+
+RETIRE IT AT 1.6.45, on a re-measurement and not on the date — same
+trigger as run.py's `_openapi_kwargs` guard.
+`tests/test_head_get_parity.py` fails on its own when the resolved
+package reaches 2.9.4, so the prompt fires without anyone remembering.
+
+---
+
 ### 13. The site CI matrix's legs are the FLOOR and the adjacent minor
 
 The template's Python window rolls: its two include legs are X.Y-1

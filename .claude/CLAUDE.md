@@ -187,7 +187,20 @@ they win.
   backend, assume you have it until you have probed a route that is
   NOT `/`. The middleware stays after dimll 2.7.2 fixes the
   package's own routes: `/` is Dash's page catch-all and every Dash
-  route is an `APIRoute` too.
+  route is an `APIRoute` too. AMENDED 1.6.44: at dimll **2.9.4** the
+  package walks the router itself and adds HEAD wherever GET is
+  allowed — Dash's lifespan-registered catch-all included — so the
+  template retired the shim, gated on the PIN and not the date. This
+  fork keeps its `>=2.8.0` floor until 1.6.45 and therefore KEEPS the
+  middleware (DIVERGENCES 17); it had never carried it before, so the
+  starting state was absent, not retired, and those two look identical
+  to a grep. Measured here at 2.8.0 on the FastAPI lane, 15 pairs:
+  `/healthz` 405 on all three UAs and `/` 405 to a BROWSER while
+  returning 200 to a crawler and to curl. That last row is this trap's
+  own warning firing in practice — the prerender answers `HEAD /`
+  above routing, so the crawler UA everyone reaches for is the one UA
+  that cannot see the defect. Probe a route the app owns, with a
+  browser UA, on the ASGI lane.
 - Any throwaway Python probe a session writes against a production
   host needs the certifi SSL context AND a retry guard. Fixing the
   shipped tools does not cover the next ad-hoc script: the template

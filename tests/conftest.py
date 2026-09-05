@@ -201,6 +201,35 @@ class Client:
         r = self._raw.get(path, headers=headers)
         return Response(r.status_code, r.text, dict(r.headers))
 
+    def head(self, path: str, user_agent: str = BROWSER_UA) -> Response:
+        """The same request as `.get()`, by the other method (1.6.44 item 2).
+
+        HEAD is the method the fleet's ASGI hosts were silently 405ing on
+        EVERY route — `/healthz`, `/robots.txt`, `/sitemap.xml` included —
+        because FastAPI's `APIRoute` takes `methods` literally where Werkzeug
+        and `starlette.routing.Route` both derive HEAD from GET. A parity
+        assertion needs to issue the real method: there is no way to observe
+        that defect through `.get()`.
+
+        A HEAD response has no body by definition, so the text is "" on every
+        backend and only the status and headers carry information.
+        """
+        headers = {"User-Agent": user_agent}
+
+        if self._kind == "werkzeug":
+            r = self._raw.head(path, headers=headers)
+            return Response(r.status_code, "", dict(r.headers))
+
+        if self._kind == "quart":
+            async def fetch():
+                r = await self._raw.head(path, headers=headers)
+                return r.status_code, "", dict(r.headers)
+
+            return Response(*self._loop.run_until_complete(fetch()))
+
+        r = self._raw.head(path, headers=headers)
+        return Response(r.status_code, "", dict(r.headers))
+
 
 @pytest.fixture(scope="session")
 def client(app):

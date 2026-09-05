@@ -393,6 +393,24 @@ anywhere, inside the item about checks that cannot fail.
   RED on main must leave `release` unmoved and the wire unchanged.
   Worth taking on every SECOND promote — it costs one background
   sampler and converts "asserted" into "strongly evidenced".
+  AMENDED 1.6.44 (item 17) WITH THE CONCRETE FORM, because this was a
+  method nobody should re-derive live at 2 a.m. mid-promote:
+  `scripts/promote_sampler.py --sha <sha>` takes **eight samples at 45**
+  second intervals and prints the wire and the CD run state on ONE
+  timeline. Three things a hand-written watcher gets wrong and this does
+  not. (1) One loop, one timeline — sampling the wire and the run state
+  separately invites exactly the arithmetic error the measurement exists
+  to avoid. (2) It times against the PROMOTE STEP's `completed_at`,
+  never the deploy JOB's: the job CONTAINS the build-match wait, so it
+  completes when the wait SEES the swap — it tracks the swap and never
+  the promote, and measured -13 s and 0 s on two pairs, useless either
+  way. (3) It retries each sample three times and records `unreadable`
+  as a state DISTINCT from `old`, because the container restart lands
+  exactly where the bracket needs its sample; an un-retried loop is
+  systematically blind at the only moment that matters, and folding
+  `unreadable` into `old` invents a bracket nobody observed. The sampler
+  REFUSES to report a bracket it did not observe — a single "new" sample
+  cannot say what it followed.
 - Verify the artifact the claim is about, and say which one you
   measured. Three hosts got this wrong in one round while holding the
   rule: a skip link checked in the received HTML lives in the RENDERED

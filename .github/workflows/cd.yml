@@ -183,6 +183,26 @@ jobs:
         run: |
           pip install -r requirements.txt
           pip install --no-deps markdown2dash==0.1.2
+          # PIN dash-improve-my-llms TO THE VERSION THE WIRE IS SERVING.
+          # requirements.txt states a `>=` FLOOR, so a fresh install here
+          # resolves the newest release while the deployed IMAGE runs whatever
+          # was newest when it was BUILT. `ai_bot_posture` generates this app's
+          # robots.txt in process and diffs it against the served one, so two
+          # different package versions make that a comparison between a
+          # PACKAGE FEATURE and an edge rewrite — indistinguishable, and the
+          # canary cries wolf. Measured on CD run 34013995781: verify resolved
+          # 2.10.0, production served 2.9.4, and 2.10.0 emits a
+          # `Content-Signal:` directive 2.9.4 never wrote -> a RED verify on a
+          # healthy site. The battery SKIPS on a mismatch rather than failing;
+          # this step is what stops it skipping forever (item 19's rider).
+          served="$(curl -fsS -A "$PROBE_UA" "$SITE_URL/healthz" \
+            | python3 -c 'import sys,json;print(json.load(sys.stdin).get("llms_version") or "")')"
+          if [ -n "$served" ]; then
+            echo "::notice::pinning dash-improve-my-llms==$served to match the wire"
+            pip install "dash-improve-my-llms==$served"
+          else
+            echo "::warning::/healthz reports no llms_version — ai_bot_posture will skip"
+          fi
 
       - name: The live build IS this run's sha
         # Belt to the `if:` above's braces, and stronger: it also catches a

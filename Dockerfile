@@ -15,7 +15,7 @@
 # and declaration cannot part ways silently again. render.yaml carries no
 # PYTHON_VERSION on purpose: this service is `runtime: docker`, where nothing
 # reads it — see tests/test_python_version.py.
-FROM python:3.14-slim
+FROM python:3.15-slim
 
 # PYTHONUNBUFFERED        -> stream logs straight to stdout (Render shows them live)
 # PYTHONDONTWRITEBYTECODE -> no .pyc clutter in the image
